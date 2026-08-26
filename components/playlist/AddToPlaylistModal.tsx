@@ -1,0 +1,156 @@
+'use client';
+
+import { useState } from 'react';
+import { Modal } from '@/components/ui/Modal';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/db/schema';
+import { usePlayerStore } from '@/store/usePlayerStore';
+import { uuid } from '@/lib/utils';
+import { Music, Plus, Check } from 'lucide-react';
+import type { Track, Playlist } from '@/types';
+
+interface AddToPlaylistModalProps {
+  track: Track | null;
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export function AddToPlaylistModal({ track, isOpen, onClose }: AddToPlaylistModalProps) {
+  const { showToast } = usePlayerStore();
+  const [newPlaylistName, setNewPlaylistName] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
+
+  const playlists = useLiveQuery(() => db.playlists.orderBy('updatedAt').reverse().toArray(), []);
+
+  if (!track) return null;
+
+  const handleAddToPlaylist = async (playlist: Playlist) => {
+    if (playlist.trackIds.includes(track.id)) {
+      showToast(`"${track.title}" is already in "${playlist.name}"`);
+      onClose();
+      return;
+    }
+
+    await db.playlists.update(playlist.id, {
+      trackIds: [...playlist.trackIds, track.id],
+      updatedAt: Date.now(),
+    });
+    await db.tracks.put(track);
+    showToast(`Added to "${playlist.name}"`);
+    onClose();
+  };
+
+  const handleCreateAndAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPlaylistName.trim()) return;
+
+    const newId = uuid();
+    const newPlaylist: Playlist = {
+      id: newId,
+      name: newPlaylistName.trim(),
+      trackIds: [track.id],
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    await db.playlists.add(newPlaylist);
+    await db.tracks.put(track);
+    showToast(`Created "${newPlaylist.name}" and added track`);
+    setNewPlaylistName('');
+    setIsCreating(false);
+    onClose();
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Add to Playlist" className="max-w-md">
+      <div className="flex flex-col gap-4">
+        {/* Selected Track info preview */}
+        <div className="flex items-center gap-3 p-2.5 rounded-lg bg-[#181820] border border-[#27272f]">
+          <div className="w-10 h-10 rounded bg-zinc-800 flex items-center justify-center text-zinc-500 overflow-hidden shrink-0">
+            {track.thumbnailUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={track.thumbnailUrl} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <Music size={16} />
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-white truncate">{track.title}</p>
+            <p className="text-[11px] text-zinc-400 truncate">{track.artist}</p>
+          </div>
+        </div>
+
+        {/* Existing Playlists list */}
+        <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+          <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider px-1">
+            Select Playlist
+          </p>
+
+          {!playlists || playlists.length === 0 ? (
+            <p className="text-xs text-zinc-500 py-3 text-center">No playlists created yet</p>
+          ) : (
+            playlists.map((pl) => {
+              const alreadyIn = pl.trackIds.includes(track.id);
+              return (
+                <button
+                  key={pl.id}
+                  onClick={() => handleAddToPlaylist(pl)}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-[#14141a] hover:bg-[#1f1f28] border border-[#27272f] text-left transition-colors group"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <Music size={14} className="text-zinc-500 group-hover:text-white transition-colors shrink-0" />
+                    <span className="text-xs font-medium text-zinc-200 truncate">{pl.name}</span>
+                  </div>
+                  {alreadyIn ? (
+                    <span className="flex items-center gap-1 text-[10px] text-zinc-500 font-mono-time">
+                      <Check size={12} className="text-emerald-400" /> Added
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-zinc-500 font-mono-time">{pl.trackIds.length} tracks</span>
+                  )}
+                </button>
+              );
+            })
+          )}
+        </div>
+
+        <div className="border-t border-[#27272f] pt-3">
+          {isCreating ? (
+            <form onSubmit={handleCreateAndAdd} className="flex gap-2">
+              <input
+                type="text"
+                value={newPlaylistName}
+                onChange={(e) => setNewPlaylistName(e.target.value)}
+                placeholder="New playlist name..."
+                autoFocus
+                className="flex-1 px-3 py-1.5 rounded-lg bg-[#14141a] border border-zinc-700 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-400"
+              />
+              <button
+                type="submit"
+                disabled={!newPlaylistName.trim()}
+                className="px-3 py-1.5 rounded-lg bg-white text-black text-xs font-semibold hover:bg-zinc-200 disabled:opacity-40 transition-colors"
+              >
+                Create & Add
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsCreating(false)}
+                className="px-2.5 py-1.5 rounded-lg text-zinc-400 hover:text-white text-xs"
+              >
+                Cancel
+              </button>
+            </form>
+          ) : (
+            <button
+              onClick={() => setIsCreating(true)}
+              className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg border border-dashed border-[#3f3f46] hover:border-zinc-400 text-zinc-300 hover:text-white text-xs font-medium transition-colors"
+            >
+              <Plus size={14} />
+              <span>Create New Playlist & Add</span>
+            </button>
+          )}
+        </div>
+      </div>
+    </Modal>
+  );
+}

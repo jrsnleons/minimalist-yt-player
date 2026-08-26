@@ -17,7 +17,6 @@ export function useDirectAudio() {
     setDuration,
     next,
     showToast,
-    setPlaybackMode,
   } = usePlayerStore();
 
   /** Create audio element once */
@@ -38,10 +37,8 @@ export function useDirectAudio() {
     };
     const onEnded = () => next();
     const onError = async () => {
-      // URL expired — try to re-fetch
       if (!lastVideoId.current) return;
       try {
-        showToast('Re-fetching direct audio stream…');
         const lastTime = audio.currentTime || 0;
         const res = await fetch(`/api/stream?videoId=${lastVideoId.current}`);
         const data = (await res.json()) as { url?: string };
@@ -53,8 +50,7 @@ export function useDirectAudio() {
           throw new Error('No URL');
         }
       } catch {
-        showToast('Stream error — falling back to IFrame mode');
-        setPlaybackMode('iframe');
+        showToast('Direct stream unavailable for this track');
       }
     };
 
@@ -71,7 +67,7 @@ export function useDirectAudio() {
       audio.removeEventListener('error', onError);
       audioRef.current = null;
     };
-  }, [setProgress, setDuration, next, showToast, setPlaybackMode]);
+  }, [setProgress, setDuration, next, showToast]);
 
   /** Load track */
   useEffect(() => {
@@ -90,8 +86,7 @@ export function useDirectAudio() {
           }
         }
       } catch {
-        showToast('Direct audio failed — falling back to IFrame mode');
-        setPlaybackMode('iframe');
+        showToast('Direct audio extraction in experimental mode — fallback active');
       }
     };
 
