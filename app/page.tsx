@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { TopNav } from '@/components/layout/TopNav';
-import { MiniPlayer } from '@/components/layout/MiniPlayer';
 import { PlayerHero } from '@/components/player/PlayerHero';
 import { YouTubeIframe } from '@/components/player/YouTubeIframe';
 import { DirectAudioPlayer } from '@/components/player/DirectAudioPlayer';
@@ -105,7 +104,7 @@ function AppShell() {
             </div>
 
             {/* 3. Active Single-Column View */}
-            <div className="pt-1 pb-6">
+            <div className="pt-1 pb-10">
               {activeTab === 'queue' && <CenterStageQueue />}
               {activeTab === 'search' && <SearchView />}
               {activeTab === 'playlists' && <PlaylistsView />}
@@ -115,11 +114,6 @@ function AppShell() {
           </PlayerErrorBoundary>
         </div>
       </main>
-
-      {/* Persistent bottom mini-player */}
-      <PlayerErrorBoundary>
-        <MiniPlayer />
-      </PlayerErrorBoundary>
 
       {/* Global Overlays */}
       <CommandPalette />
