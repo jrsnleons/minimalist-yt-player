@@ -127,6 +127,63 @@ export async function searchTracks(query: string): Promise<Track[]> {
   return tracks;
 }
 
+/** Search general YouTube videos (live performances, covers, talks, long mixes) via Innertube */
+export async function searchVideos(query: string): Promise<Track[]> {
+  try {
+    const yt = await getInnertube();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const searchRes = (await yt.search(query, { type: 'video' })) as any;
+    const videos: Track[] = [];
+
+    const rawList = searchRes.videos || [];
+    for (const v of rawList) {
+      const id = v.id || v.video_id || v.videoId;
+      if (!id || typeof id !== 'string') continue;
+
+      const title =
+        v.title?.text ||
+        v.title?.toString?.() ||
+        v.headline?.text ||
+        'YouTube Video';
+
+      const artist =
+        v.author?.name ||
+        v.author?.text ||
+        v.short_byline?.text ||
+        v.long_byline?.text ||
+        'YouTube';
+
+      const durationSecs =
+        typeof v.duration?.seconds === 'number'
+          ? v.duration.seconds
+          : typeof v.duration === 'number'
+          ? v.duration
+          : extractDuration(v.duration) || 180;
+
+      const thumbnailUrl =
+        v.thumbnails?.[0]?.url ||
+        v.thumbnail?.[0]?.url ||
+        `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+
+      videos.push({
+        id,
+        title: String(title),
+        artist: String(artist),
+        duration: durationSecs,
+        thumbnailUrl,
+        addedAt: Date.now(),
+      });
+
+      if (videos.length >= 20) break;
+    }
+
+    return videos;
+  } catch (err) {
+    console.error('[searchVideos] Error:', err);
+    return [];
+  }
+}
+
 /** Search public YouTube playlists via Innertube */
 export async function searchPlaylists(query: string): Promise<import('@/types').SearchPlaylist[]> {
   try {

@@ -1,13 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
 import { AnimatePresence, motion } from 'framer-motion';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { TransportControls } from './TransportControls';
 import { CustomScrubber } from './CustomScrubber';
 import { VolumeSlider } from './VolumeSlider';
 import { MarqueeText } from '@/components/ui/MarqueeText';
+import { TrackArtwork, getTrackPalette } from '@/components/ui/TrackArtwork';
 import { Search, Sparkles, Music2, Loader2 } from 'lucide-react';
 import type { Track } from '@/types';
 
@@ -109,7 +109,7 @@ export function PlayerHero() {
   return (
     <div className="relative p-5 rounded-2xl border border-[#27272a] bg-[#121216] shadow-xl overflow-hidden">
       {/* Dynamic Blurred Video/Artwork Background Effect */}
-      {blurredHeroBackground && currentTrack.thumbnailUrl && (
+      {blurredHeroBackground && currentTrack && (
         <AnimatePresence>
           <motion.div
             key={currentTrack.id}
@@ -119,11 +119,20 @@ export function PlayerHero() {
             transition={{ duration: 0.6, ease: 'easeInOut' }}
             className="absolute -inset-16 pointer-events-none z-0 overflow-hidden"
           >
-            {/* Ultra-blurred artwork layer */}
-            <div
-              className="absolute inset-0 bg-cover bg-center scale-150 filter blur-3xl opacity-30"
-              style={{ backgroundImage: `url(${currentTrack.thumbnailUrl})` }}
-            />
+            {/* Ultra-blurred artwork layer or dynamic procedural ambient glow */}
+            {currentTrack.thumbnailUrl ? (
+              <div
+                className="absolute inset-0 bg-cover bg-center scale-150 filter blur-3xl opacity-30"
+                style={{ backgroundImage: `url(${currentTrack.thumbnailUrl})` }}
+              />
+            ) : (
+              <div
+                className="absolute inset-0 scale-150 filter blur-3xl opacity-35"
+                style={{
+                  background: `radial-gradient(circle at 50% 50%, ${getTrackPalette(currentTrack.title, currentTrack.artist, currentTrack.id).accent} 0%, ${getTrackPalette(currentTrack.title, currentTrack.artist, currentTrack.id).bgFrom} 80%)`,
+                }}
+              />
+            )}
             {/* Dark vignette blending mask */}
             <div className="absolute inset-0 bg-gradient-to-t from-[#121216] via-[#121216]/80 to-[#121216]/40" />
           </motion.div>
@@ -133,18 +142,8 @@ export function PlayerHero() {
       {/* Main Content Layer */}
       <div className="relative z-10 flex flex-col md:flex-row items-center gap-5">
         {/* Album Artwork */}
-        <div className="relative w-32 h-32 md:w-36 md:h-36 rounded-xl overflow-hidden shadow-2xl bg-zinc-900 border border-zinc-700/60 shrink-0">
-          {currentTrack.thumbnailUrl ? (
-            <Image
-              src={currentTrack.thumbnailUrl}
-              alt={`${currentTrack.title} artwork`}
-              fill
-              className="object-cover"
-              unoptimized
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-zinc-700 text-3xl">♫</div>
-          )}
+        <div className="relative w-32 h-32 md:w-36 md:h-36 rounded-xl overflow-hidden shadow-2xl shrink-0">
+          <TrackArtwork track={currentTrack} size="hero" rounded="xl" />
         </div>
 
         {/* Center/Right Details and Controls */}

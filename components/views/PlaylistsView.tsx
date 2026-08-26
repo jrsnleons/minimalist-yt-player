@@ -25,7 +25,8 @@ import { EditPlaylistModal } from '@/components/playlist/EditPlaylistModal';
 import { ImportPlaylistModal } from '@/components/playlist/ImportPlaylistModal';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { formatTime } from '@/lib/utils';
-import { Music, Plus, Play, Trash2, ArrowLeft, FolderPlus, Download, Pencil } from 'lucide-react';
+import { exportSinglePlaylist } from '@/lib/backup';
+import { Music, Plus, Play, Trash2, ArrowLeft, FolderPlus, Download, Pencil, FileDown } from 'lucide-react';
 import type { Playlist, Track } from '@/types';
 
 export function PlaylistsView() {
@@ -76,6 +77,17 @@ export function PlaylistsView() {
     if (!playlistTracks || playlistTracks.length === 0) return;
     play(playlistTracks[0], playlistTracks);
     showToast(`Playing "${selectedPlaylist?.name}"`);
+  };
+
+  const handleExportPlaylist = async (playlist: Playlist) => {
+    try {
+      const backup = await exportSinglePlaylist(playlist.id);
+      if (backup) {
+        showToast(`Exported "${playlist.name}" (${backup.tracks.length} tracks) to JSON`);
+      }
+    } catch {
+      showToast(`Failed to export "${playlist.name}"`);
+    }
   };
 
   const handleDeletePlaylist = async (playlist: Playlist) => {
@@ -150,6 +162,15 @@ export function PlaylistsView() {
                     <span>Play All</span>
                   </button>
                 )}
+                <Tooltip content="Export playlist as JSON backup" side="top">
+                  <button
+                    onClick={() => handleExportPlaylist(selectedPlaylist)}
+                    className="p-1.5 rounded-lg text-zinc-400 hover:text-emerald-400 hover:bg-[#1e1e24] transition-colors cursor-pointer"
+                    aria-label="Export playlist to JSON"
+                  >
+                    <FileDown size={14} />
+                  </button>
+                </Tooltip>
                 <Tooltip content="Delete playlist" side="top">
                   <button
                     onClick={() => handleDeletePlaylist(selectedPlaylist)}
@@ -226,7 +247,7 @@ export function PlaylistsView() {
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#181820] hover:bg-[#242430] border border-[#2e2e38] text-zinc-200 text-xs font-medium transition-colors cursor-pointer"
                 >
                   <Download size={13} className="text-emerald-400" />
-                  <span>Import YT Playlist</span>
+                  <span>Import Playlist / Backup</span>
                 </button>
 
                 <button
@@ -246,7 +267,7 @@ export function PlaylistsView() {
                   <FolderPlus size={32} className="text-zinc-700 mb-2" />
                   <p className="text-xs font-medium text-zinc-300">No playlists in your library</p>
                   <p className="text-[11px] text-zinc-500 mt-1 max-w-xs leading-relaxed">
-                    Create custom playlists or import your favorite public YouTube playlists.
+                    Create custom playlists or import from Spotify, YouTube, or JSON backup files.
                   </p>
                   <div className="flex items-center gap-2 mt-4">
                     <button
@@ -254,7 +275,7 @@ export function PlaylistsView() {
                       className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#1e1e26] text-white border border-zinc-700 text-xs font-medium rounded-lg hover:bg-[#282834] transition-colors cursor-pointer"
                     >
                       <Download size={13} className="text-emerald-400" />
-                      <span>Import YouTube Playlist</span>
+                      <span>Import Playlist / Backup</span>
                     </button>
                     <button
                       onClick={() => setIsCreateModalOpen(true)}
@@ -287,6 +308,18 @@ export function PlaylistsView() {
                       </div>
 
                       <div className="flex items-center gap-1 text-zinc-500 shrink-0">
+                        <Tooltip content="Export JSON backup" side="top">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleExportPlaylist(pl);
+                            }}
+                            className="p-1 rounded text-zinc-500 hover:text-emerald-400 hover:bg-[#27272f] transition-colors cursor-pointer"
+                            aria-label="Export playlist to JSON"
+                          >
+                            <FileDown size={12} />
+                          </button>
+                        </Tooltip>
                         <Tooltip content="Edit playlist" side="top">
                           <button
                             onClick={(e) => {

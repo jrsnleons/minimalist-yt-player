@@ -43,6 +43,7 @@ export type PlaybackMode = 'iframe' | 'direct-audio';
 export interface SearchResult {
   results: Track[];
   tracks?: Track[];
+  videos?: Track[];
   playlists?: SearchPlaylist[];
 }
 
@@ -58,3 +59,51 @@ export interface AppAction {
 }
 
 export type CommandPaletteScope = 'local' | 'youtube' | 'actions';
+
+// Data Safety & Backup Schemas
+export interface LibraryBackup {
+  version: 1;
+  appName: 'minimalist-yt-player';
+  exportedAt: number; // Unix timestamp ms
+  summary: {
+    playlistCount: number;
+    trackCount: number;
+    historyCount: number;
+  };
+  data: {
+    playlists: Playlist[];
+    tracks: Track[];
+    history?: HistoryEntry[];
+    preferences?: UserPreferences[];
+  };
+}
+
+export interface SinglePlaylistBackup {
+  version: 1;
+  type: 'single-playlist';
+  exportedAt: number;
+  playlist: Playlist;
+  tracks: Track[];
+}
+
+export type RestoreMode = 'merge' | 'replace';
+
+// Spotify Importer Types
+export interface SpotifyTrackItem {
+  id: string; // Spotify track ID / URI
+  title: string;
+  artist: string;
+  album?: string;
+  durationMs: number;
+  thumbnailUrl?: string;
+}
+
+export interface SpotifyPlaylistPreview {
+  id: string;
+  title: string;
+  description?: string;
+  author?: string;
+  thumbnailUrl?: string;
+  trackCount: number;
+  tracks: SpotifyTrackItem[];
+}

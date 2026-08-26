@@ -7,7 +7,9 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/schema';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { AddToPlaylistModal } from '@/components/playlist/AddToPlaylistModal';
+import { TrackArtwork } from '@/components/ui/TrackArtwork';
 import { debounce, formatTime, cn } from '@/lib/utils';
+import { exportFullLibrary } from '@/lib/backup';
 import type { Track, AppAction } from '@/types';
 
 export function CommandPalette() {
@@ -45,8 +47,20 @@ export function CommandPalette() {
   const actions: AppAction[] = [
     {
       id: 'open-settings',
-      label: 'Open Settings & Playback Engine',
+      label: 'Open Settings & Data Safety',
       action: () => toggleSettings(),
+    },
+    {
+      id: 'export-backup',
+      label: 'Export Full Library Backup (.json)',
+      action: async () => {
+        try {
+          const b = await exportFullLibrary();
+          showToast(`Exported backup with ${b.summary.playlistCount} playlists & ${b.summary.trackCount} tracks!`);
+        } catch {
+          showToast('Failed to export library');
+        }
+      },
     },
     {
       id: 'toggle-video',
@@ -97,8 +111,17 @@ export function CommandPalette() {
       setIsLoading(true);
       try {
         const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
-        const data = (await res.json()) as { results?: Track[] };
-        setYtResults(data.results ?? []);
+        const data = (await res.json()) as { results?: Track[]; tracks?: Track[]; videos?: Track[] };
+        const combined = [...(data.tracks ?? data.results ?? []), ...(data.videos ?? [])];
+        const seen = new Set<string>();
+        const uniqueResults: Track[] = [];
+        for (const item of combined) {
+          if (!seen.has(item.id)) {
+            seen.add(item.id);
+            uniqueResults.push(item);
+          }
+        }
+        setYtResults(uniqueResults.slice(0, 15));
       } catch {
         setYtResults([]);
       } finally {
@@ -353,13 +376,7 @@ export function CommandPalette() {
                                 }}
                                 className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
                               >
-                                <div className="relative w-9 h-9 rounded-md bg-zinc-800 overflow-hidden shrink-0 border border-zinc-700/50">
-                                  {t.thumbnailUrl ? (
-                                    <Image src={t.thumbnailUrl} alt="" fill className="object-cover" unoptimized />
-                                  ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-xs text-zinc-600">♫</div>
-                                  )}
-                                </div>
+                                <TrackArtwork track={t} size="sm" rounded="md" />
 
                                 <div className="min-w-0 flex-1">
                                   <p className="text-xs font-medium truncate">{t.title}</p>

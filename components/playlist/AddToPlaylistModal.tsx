@@ -6,6 +6,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/schema';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { uuid } from '@/lib/utils';
+import { TrackArtwork } from '@/components/ui/TrackArtwork';
 import { Music, Plus, Check } from 'lucide-react';
 import type { Track, Playlist } from '@/types';
 
@@ -20,42 +21,46 @@ export function AddToPlaylistModal({ track, isOpen, onClose }: AddToPlaylistModa
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
 
-  const playlists = useLiveQuery(() => db.playlists.orderBy('updatedAt').reverse().toArray(), []);
+  const playlists = useLiveQuery(() => db.playlists.toArray(), []);
 
   if (!track) return null;
 
   const handleAddToPlaylist = async (playlist: Playlist) => {
-    if (playlist.trackIds.includes(track.id)) {
-      showToast(`"${track.title}" is already in "${playlist.name}"`);
-      onClose();
-      return;
+    const exists = playlist.trackIds.includes(track.id);
+    let updatedTrackIds: string[];
+
+    if (exists) {
+      updatedTrackIds = playlist.trackIds.filter((id) => id !== track.id);
+      showToast(`Removed from "${playlist.name}"`);
+    } else {
+      updatedTrackIds = [...playlist.trackIds, track.id];
+      // Save track metadata to IndexedDB
+      await db.tracks.put(track);
+      showToast(`Added to "${playlist.name}"`);
     }
 
     await db.playlists.update(playlist.id, {
-      trackIds: [...playlist.trackIds, track.id],
+      trackIds: updatedTrackIds,
       updatedAt: Date.now(),
     });
-    await db.tracks.put(track);
-    showToast(`Added to "${playlist.name}"`);
-    onClose();
   };
 
   const handleCreateAndAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPlaylistName.trim()) return;
+    const name = newPlaylistName.trim();
+    if (!name) return;
 
-    const newId = uuid();
+    await db.tracks.put(track);
     const newPlaylist: Playlist = {
-      id: newId,
-      name: newPlaylistName.trim(),
+      id: uuid(),
+      name,
       trackIds: [track.id],
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
 
     await db.playlists.add(newPlaylist);
-    await db.tracks.put(track);
-    showToast(`Created "${newPlaylist.name}" and added track`);
+    showToast(`Created "${name}" and added track`);
     setNewPlaylistName('');
     setIsCreating(false);
     onClose();
@@ -66,14 +71,7 @@ export function AddToPlaylistModal({ track, isOpen, onClose }: AddToPlaylistModa
       <div className="flex flex-col gap-4">
         {/* Selected Track info preview */}
         <div className="flex items-center gap-3 p-2.5 rounded-lg bg-[#181820] border border-[#27272f]">
-          <div className="w-10 h-10 rounded bg-zinc-800 flex items-center justify-center text-zinc-500 overflow-hidden shrink-0">
-            {track.thumbnailUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={track.thumbnailUrl} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <Music size={16} />
-            )}
-          </div>
+          <TrackArtwork track={track} size="md" rounded="md" />
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold text-white truncate">{track.title}</p>
             <p className="text-[11px] text-zinc-400 truncate">{track.artist}</p>

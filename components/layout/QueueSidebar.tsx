@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { ListMusic, Sparkles, Filter, Trash2, Plus, GripVertical } from 'lucide-react';
-import Image from 'next/image';
+import { TrackArtwork } from '@/components/ui/TrackArtwork';
 import {
   DndContext,
   closestCenter,
@@ -58,13 +58,7 @@ function SortableTrackItem({ track, index }: { track: Track; index: number }) {
       </button>
 
       {/* Track Thumbnail */}
-      <div className="relative w-8 h-8 rounded overflow-hidden bg-zinc-800 border border-zinc-700/50 shrink-0">
-        {track.thumbnailUrl ? (
-          <Image src={track.thumbnailUrl} alt="" fill className="object-cover" unoptimized />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-[10px] text-zinc-600">♫</div>
-        )}
-      </div>
+      <TrackArtwork track={track} size="sm" rounded="sm" />
 
       {/* Track Info */}
       <button
@@ -246,11 +240,7 @@ export function QueueSidebar() {
                       key={track.id}
                       className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-[#18181f] group transition-colors border border-transparent"
                     >
-                      <div className="relative w-8 h-8 rounded overflow-hidden bg-zinc-800 border border-zinc-700/50 shrink-0">
-                        {track.thumbnailUrl && (
-                          <Image src={track.thumbnailUrl} alt="" fill className="object-cover" unoptimized />
-                        )}
-                      </div>
+                      <TrackArtwork track={track} size="sm" rounded="sm" />
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-medium text-zinc-200 truncate">{track.title}</p>
                         <p className="text-[10px] text-zinc-500 truncate">{track.artist}</p>

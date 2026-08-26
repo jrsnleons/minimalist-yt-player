@@ -12,6 +12,7 @@ import { TrackContextMenu } from '@/components/context-menu/TrackContextMenu';
 import { AddToPlaylistModal } from './AddToPlaylistModal';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { MarqueeText } from '@/components/ui/MarqueeText';
+import { TrackArtwork } from '@/components/ui/TrackArtwork';
 import { formatTime, cn } from '@/lib/utils';
 import type { Track, Playlist } from '@/types';
 
@@ -146,13 +147,7 @@ export function TrackRow({
         {/* Title & Artist with On-Hover Smooth Gliding Marquee */}
         <td className="px-2 py-2 min-w-0 max-w-0 w-auto">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="relative w-8 h-8 rounded-lg overflow-hidden bg-zinc-800 border border-zinc-700/50 shrink-0">
-              {track.thumbnailUrl ? (
-                <Image src={track.thumbnailUrl} alt="" fill className="object-cover" unoptimized />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-[10px] text-zinc-600">♫</div>
-              )}
-            </div>
+            <TrackArtwork track={track} size="sm" rounded="lg" />
             <div className="min-w-0 flex-1 overflow-hidden">
               <MarqueeText
                 text={track.title}

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Plus, Clock, Music, HardDrive, ListPlus } from 'lucide-react';
-import Image from 'next/image';
+import { TrackArtwork } from '@/components/ui/TrackArtwork';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/schema';
 import { usePlayerStore } from '@/store/usePlayerStore';
@@ -68,13 +68,7 @@ export function SidebarPlaylists({ onSelectPlaylist, activePlaylistId }: Sidebar
                             : 'hover:bg-[#18181f] text-zinc-300'
                         )}
                       >
-                        <div className="relative w-7 h-7 rounded overflow-hidden bg-zinc-800 border border-zinc-700/50 shrink-0">
-                          {track.thumbnailUrl ? (
-                            <Image src={track.thumbnailUrl} alt="" fill className="object-cover" unoptimized />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-[10px] text-zinc-600">♫</div>
-                          )}
-                        </div>
+                        <TrackArtwork track={track} size="xs" rounded="sm" />
                         <div className="min-w-0 flex-1">
                           <p className={cn('text-xs truncate font-medium', isCurrent ? 'text-white' : 'text-zinc-300')}>
                             {track.title}

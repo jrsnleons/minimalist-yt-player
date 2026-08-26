@@ -1,10 +1,10 @@
 'use client';
 
-import Image from 'next/image';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { TransportControls } from '@/components/player/TransportControls';
 import { CustomScrubber } from '@/components/player/CustomScrubber';
 import { VolumeSlider } from '@/components/player/VolumeSlider';
+import { TrackArtwork } from '@/components/ui/TrackArtwork';
 import { Shuffle, Repeat, Repeat1, Video, VideoOff } from 'lucide-react';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { cn } from '@/lib/utils';
@@ -32,13 +32,7 @@ export function MiniPlayer() {
     >
       {/* Left Column: Track Artwork + Info */}
       <div className="flex items-center gap-3 w-72 min-w-0 shrink-0">
-        <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-zinc-800 border border-zinc-700/60 shrink-0 shadow-sm">
-          {currentTrack?.thumbnailUrl ? (
-            <Image src={currentTrack.thumbnailUrl} alt="" fill className="object-cover" unoptimized />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-zinc-600 text-base">♫</div>
-          )}
-        </div>
+        <TrackArtwork track={currentTrack} size="md" rounded="lg" />
 
         {currentTrack ? (
           <div className="min-w-0 flex-1">
