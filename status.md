@@ -1,28 +1,21 @@
 # Minimalist YT Player — Build Status & Handoff
 
-## Current Phase: YouTube Playlist Import & Playback Auto-Skip Completed ✅
+## Current Phase: Tooltip Isolation, Global Pointer Cursors & Smooth Transitions Completed ✅
 ## Current Step: Ready for Testing & Daily Use
 
 ## ✅ Completed Updates
 
-### 1. YouTube Playlist Import Feature
-- **API Handler (`/api/playlist`)**:
-  - Automatically parses any public or unlisted YouTube / YouTube Music playlist URL or ID (`https://www.youtube.com/playlist?list=...`).
-  - Uses multi-tier extraction: `yt.music.getPlaylist` (fastest & most accurate metadata) ➔ `yt.getPlaylist` ➔ YouTube Data API v3 fallback.
-  - Returns playlist title, channel name, track count, durations, and high-res thumbnails.
-- **Import Modal (`ImportPlaylistModal.tsx`)**:
-  - Live playlist metadata & track snippet preview.
-  - Popular example playlist chips ("Pop Hits 2026", "Lofi Focus Beats", "Synthwave / Chillwave").
-  - 1-click **"Import to Library"** and **"Import & Play"** actions with instant IndexedDB persistence.
-- **Playlists View (`PlaylistsView.tsx`)**:
-  - Integrated **"Import YT Playlist"** button in the header and empty states.
+### 1. Tooltip Hover Isolation Fix
+- **Root Cause**: The previous CSS-only tooltip used `.group:hover`, which matched the parent track row's `.group` class, causing all action tooltips on a row to trigger simultaneously when hovering over the row.
+- **Fix**: Re-architected [Tooltip.tsx](file:///Users/jello/Documents/dev/minimalist-yt-player/components/ui/Tooltip.tsx) with discrete local hover listeners, `150ms` debounced display timer, and `framer-motion` `AnimatePresence`. Now, only the specific button being hovered displays its tooltip one by one.
 
-### 2. Auto-Skip & Unplayable Video Handling
-- **Root Cause of Image Error**:
-  - The previous "Quick Start Radio" was referencing a deprecated YouTube live stream ID (`jfKfPfyJRdk`) that YouTube ended/restricted.
-- **Fixes Applied**:
-  - **Dynamic Quick Start Radio**: Replaced static dead IDs with dynamic `/api/search?q=lofi+chill+beats+focus` which automatically fetches 15+ verified, fresh playable tracks, queues them, and starts playback with a loading spinner.
-  - **YouTube Iframe Auto-Skip (`useYouTubePlayer.ts`)**: Whenever YouTube reports an error (e.g., Code 150/101 embed restricted by owner, Code 100 private/deleted video), the player now automatically notifies with `"Embedding restricted by owner — auto-skipping…"` and seamlessly advances to the next track in the queue or pulls fresh radio recommendations without ever hanging!
+### 2. Universal Pointer Cursors
+- Added a global interactive rule in [globals.css](file:///Users/jello/Documents/dev/minimalist-yt-player/app/globals.css) ensuring all `button`, `[role="button"]`, `input[type="range"]`, tabs, and action items always render `cursor: pointer`.
+
+### 3. Smooth Transitions (`framer-motion`)
+- **Fluid Sliding Tab Pill Indicator**: When switching between tabs (Queue, Search, Playlists, Recently Played, Vibe Suggestions), a spring-animated background pill slides smoothly to the active tab.
+- **View Enter/Exit Animations**: Tab content transitions with a subtle `opacity + translateY` easeOut animation.
+- **Playlist Grid & Detail Transitions**: Smooth horizontal slide transitions when navigating into a playlist and back to the playlist grid.
 
 ---
 

@@ -22,13 +22,13 @@ export function RecentlyPlayedView() {
   };
 
   return (
-    <div className="rounded-2xl border border-[#27272a] bg-[#0f0f13] overflow-hidden shadow-sm">
-      {/* Header */}
-      <div className="flex items-center justify-between p-5 border-b border-[#222228] bg-[#121217]">
+    <div className="rounded-2xl border border-[#27272a] bg-[#0f0f13] overflow-hidden shadow-sm h-full flex flex-col min-h-0">
+      {/* Header (Pinned) */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[#222228] bg-[#121217] shrink-0">
         <div className="flex items-center gap-2.5">
-          <Clock size={16} className="text-zinc-400" />
+          <Clock size={15} className="text-zinc-400" />
           <h3 className="text-sm font-semibold text-white">Recently Played</h3>
-          <span className="text-xs font-mono-time text-zinc-400 px-2 py-0.5 rounded bg-[#1e1e24] border border-[#2e2e38]">
+          <span className="text-[10px] font-mono-time text-zinc-400 px-2 py-0.5 rounded bg-[#1e1e24] border border-[#2e2e38]">
             {recentlyPlayed.length} track{recentlyPlayed.length !== 1 ? 's' : ''}
           </span>
         </div>
@@ -38,17 +38,17 @@ export function RecentlyPlayedView() {
             <>
               <button
                 onClick={handlePlayAll}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white text-black text-xs font-semibold hover:bg-zinc-200 transition-colors shadow-sm"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white text-black text-xs font-semibold hover:bg-zinc-200 transition-colors shadow-sm cursor-pointer"
               >
-                <Play size={12} fill="currentColor" />
+                <Play size={11} fill="currentColor" />
                 <span>Play All</span>
               </button>
               <button
                 onClick={handleClearHistory}
                 aria-label="Clear listening history"
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-zinc-500 hover:text-red-400 hover:bg-[#1e1e24] transition-colors"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-zinc-500 hover:text-red-400 hover:bg-[#1e1e24] transition-colors cursor-pointer"
               >
-                <Trash2 size={13} />
+                <Trash2 size={12} />
                 <span>Clear</span>
               </button>
             </>
@@ -56,8 +56,8 @@ export function RecentlyPlayedView() {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto">
+      {/* Table (Scrollable) */}
+      <div className="overflow-y-auto flex-1 min-h-0">
         {recentlyPlayed.length === 0 ? (
           <div className="py-16 text-center text-zinc-500 text-xs">
             <Clock size={28} className="mx-auto text-zinc-700 mb-2" />
@@ -66,12 +66,12 @@ export function RecentlyPlayedView() {
           </div>
         ) : (
           <table className="w-full text-left border-collapse" role="grid">
-            <thead>
-              <tr className="border-b border-[#222228] text-[11px] font-semibold text-zinc-500 uppercase tracking-wider bg-[#0f0f13]">
-                <th className="w-12 px-4 py-2.5 text-center">#</th>
-                <th className="px-4 py-2.5">Title</th>
-                <th className="px-4 py-2.5">Artist</th>
-                <th className="w-32 px-4 py-2.5 text-right">Actions</th>
+            <thead className="sticky top-0 z-10 bg-[#0f0f13]">
+              <tr className="border-b border-[#222228] text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
+                <th className="w-12 px-3 py-2 text-center">#</th>
+                <th className="px-3 py-2">Title</th>
+                <th className="px-3 py-2">Artist</th>
+                <th className="w-36 px-3 py-2 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#1e1e24]/40">

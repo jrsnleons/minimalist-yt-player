@@ -20,29 +20,29 @@ export function VibeSuggestionsView() {
   };
 
   return (
-    <div className="rounded-2xl border border-[#27272a] bg-[#0f0f13] overflow-hidden shadow-sm">
-      {/* Header with Work-Friendly Toggle */}
-      <div className="flex items-center justify-between p-5 border-b border-[#222228] bg-[#121217]">
-        <div className="flex items-center gap-2.5">
-          <Sparkles size={16} className="text-amber-300" />
-          <h3 className="text-sm font-semibold text-white">Based on Current Vibe</h3>
+    <div className="rounded-2xl border border-[#27272a] bg-[#0f0f13] overflow-hidden shadow-sm h-full flex flex-col min-h-0">
+      {/* Header with Work-Friendly Toggle (Pinned) */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[#222228] bg-[#121217] shrink-0">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <Sparkles size={15} className="text-amber-300 shrink-0" />
+          <h3 className="text-sm font-semibold text-white shrink-0">Based on Current Vibe</h3>
           {currentTrack && (
-            <span className="text-xs text-zinc-400 truncate max-w-xs">
-              (Auto-mix for &quot;{currentTrack.title}&quot;)
+            <span className="text-[11px] text-zinc-400 truncate max-w-xs">
+              (&quot;{currentTrack.title}&quot;)
             </span>
           )}
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 shrink-0">
           {/* Work-Friendly Filter Toggle */}
-          <div className="flex items-center gap-2 bg-[#181820] border border-[#27272f] px-2.5 py-1 rounded-lg">
-            <Filter size={12} className="text-zinc-400" />
-            <span className="text-xs text-zinc-300">Instrumental / Work-Friendly</span>
+          <div className="flex items-center gap-1.5 bg-[#181820] border border-[#27272f] px-2.5 py-1 rounded-lg">
+            <Filter size={11} className="text-zinc-400" />
+            <span className="text-[11px] text-zinc-300">Instrumental Only</span>
             <button
               onClick={() => setInstrumentalOnly((v) => !v)}
               aria-pressed={instrumentalOnly}
               className={cn(
-                'ml-1 px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide transition-colors',
+                'ml-1 px-1.5 py-0.2 rounded text-[9px] font-bold uppercase tracking-wider transition-colors cursor-pointer',
                 instrumentalOnly ? 'bg-white text-black shadow-sm' : 'bg-[#27272f] text-zinc-400 hover:text-white'
               )}
             >
@@ -53,17 +53,17 @@ export function VibeSuggestionsView() {
           {suggestions.length > 0 && (
             <button
               onClick={handleAddAllToQueue}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white text-black text-xs font-semibold hover:bg-zinc-200 transition-colors shadow-sm"
+              className="flex items-center gap-1 px-3 py-1 rounded-lg bg-white text-black text-xs font-semibold hover:bg-zinc-200 transition-colors shadow-sm cursor-pointer"
             >
               <Plus size={12} />
-              <span>Add All to Queue</span>
+              <span>Add All</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto">
+      {/* Table (Scrollable) */}
+      <div className="overflow-y-auto flex-1 min-h-0">
         {!currentTrack ? (
           <div className="py-16 text-center text-zinc-500 text-xs">
             <Sparkles size={28} className="mx-auto text-zinc-700 mb-2" />
@@ -76,12 +76,12 @@ export function VibeSuggestionsView() {
           </div>
         ) : (
           <table className="w-full text-left border-collapse" role="grid">
-            <thead>
-              <tr className="border-b border-[#222228] text-[11px] font-semibold text-zinc-500 uppercase tracking-wider bg-[#0f0f13]">
-                <th className="w-12 px-4 py-2.5 text-center">#</th>
-                <th className="px-4 py-2.5">Title</th>
-                <th className="px-4 py-2.5">Artist</th>
-                <th className="w-32 px-4 py-2.5 text-right">Actions</th>
+            <thead className="sticky top-0 z-10 bg-[#0f0f13]">
+              <tr className="border-b border-[#222228] text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
+                <th className="w-12 px-3 py-2 text-center">#</th>
+                <th className="px-3 py-2">Title</th>
+                <th className="px-3 py-2">Artist</th>
+                <th className="w-36 px-3 py-2 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#1e1e24]/40">

@@ -59,35 +59,35 @@ export function SearchView() {
   };
 
   return (
-    <div className="rounded-2xl border border-[#27272a] bg-[#0f0f13] overflow-hidden shadow-sm">
-      {/* Search Input Bar */}
-      <div className="p-5 border-b border-[#222228] bg-[#121217]">
+    <div className="rounded-2xl border border-[#27272a] bg-[#0f0f13] overflow-hidden shadow-sm h-full flex flex-col min-h-0">
+      {/* Search Input Bar (Pinned) */}
+      <div className="p-4 border-b border-[#222228] bg-[#121217] shrink-0">
         <div className="relative flex items-center">
-          <Search size={18} className="absolute left-3.5 text-zinc-400" />
+          <Search size={16} className="absolute left-3.5 text-zinc-400" />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search YouTube Music for songs, artists, albums..."
             autoFocus
-            className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-[#181820] border border-[#2e2e38] text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-400 transition-colors shadow-inner"
+            className="w-full pl-9 pr-9 py-2 rounded-xl bg-[#181820] border border-[#2e2e38] text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-400 transition-colors shadow-inner"
           />
           {isLoading && (
-            <Loader2 size={16} className="absolute right-3.5 text-zinc-400 animate-spin" />
+            <Loader2 size={14} className="absolute right-3.5 text-zinc-400 animate-spin" />
           )}
         </div>
 
         {/* Quick Discovery Chips */}
-        <div className="flex items-center gap-2 mt-3 overflow-x-auto pb-1 text-xs">
-          <div className="flex items-center gap-1 text-zinc-500 shrink-0 font-medium text-[11px]">
-            <TrendingUp size={12} />
+        <div className="flex items-center gap-1.5 mt-2.5 overflow-x-auto pb-0.5 text-xs">
+          <div className="flex items-center gap-1 text-zinc-500 shrink-0 font-medium text-[10px]">
+            <TrendingUp size={11} />
             <span>Trending:</span>
           </div>
           {POPULAR_QUERIES.map((chip) => (
             <button
               key={chip}
               onClick={() => selectChip(chip)}
-              className="px-2.5 py-1 rounded-full bg-[#1a1a22] hover:bg-[#252530] border border-[#27272f] hover:border-zinc-600 text-zinc-300 text-[11px] font-medium transition-colors shrink-0"
+              className="px-2 py-0.5 rounded-full bg-[#1a1a22] hover:bg-[#252530] border border-[#27272f] hover:border-zinc-600 text-zinc-300 text-[10px] font-medium transition-colors shrink-0 cursor-pointer"
             >
               {chip}
             </button>
@@ -95,8 +95,8 @@ export function SearchView() {
         </div>
       </div>
 
-      {/* Results Table */}
-      <div className="overflow-x-auto">
+      {/* Results Table (Scrollable) */}
+      <div className="overflow-y-auto flex-1 min-h-0">
         {results.length === 0 ? (
           <div className="py-16 text-center text-zinc-500 text-xs">
             {isLoading ? (
@@ -108,7 +108,7 @@ export function SearchView() {
               <p className="text-zinc-400">No tracks found matching &quot;{query}&quot;</p>
             ) : (
               <div className="max-w-xs mx-auto">
-                <Sparkles size={28} className="mx-auto text-zinc-700 mb-2" />
+                <Sparkles size={26} className="mx-auto text-zinc-700 mb-2" />
                 <p className="font-medium text-zinc-300">Discover & Explore</p>
                 <p className="text-zinc-600 mt-1">Type any query above or select a trending genre</p>
               </div>
@@ -116,12 +116,12 @@ export function SearchView() {
           </div>
         ) : (
           <table className="w-full text-left border-collapse" role="grid">
-            <thead>
-              <tr className="border-b border-[#222228] text-[11px] font-semibold text-zinc-500 uppercase tracking-wider bg-[#0f0f13]">
-                <th className="w-12 px-4 py-2.5 text-center">#</th>
-                <th className="px-4 py-2.5">Title</th>
-                <th className="px-4 py-2.5">Artist</th>
-                <th className="w-32 px-4 py-2.5 text-right">Actions</th>
+            <thead className="sticky top-0 z-10 bg-[#0f0f13]">
+              <tr className="border-b border-[#222228] text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
+                <th className="w-12 px-3 py-2 text-center">#</th>
+                <th className="px-3 py-2">Title</th>
+                <th className="px-3 py-2">Artist</th>
+                <th className="w-36 px-3 py-2 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#1e1e24]/40">

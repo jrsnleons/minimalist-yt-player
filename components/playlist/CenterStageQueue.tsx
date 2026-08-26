@@ -16,11 +16,11 @@ import {
 } from '@dnd-kit/sortable';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { TrackRow } from './TrackRow';
-import { ListMusic, Trash2, Search, Sparkles } from 'lucide-react';
+import { ListMusic, Trash2, Search } from 'lucide-react';
 import { formatTime } from '@/lib/utils';
 
 export function CenterStageQueue() {
-  const { queue, currentTrack, clearQueue, reorderQueue, removeFromQueue, toggleCommandPalette, play } =
+  const { queue, currentTrack, clearQueue, reorderQueue, removeFromQueue, toggleCommandPalette } =
     usePlayerStore();
 
   const totalDuration = queue.reduce((acc, t) => acc + (t.duration || 0), 0);
@@ -42,7 +42,7 @@ export function CenterStageQueue() {
 
   if (queue.length === 0) {
     return (
-      <div className="p-8 rounded-2xl border border-[#27272a] bg-[#0f0f13] text-center shadow-sm">
+      <div className="h-full flex items-center justify-center p-8 rounded-2xl border border-[#27272a] bg-[#0f0f13] text-center shadow-sm">
         <div className="max-w-sm mx-auto flex flex-col items-center">
           <ListMusic size={32} className="text-zinc-700 mb-3" />
           <h3 className="text-sm font-semibold text-white">Playback Queue is Empty</h3>
@@ -52,7 +52,7 @@ export function CenterStageQueue() {
 
           <button
             onClick={toggleCommandPalette}
-            className="mt-4 flex items-center gap-2 px-4 py-2 rounded-lg bg-white text-black text-xs font-semibold hover:bg-zinc-200 transition-colors shadow-md"
+            className="mt-4 flex items-center gap-2 px-4 py-2 rounded-lg bg-white text-black text-xs font-semibold hover:bg-zinc-200 transition-colors shadow-md cursor-pointer"
           >
             <Search size={13} />
             <span>Search Tracks (⌘K)</span>
@@ -63,13 +63,13 @@ export function CenterStageQueue() {
   }
 
   return (
-    <div className="rounded-2xl border border-[#27272a] bg-[#0f0f13] overflow-hidden shadow-sm">
-      {/* Table Header Controls */}
-      <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#222228] bg-[#121217]">
+    <div className="rounded-2xl border border-[#27272a] bg-[#0f0f13] overflow-hidden shadow-sm h-full flex flex-col min-h-0">
+      {/* Table Header Controls (Pinned) */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[#222228] bg-[#121217] shrink-0">
         <div className="flex items-center gap-2.5">
-          <ListMusic size={16} className="text-zinc-400" />
+          <ListMusic size={15} className="text-zinc-400" />
           <h3 className="text-sm font-semibold text-white">Playback Queue</h3>
-          <span className="text-[11px] font-mono-time text-zinc-400 px-2 py-0.5 rounded bg-[#1e1e24] border border-[#2e2e38]">
+          <span className="text-[10px] font-mono-time text-zinc-400 px-2 py-0.5 rounded bg-[#1e1e24] border border-[#2e2e38]">
             {queue.length} track{queue.length !== 1 ? 's' : ''} · {formatTime(totalDuration)}
           </span>
         </div>
@@ -77,23 +77,23 @@ export function CenterStageQueue() {
         <button
           onClick={clearQueue}
           aria-label="Clear queue"
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-zinc-500 hover:text-red-400 hover:bg-[#1e1e24] transition-colors"
+          className="flex items-center gap-1 px-2.5 py-1 rounded text-xs text-zinc-500 hover:text-red-400 hover:bg-[#1e1e24] transition-colors cursor-pointer"
         >
-          <Trash2 size={13} />
-          <span>Clear Queue</span>
+          <Trash2 size={12} />
+          <span>Clear</span>
         </button>
       </div>
 
-      {/* Drag and drop sortable table */}
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <div className="overflow-x-auto">
+      {/* Drag and drop sortable table (Scrollable) */}
+      <div className="overflow-y-auto flex-1 min-h-0">
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <table className="w-full text-left border-collapse" role="grid" aria-label="Playback Queue">
-            <thead>
-              <tr className="border-b border-[#222228] text-[10px] font-bold text-zinc-500 uppercase tracking-wider bg-[#0f0f13]">
-                <th className="w-12 px-3 py-2.5 text-center">#</th>
-                <th className="px-3 py-2.5">Title</th>
-                <th className="px-3 py-2.5">Artist</th>
-                <th className="w-36 px-3 py-2.5 text-right">Actions</th>
+            <thead className="sticky top-0 z-10 bg-[#0f0f13]">
+              <tr className="border-b border-[#222228] text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
+                <th className="w-12 px-3 py-2 text-center">#</th>
+                <th className="px-3 py-2">Title</th>
+                <th className="px-3 py-2">Artist</th>
+                <th className="w-36 px-3 py-2 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#1e1e24]/40">
@@ -115,8 +115,8 @@ export function CenterStageQueue() {
               </SortableContext>
             </tbody>
           </table>
-        </div>
-      </DndContext>
+        </DndContext>
+      </div>
     </div>
   );
 }
