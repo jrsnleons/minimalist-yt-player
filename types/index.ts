@@ -1,0 +1,51 @@
+// Shared TypeScript interfaces for the Minimalist YT Player
+
+export interface Track {
+  id: string; // YouTube videoId
+  title: string;
+  artist: string;
+  duration: number; // seconds
+  thumbnailUrl: string;
+  addedAt: number; // Unix timestamp ms
+}
+
+export interface Playlist {
+  id: string; // crypto.randomUUID()
+  name: string;
+  description?: string;
+  createdAt: number; // Unix timestamp ms
+  updatedAt: number; // Unix timestamp ms
+  trackIds: string[]; // Ordered array of Track IDs
+}
+
+export interface HistoryEntry {
+  id?: number; // Auto-incremented
+  trackId: string; // Reference to Track.id
+  playedAt: number; // Unix timestamp ms
+  durationPlayed: number; // seconds actually listened
+}
+
+export interface UserPreferences {
+  key: string;
+  value: unknown;
+}
+
+export type RepeatMode = 'off' | 'one' | 'all';
+export type PlaybackMode = 'iframe' | 'direct-audio';
+
+export interface SearchResult {
+  results: Track[];
+}
+
+export interface RadioResult {
+  suggestions: Track[];
+}
+
+export interface AppAction {
+  id: string;
+  label: string;
+  shortcut?: string;
+  action: () => void;
+}
+
+export type CommandPaletteScope = 'local' | 'youtube' | 'actions';

@@ -1,26 +1,191 @@
 @import "tailwindcss";
 
+/* ─── Monochrome Palette ─────────────────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --obsidian: #09090b;
+  --zinc-900: #18181b;
+  --zinc-800: #27272a;
+  --zinc-500: #71717a;
+  --zinc-400: #a1a1aa;
+  --zinc-200: #e4e4e7;
+  --white: #fafafa;
+
+  --bg-primary: var(--obsidian);
+  --bg-secondary: var(--zinc-900);
+  --bg-tertiary: var(--zinc-800);
+  --text-primary: var(--white);
+  --text-secondary: var(--zinc-400);
+  --text-muted: var(--zinc-500);
+  --border: var(--zinc-800);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-obsidian: var(--obsidian);
+  --color-zinc-900: var(--zinc-900);
+  --color-zinc-800: var(--zinc-800);
+  --color-zinc-500: var(--zinc-500);
+  --color-zinc-400: var(--zinc-400);
+  --color-zinc-200: var(--zinc-200);
+  --color-white: var(--white);
+
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ─── Base Reset ─────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  color-scheme: dark;
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--obsidian);
+  color: var(--white);
+  font-family: var(--font-sans);
+  height: 100%;
+  overflow: hidden; /* Desktop only — no scroll on body */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#__next,
+main {
+  height: 100%;
+}
+
+/* ─── Custom Scrollbar ───────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--zinc-800);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--zinc-500);
+}
+
+/* ─── Focus Styles ───────────────────────────────────────────── */
+:focus-visible {
+  outline: 1px solid var(--zinc-400);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* ─── Selection ──────────────────────────────────────────────── */
+::selection {
+  background: var(--zinc-700, #3f3f46);
+  color: var(--white);
+}
+
+/* ─── Input Range (Scrubber/Volume) ──────────────────────────── */
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+input[type='range']::-webkit-slider-runnable-track {
+  height: 3px;
+  background: var(--zinc-800);
+  border-radius: 9999px;
+}
+
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 12px;
+  width: 12px;
+  border-radius: 50%;
+  background: var(--white);
+  margin-top: -4.5px;
+  transition: transform 0.1s ease;
+}
+
+input[type='range']:hover::-webkit-slider-thumb {
+  transform: scale(1.2);
+}
+
+input[type='range']::-moz-range-track {
+  height: 3px;
+  background: var(--zinc-800);
+  border-radius: 9999px;
+}
+
+input[type='range']::-moz-range-thumb {
+  height: 12px;
+  width: 12px;
+  border-radius: 50%;
+  background: var(--white);
+  border: none;
+}
+
+/* ─── Transitions ─────────────────────────────────────────────── */
+@media (prefers-reduced-motion: no-preference) {
+  .sidebar-transition {
+    transition: transform 0.2s ease, opacity 0.2s ease;
+  }
+
+  .fade-enter {
+    opacity: 0;
+  }
+  .fade-enter-active {
+    opacity: 1;
+    transition: opacity 0.15s ease;
+  }
+  .fade-exit {
+    opacity: 1;
+  }
+  .fade-exit-active {
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ─── Utility ─────────────────────────────────────────────────── */
+.font-mono-time {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.025em;
+  font-variant-numeric: tabular-nums;
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--zinc-800) 25%,
+    var(--zinc-700, #3f3f46) 50%,
+    var(--zinc-800) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
