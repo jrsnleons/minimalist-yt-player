@@ -11,7 +11,7 @@ import type { PlaybackMode } from '@/types';
 export function SettingsModal() {
   const {
     settingsOpen,
-    toggleSettings,
+    closeSettings,
     playbackMode,
     setPlaybackMode,
     showToast,
@@ -59,7 +59,7 @@ export function SettingsModal() {
   };
 
   return (
-    <Modal isOpen={settingsOpen} onClose={toggleSettings} title="Settings & Engine Preferences" className="max-w-xl">
+    <Modal isOpen={settingsOpen} onClose={closeSettings} title="Settings & Engine Preferences" className="max-w-xl">
       <div className="flex flex-col gap-6 max-h-[75vh] overflow-y-auto pr-1">
         {/* Playback Engine Selection */}
         <section className="space-y-3">

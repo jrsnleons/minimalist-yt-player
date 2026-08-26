@@ -59,7 +59,11 @@ interface PlayerState {
   toggleLeftSidebar: () => void;
   toggleRightSidebar: () => void;
   toggleCommandPalette: () => void;
+  openCommandPalette: () => void;
+  closeCommandPalette: () => void;
   toggleSettings: () => void;
+  openSettings: () => void;
+  closeSettings: () => void;
   showToast: (message: string) => void;
   dismissToast: () => void;
 
@@ -269,7 +273,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   toggleCommandPalette: () => set((s) => ({ commandPaletteOpen: !s.commandPaletteOpen })),
+  openCommandPalette: () => set({ commandPaletteOpen: true }),
+  closeCommandPalette: () => set({ commandPaletteOpen: false }),
   toggleSettings: () => set((s) => ({ settingsOpen: !s.settingsOpen })),
+  openSettings: () => set({ settingsOpen: true }),
+  closeSettings: () => set({ settingsOpen: false }),
 
   showToast: (message) => {
     set({ toastMessage: message });
