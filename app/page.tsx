@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { TopNav } from '@/components/layout/TopNav';
 import { PlayerHero } from '@/components/player/PlayerHero';
 import { YouTubeIframe } from '@/components/player/YouTubeIframe';
@@ -70,46 +71,68 @@ function AppShell() {
             {/* 1. Compact Now Playing Card at Top */}
             <PlayerHero />
 
-            {/* 2. Single-Column Section Navigation Tabs */}
-            <div className="flex items-center justify-between border-b border-[#27272a] px-2 bg-[#0c0c10] rounded-xl p-1.5 shadow-sm">
-              <div className="flex items-center gap-1 overflow-x-auto">
-                {tabs.map(({ key, label, icon: Icon, badge }) => (
-                  <button
-                    key={key}
-                    onClick={() => setActiveTab(key)}
-                    aria-selected={activeTab === key}
-                    role="tab"
-                    className={cn(
-                      'flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all shrink-0',
-                      activeTab === key
-                        ? 'bg-[#1e1e26] text-white shadow-sm border border-[#2e2e38]'
-                        : 'text-zinc-400 hover:text-zinc-200 hover:bg-[#141419]'
-                    )}
-                  >
-                    <Icon size={14} className={activeTab === key ? 'text-white' : 'text-zinc-500'} />
-                    <span>{label}</span>
-                    {typeof badge === 'number' && badge > 0 ? (
-                      <span
-                        className={cn(
-                          'px-1.5 py-0.2 rounded-full text-[10px] font-mono-time',
-                          activeTab === key ? 'bg-[#2e2e38] text-white' : 'bg-[#181820] text-zinc-500'
+            {/* 2. Single-Column Section Navigation Tabs with Fluid Sliding Pill */}
+            <div className="border-b border-[#27272a] px-2 bg-[#0c0c10] rounded-xl p-1.5 shadow-sm">
+              <div className="flex items-center gap-1 overflow-x-auto relative">
+                {tabs.map(({ key, label, icon: Icon, badge }) => {
+                  const isActive = activeTab === key;
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => setActiveTab(key)}
+                      aria-selected={isActive}
+                      role="tab"
+                      className={cn(
+                        'relative flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold shrink-0 cursor-pointer transition-colors',
+                        isActive ? 'text-white' : 'text-zinc-400 hover:text-zinc-200 hover:bg-[#141419]'
+                      )}
+                    >
+                      {/* Animated sliding background pill */}
+                      {isActive && (
+                        <motion.div
+                          layoutId="activeTabIndicator"
+                          className="absolute inset-0 bg-[#1e1e26] border border-[#2e2e38] rounded-lg shadow-sm -z-0"
+                          transition={{ type: 'spring', stiffness: 450, damping: 35 }}
+                        />
+                      )}
+
+                      <span className="relative z-10 flex items-center gap-2">
+                        <Icon size={14} className={isActive ? 'text-white' : 'text-zinc-500'} />
+                        <span>{label}</span>
+                        {typeof badge === 'number' && badge > 0 && (
+                          <span
+                            className={cn(
+                              'px-1.5 py-0.2 rounded-full text-[10px] font-mono-time transition-colors',
+                              isActive ? 'bg-[#2e2e38] text-white' : 'bg-[#181820] text-zinc-500'
+                            )}
+                          >
+                            {badge}
+                          </span>
                         )}
-                      >
-                        {badge}
                       </span>
-                    ) : null}
-                  </button>
-                ))}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            {/* 3. Active Single-Column View */}
+            {/* 3. Active Single-Column View with Clean Smooth Transition */}
             <div className="pt-1 pb-10">
-              {activeTab === 'queue' && <CenterStageQueue />}
-              {activeTab === 'search' && <SearchView />}
-              {activeTab === 'playlists' && <PlaylistsView />}
-              {activeTab === 'recent' && <RecentlyPlayedView />}
-              {activeTab === 'vibe' && <VibeSuggestionsView />}
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeTab}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.18, ease: 'easeOut' }}
+                >
+                  {activeTab === 'queue' && <CenterStageQueue />}
+                  {activeTab === 'search' && <SearchView />}
+                  {activeTab === 'playlists' && <PlaylistsView />}
+                  {activeTab === 'recent' && <RecentlyPlayedView />}
+                  {activeTab === 'vibe' && <VibeSuggestionsView />}
+                </motion.div>
+              </AnimatePresence>
             </div>
           </PlayerErrorBoundary>
         </div>

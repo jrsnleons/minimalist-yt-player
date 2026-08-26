@@ -1,28 +1,28 @@
 # Minimalist YT Player — Build Status & Handoff
 
-## Current Phase: Drag-and-Drop Reordering & Play Next Implemented ✅
+## Current Phase: YouTube Playlist Import & Playback Auto-Skip Completed ✅
 ## Current Step: Ready for Testing & Daily Use
 
 ## ✅ Completed Updates
 
-### 1. Drag-and-Drop Reordering for Queue & Playlists
-- **Playback Queue (`CenterStageQueue.tsx`)**:
-  - Powered by `@dnd-kit/core` and `@dnd-kit/sortable`.
-  - Added dedicated grip handles on every track row (`GripVertical`).
-  - Seamless drag-and-drop reordering with live feedback and state synchronization.
-- **Playlists Track List (`PlaylistsView.tsx`)**:
-  - Drag-and-drop track reordering within any custom playlist.
-  - Automatically updates and persists the track order in IndexedDB (`db.playlists.update`).
+### 1. YouTube Playlist Import Feature
+- **API Handler (`/api/playlist`)**:
+  - Automatically parses any public or unlisted YouTube / YouTube Music playlist URL or ID (`https://www.youtube.com/playlist?list=...`).
+  - Uses multi-tier extraction: `yt.music.getPlaylist` (fastest & most accurate metadata) ➔ `yt.getPlaylist` ➔ YouTube Data API v3 fallback.
+  - Returns playlist title, channel name, track count, durations, and high-res thumbnails.
+- **Import Modal (`ImportPlaylistModal.tsx`)**:
+  - Live playlist metadata & track snippet preview.
+  - Popular example playlist chips ("Pop Hits 2026", "Lofi Focus Beats", "Synthwave / Chillwave").
+  - 1-click **"Import to Library"** and **"Import & Play"** actions with instant IndexedDB persistence.
+- **Playlists View (`PlaylistsView.tsx`)**:
+  - Integrated **"Import YT Playlist"** button in the header and empty states.
 
-### 2. "Play Next" (Add to Next in Queue) Feature
-- **Guaranteed Queue Placement**:
-  - `playNext(track)` inserts the song immediately after the currently active playing track (`queueIndex + 1`).
-  - If nothing is playing or queue is empty, it places the track at the very top (index `0`).
-- **Available Everywhere with 1-Click Action Buttons & Tooltips**:
-  - **TrackRow** (hover action button with `ListStart` icon + tooltip `"Play Next (after active song)"`).
-  - **Search View** (`SearchView.tsx`) & **Command Palette** (`CommandPalette.tsx`) with clear `Next` button.
-  - **Right-Click Context Menu** (`TrackContextMenu.tsx` -> "Play Next").
-  - **Recently Played** & **Vibe Suggestions**.
+### 2. Auto-Skip & Unplayable Video Handling
+- **Root Cause of Image Error**:
+  - The previous "Quick Start Radio" was referencing a deprecated YouTube live stream ID (`jfKfPfyJRdk`) that YouTube ended/restricted.
+- **Fixes Applied**:
+  - **Dynamic Quick Start Radio**: Replaced static dead IDs with dynamic `/api/search?q=lofi+chill+beats+focus` which automatically fetches 15+ verified, fresh playable tracks, queues them, and starts playback with a loading spinner.
+  - **YouTube Iframe Auto-Skip (`useYouTubePlayer.ts`)**: Whenever YouTube reports an error (e.g., Code 150/101 embed restricted by owner, Code 100 private/deleted video), the player now automatically notifies with `"Embedding restricted by owner — auto-skipping…"` and seamlessly advances to the next track in the queue or pulls fresh radio recommendations without ever hanging!
 
 ---
 
@@ -32,6 +32,7 @@
 minimalist-yt-player/
 ├── app/
 │   ├── api/
+│   │   ├── playlist/route.ts
 │   │   ├── radio/route.ts
 │   │   ├── search/route.ts
 │   │   └── stream/route.ts
@@ -56,6 +57,7 @@ minimalist-yt-player/
 │   │   ├── AddToPlaylistModal.tsx
 │   │   ├── CenterStageQueue.tsx
 │   │   ├── CreatePlaylistModal.tsx
+│   │   ├── ImportPlaylistModal.tsx
 │   │   ├── PlaylistDetail.tsx
 │   │   └── TrackRow.tsx
 │   ├── settings/
