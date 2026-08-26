@@ -6,9 +6,7 @@ let innertubeInstance: Awaited<ReturnType<typeof Innertube.create>> | null = nul
 
 export async function getInnertube() {
   if (!innertubeInstance) {
-    innertubeInstance = await Innertube.create({
-      generate_session_locally: true,
-    });
+    innertubeInstance = await Innertube.create();
   }
   return innertubeInstance;
 }

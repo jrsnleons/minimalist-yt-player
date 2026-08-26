@@ -80,6 +80,7 @@ export function useYouTubePlayer() {
   const rafRef = useRef<number>(0);
   const isAPIReady = useRef(false);
   const pendingVideoId = useRef<string | null>(null);
+  const isSkippingRef = useRef(false);
 
   const { currentTrack, isPlaying, volume, isMuted, seekTarget, setProgress, setDuration, next, showToast } =
     usePlayerStore();
@@ -106,6 +107,41 @@ export function useYouTubePlayer() {
   const stopPolling = useCallback(() => {
     cancelAnimationFrame(rafRef.current);
   }, []);
+
+  /** Auto skip when playback fails */
+  const handleAutoSkip = useCallback(
+    (reason: string) => {
+      if (isSkippingRef.current) return;
+      isSkippingRef.current = true;
+      showToast(`${reason} — auto-skipping…`);
+      stopPolling();
+
+      setTimeout(async () => {
+        const state = usePlayerStore.getState();
+        const hasNextInQueue =
+          state.queue.length > 0 && state.queueIndex < state.queue.length - 1;
+
+        if (hasNextInQueue) {
+          state.next();
+        } else {
+          // If queue ended or empty, auto-fetch suggestions so playback continues seamlessly
+          try {
+            const res = await fetch('/api/search?q=lofi+focus+beats');
+            const data = await res.json();
+            if (data.results?.length > 0) {
+              state.play(data.results[0], data.results);
+            } else {
+              state.next();
+            }
+          } catch {
+            state.next();
+          }
+        }
+        isSkippingRef.current = false;
+      }, 600);
+    },
+    [showToast, stopPolling]
+  );
 
   /** Initialize YT IFrame API */
   useEffect(() => {
@@ -153,10 +189,18 @@ export function useYouTubePlayer() {
                 stopPolling();
               }
             },
-            onError: () => {
+            onError: (event) => {
               if (!isMounted) return;
-              showToast('Playback error — skipping track');
-              next();
+              const code = event.data;
+              let reason = 'Playback error';
+              if (code === 101 || code === 150) {
+                reason = 'Embedding restricted by owner';
+              } else if (code === 100) {
+                reason = 'Video deleted or private';
+              } else if (code === 2) {
+                reason = 'Invalid video ID';
+              }
+              handleAutoSkip(reason);
             },
           },
         });
@@ -187,7 +231,7 @@ export function useYouTubePlayer() {
       playerRef.current = null;
       isAPIReady.current = false;
     };
-  }, [startPolling, stopPolling, next, showToast]);
+  }, [startPolling, stopPolling, handleAutoSkip]);
 
   /** Load video when currentTrack changes */
   useEffect(() => {

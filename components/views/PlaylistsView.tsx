@@ -20,14 +20,16 @@ import { db } from '@/db/schema';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { TrackRow } from '@/components/playlist/TrackRow';
 import { CreatePlaylistModal } from '@/components/playlist/CreatePlaylistModal';
+import { ImportPlaylistModal } from '@/components/playlist/ImportPlaylistModal';
 import { formatTime } from '@/lib/utils';
-import { Music, Plus, Play, Trash2, ArrowLeft, FolderPlus } from 'lucide-react';
+import { Music, Plus, Play, Trash2, ArrowLeft, FolderPlus, Download } from 'lucide-react';
 import type { Playlist, Track } from '@/types';
 
 export function PlaylistsView() {
   const { play, currentTrack, showToast } = usePlayerStore();
   const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   const playlists = useLiveQuery(() => db.playlists.orderBy('updatedAt').reverse().toArray(), []);
 
@@ -186,26 +188,49 @@ export function PlaylistsView() {
             <span className="text-xs font-mono-time text-zinc-500">({playlists?.length ?? 0})</span>
           </div>
 
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white text-black text-xs font-semibold hover:bg-zinc-200 transition-colors shadow-sm"
-          >
-            <Plus size={13} />
-            <span>New Playlist</span>
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Import YouTube Playlist Button */}
+            <button
+              onClick={() => setIsImportModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#181820] hover:bg-[#242430] border border-[#2e2e38] text-zinc-200 text-xs font-medium transition-colors"
+            >
+              <Download size={13} className="text-emerald-400" />
+              <span>Import YT Playlist</span>
+            </button>
+
+            {/* Create Custom Playlist Button */}
+            <button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white text-black text-xs font-semibold hover:bg-zinc-200 transition-colors shadow-sm"
+            >
+              <Plus size={13} />
+              <span>New Playlist</span>
+            </button>
+          </div>
         </div>
 
         {!playlists || playlists.length === 0 ? (
-          <div className="py-16 text-center text-zinc-500 border border-dashed border-[#27272f] rounded-xl my-2">
-            <FolderPlus size={32} className="mx-auto text-zinc-700 mb-2" />
-            <p className="text-xs font-medium text-zinc-300">No playlists yet</p>
-            <p className="text-[11px] text-zinc-500 mt-1">Create your first playlist to organize your favorite music</p>
-            <button
-              onClick={() => setIsCreateModalOpen(true)}
-              className="mt-3 px-3 py-1.5 bg-white text-black text-xs font-semibold rounded-lg hover:bg-zinc-200 transition-colors"
-            >
-              + Create Playlist
-            </button>
+          <div className="py-16 text-center text-zinc-500 border border-dashed border-[#27272f] rounded-xl my-2 flex flex-col items-center">
+            <FolderPlus size={32} className="text-zinc-700 mb-2" />
+            <p className="text-xs font-medium text-zinc-300">No playlists in your library</p>
+            <p className="text-[11px] text-zinc-500 mt-1 max-w-xs leading-relaxed">
+              Create custom playlists or import your favorite public YouTube playlists in seconds.
+            </p>
+            <div className="flex items-center gap-2.5 mt-4">
+              <button
+                onClick={() => setIsImportModalOpen(true)}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#1e1e26] text-white border border-zinc-700 text-xs font-medium rounded-lg hover:bg-[#282834] transition-colors"
+              >
+                <Download size={13} className="text-emerald-400" />
+                <span>Import YouTube Playlist</span>
+              </button>
+              <button
+                onClick={() => setIsCreateModalOpen(true)}
+                className="px-3.5 py-1.5 bg-white text-black text-xs font-semibold rounded-lg hover:bg-zinc-200 transition-colors shadow-sm"
+              >
+                + Create New
+              </button>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
@@ -242,6 +267,11 @@ export function PlaylistsView() {
       </div>
 
       <CreatePlaylistModal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} />
+      <ImportPlaylistModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onImported={(pl) => setSelectedPlaylist(pl)}
+      />
     </>
   );
 }
