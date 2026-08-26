@@ -22,13 +22,12 @@ export function TransportControls({ className, compact = false }: TransportContr
     playbackMode, currentTrack,
   } = usePlayerStore();
 
-  const repeatLabel = repeatMode === 'off' ? 'Repeat off (R)' : repeatMode === 'all' ? 'Repeat all (R)' : 'Repeat one (R)';
+  const repeatLabel =
+    repeatMode === 'off' ? 'Repeat off (R)' : repeatMode === 'all' ? 'Repeat all (R)' : 'Repeat one (R)';
   const RepeatIcon = repeatMode === 'one' ? Repeat1 : Repeat;
 
-  const iconSize = compact ? 16 : 18;
-
   return (
-    <div className={cn('flex items-center gap-1', className)}>
+    <div className={cn('flex items-center gap-1.5 select-none', className)}>
       {/* Shuffle */}
       {!compact && (
         <Tooltip content={`${shuffleMode ? 'Shuffle on' : 'Shuffle off'} (S)`} side="top">
@@ -37,11 +36,13 @@ export function TransportControls({ className, compact = false }: TransportContr
             aria-label={shuffleMode ? 'Disable shuffle' : 'Enable shuffle'}
             aria-pressed={shuffleMode}
             className={cn(
-              'p-2 rounded transition-opacity',
-              shuffleMode ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'
+              'p-2 rounded-lg transition-colors',
+              shuffleMode
+                ? 'text-white bg-[#27272a]'
+                : 'text-zinc-500 hover:text-zinc-300 hover:bg-[#18181f]'
             )}
           >
-            <Shuffle size={iconSize} />
+            <Shuffle size={15} />
           </button>
         </Tooltip>
       )}
@@ -52,29 +53,30 @@ export function TransportControls({ className, compact = false }: TransportContr
           onClick={previous}
           aria-label="Previous track"
           disabled={!currentTrack}
-          className="p-2 rounded text-zinc-300 hover:text-white disabled:text-zinc-700 transition-opacity"
+          className="p-2 rounded-lg text-zinc-300 hover:text-white hover:bg-[#18181f] disabled:text-zinc-700 disabled:hover:bg-transparent transition-colors"
         >
-          <SkipBack size={iconSize} />
+          <SkipBack size={compact ? 15 : 18} />
         </button>
       </Tooltip>
 
-      {/* Play / Pause */}
+      {/* Play / Pause Primary Button */}
       <Tooltip content={`${isPlaying ? 'Pause' : 'Play'} (Space)`} side="top">
         <button
           onClick={togglePlay}
           aria-label={isPlaying ? 'Pause' : 'Play'}
           disabled={!currentTrack}
           className={cn(
-            'p-2 rounded-full transition-opacity',
+            'rounded-full transition-all flex items-center justify-center shadow-md active:scale-95',
             compact
-              ? 'text-white hover:text-zinc-300 disabled:text-zinc-700'
-              : 'bg-white text-black hover:bg-zinc-200 disabled:opacity-40 w-10 h-10 flex items-center justify-center'
+              ? 'w-8 h-8 bg-white text-black hover:bg-zinc-200 disabled:opacity-40'
+              : 'w-11 h-11 bg-white text-black hover:bg-zinc-200 disabled:opacity-40'
           )}
         >
-          {isPlaying
-            ? <Pause size={compact ? iconSize : 20} fill="currentColor" />
-            : <Play size={compact ? iconSize : 20} fill="currentColor" />
-          }
+          {isPlaying ? (
+            <Pause size={compact ? 15 : 20} fill="currentColor" />
+          ) : (
+            <Play size={compact ? 15 : 20} fill="currentColor" className="ml-0.5" />
+          )}
         </button>
       </Tooltip>
 
@@ -84,9 +86,9 @@ export function TransportControls({ className, compact = false }: TransportContr
           onClick={next}
           aria-label="Next track"
           disabled={!currentTrack}
-          className="p-2 rounded text-zinc-300 hover:text-white disabled:text-zinc-700 transition-opacity"
+          className="p-2 rounded-lg text-zinc-300 hover:text-white hover:bg-[#18181f] disabled:text-zinc-700 disabled:hover:bg-transparent transition-colors"
         >
-          <SkipForward size={iconSize} />
+          <SkipForward size={compact ? 15 : 18} />
         </button>
       </Tooltip>
 
@@ -98,28 +100,32 @@ export function TransportControls({ className, compact = false }: TransportContr
             aria-label={repeatLabel}
             aria-pressed={repeatMode !== 'off'}
             className={cn(
-              'p-2 rounded transition-opacity',
-              repeatMode !== 'off' ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'
+              'p-2 rounded-lg transition-colors',
+              repeatMode !== 'off'
+                ? 'text-white bg-[#27272a]'
+                : 'text-zinc-500 hover:text-zinc-300 hover:bg-[#18181f]'
             )}
           >
-            <RepeatIcon size={iconSize} />
+            <RepeatIcon size={15} />
           </button>
         </Tooltip>
       )}
 
-      {/* Video toggle — only in iframe mode */}
+      {/* Video PiP toggle */}
       {!compact && playbackMode === 'iframe' && (
-        <Tooltip content={`${isVideoEnabled ? 'Hide video' : 'Show video'} (V)`} side="top">
+        <Tooltip content={`${isVideoEnabled ? 'Hide video' : 'Show video PiP'} (V)`} side="top">
           <button
             onClick={toggleVideo}
             aria-label={isVideoEnabled ? 'Hide video' : 'Show video PiP'}
             aria-pressed={isVideoEnabled}
             className={cn(
-              'p-2 rounded transition-opacity',
-              isVideoEnabled ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'
+              'p-2 rounded-lg transition-colors',
+              isVideoEnabled
+                ? 'text-white bg-[#27272a]'
+                : 'text-zinc-500 hover:text-zinc-300 hover:bg-[#18181f]'
             )}
           >
-            {isVideoEnabled ? <Video size={iconSize} /> : <VideoOff size={iconSize} />}
+            {isVideoEnabled ? <Video size={15} /> : <VideoOff size={15} />}
           </button>
         </Tooltip>
       )}

@@ -4,9 +4,9 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/schema';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { TrackRow } from './TrackRow';
-import { cn } from '@/lib/utils';
+import { formatTime } from '@/lib/utils';
 import type { Playlist, Track } from '@/types';
-import { Music, Trash2 } from 'lucide-react';
+import { Music, Trash2, Play, ArrowLeft } from 'lucide-react';
 
 interface PlaylistDetailProps {
   playlist: Playlist;
@@ -25,6 +25,8 @@ export function PlaylistDetail({ playlist, onClose }: PlaylistDetailProps) {
       .map((x) => x.track);
   }, [playlist.trackIds]);
 
+  const totalDuration = (tracks ?? []).reduce((acc, t) => acc + (t.duration || 0), 0);
+
   const handlePlayAll = () => {
     if (!tracks || tracks.length === 0) return;
     play(tracks[0], tracks);
@@ -38,76 +40,94 @@ export function PlaylistDetail({ playlist, onClose }: PlaylistDetailProps) {
   };
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Playlist header */}
-      <div className="flex items-center justify-between px-6 py-5 border-b border-zinc-800 shrink-0">
+    <div className="mx-6 mb-6 rounded-2xl border border-[#27272a] bg-[#0f0f13] overflow-hidden shadow-sm">
+      {/* Playlist Header Banner */}
+      <div className="flex items-center justify-between p-6 border-b border-[#222228] bg-[#121217]">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center shrink-0">
-            <Music size={24} className="text-zinc-600" />
+          <button
+            onClick={onClose}
+            aria-label="Back to queue"
+            className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-[#1e1e24] transition-colors"
+            title="Back to queue"
+          >
+            <ArrowLeft size={18} />
+          </button>
+
+          <div className="w-14 h-14 rounded-xl bg-[#1e1e24] border border-zinc-700/60 flex items-center justify-center shrink-0 shadow-inner">
+            <Music size={26} className="text-zinc-300" />
           </div>
+
           <div>
-            <h2 className="text-lg font-semibold text-white">{playlist.name}</h2>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                Custom Playlist
+              </span>
+            </div>
+            <h2 className="text-xl font-bold text-white tracking-tight">{playlist.name}</h2>
             {playlist.description && (
-              <p className="text-sm text-zinc-500 mt-0.5">{playlist.description}</p>
+              <p className="text-xs text-zinc-400 mt-0.5">{playlist.description}</p>
             )}
-            <p className="text-xs text-zinc-600 mt-1">
-              {tracks?.length ?? 0} track{(tracks?.length ?? 0) !== 1 ? 's' : ''}
+            <p className="text-[11px] font-mono-time text-zinc-500 mt-1">
+              {tracks?.length ?? 0} tracks · {formatTime(totalDuration)}
             </p>
           </div>
         </div>
+
         <div className="flex items-center gap-2">
           {(tracks?.length ?? 0) > 0 && (
             <button
               onClick={handlePlayAll}
               aria-label={`Play all tracks in ${playlist.name}`}
-              className="px-4 py-2 rounded-md bg-white text-black text-sm font-medium hover:bg-zinc-200 transition-opacity"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white text-black text-xs font-semibold hover:bg-zinc-200 transition-colors shadow-sm"
             >
-              Play All
+              <Play size={13} fill="currentColor" />
+              <span>Play All</span>
             </button>
           )}
+
           <button
             onClick={handleDeletePlaylist}
             aria-label={`Delete playlist ${playlist.name}`}
-            className="p-2 rounded text-zinc-600 hover:text-red-400 hover:bg-zinc-800 transition-colors"
+            className="p-2 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-[#1e1e24] transition-colors"
+            title="Delete Playlist"
           >
             <Trash2 size={16} />
           </button>
         </div>
       </div>
 
-      {/* Track table */}
-      <div className="flex-1 overflow-y-auto">
+      {/* Track Table */}
+      <div className="overflow-x-auto">
         {!tracks ? (
-          // Skeleton loader
           <div className="p-4 space-y-2">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-3 py-2">
-                <div className="skeleton w-9 h-9 rounded" />
-                <div className="flex-1 space-y-1">
+              <div key={i} className="flex items-center gap-3 py-2 px-3">
+                <div className="skeleton w-8 h-8 rounded" />
+                <div className="flex-1 space-y-1.5">
                   <div className="skeleton h-3 w-48 rounded" />
-                  <div className="skeleton h-3 w-32 rounded" />
+                  <div className="skeleton h-2.5 w-32 rounded" />
                 </div>
-                <div className="skeleton h-3 w-10 rounded" />
+                <div className="skeleton h-3 w-12 rounded" />
               </div>
             ))}
           </div>
         ) : tracks.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-48 text-zinc-600">
-            <Music size={32} className="mb-3" />
-            <p className="text-sm">This playlist is empty</p>
-            <p className="text-xs mt-1">Add tracks by right-clicking any track</p>
+          <div className="flex flex-col items-center justify-center py-16 text-zinc-500 text-center">
+            <Music size={28} className="mb-2 text-zinc-700" />
+            <p className="text-xs font-medium text-zinc-400">This playlist is currently empty</p>
+            <p className="text-[11px] text-zinc-600 mt-1">Right-click any track in search or queue to add it here</p>
           </div>
         ) : (
-          <table className="w-full" role="grid" aria-label={`Tracks in ${playlist.name}`}>
-            <thead className="sticky top-0 bg-zinc-900/90 backdrop-blur-sm">
-              <tr className="border-b border-zinc-800">
-                <th className="w-10 px-3 py-2 text-xs text-zinc-500 text-center font-normal">#</th>
-                <th className="px-3 py-2 text-xs text-zinc-500 text-left font-normal">Title</th>
-                <th className="px-3 py-2 text-xs text-zinc-500 text-left font-normal">Artist</th>
-                <th className="px-3 py-2 text-xs text-zinc-500 text-right font-normal">Duration</th>
+          <table className="w-full text-left border-collapse" role="grid" aria-label={`Tracks in ${playlist.name}`}>
+            <thead>
+              <tr className="border-b border-[#222228] text-[11px] font-semibold text-zinc-500 uppercase tracking-wider bg-[#0f0f13]">
+                <th className="w-12 px-4 py-2.5 text-center">#</th>
+                <th className="px-4 py-2.5">Title</th>
+                <th className="px-4 py-2.5">Artist</th>
+                <th className="w-24 px-4 py-2.5 text-right">Duration</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-[#1e1e24]/40">
               {tracks.map((track, i) => (
                 <TrackRow
                   key={track.id}

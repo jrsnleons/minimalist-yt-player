@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import Image from 'next/image';
+import { Play, Volume2 } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/schema';
 import { usePlayerStore } from '@/store/usePlayerStore';
@@ -17,7 +18,7 @@ interface TrackRowProps {
 }
 
 export function TrackRow({ track, index, playlist, isActive }: TrackRowProps) {
-  const { play, playNext, addToQueue, currentTrack, showToast } = usePlayerStore();
+  const { play, playNext, addToQueue, isPlaying, showToast } = usePlayerStore();
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const rowRef = useRef<HTMLTableRowElement>(null);
 
@@ -56,41 +57,63 @@ export function TrackRow({ track, index, playlist, isActive }: TrackRowProps) {
         onContextMenu={handleContextMenu}
         onDoubleClick={() => play(track)}
         className={cn(
-          'group cursor-default select-none',
-          isActive ? 'bg-zinc-800/80' : 'hover:bg-zinc-800/40',
-          'transition-colors'
+          'group cursor-pointer select-none transition-colors border-b border-[#18181f]/40',
+          isActive
+            ? 'bg-[#1e1e26] text-white'
+            : 'hover:bg-[#15151c] text-zinc-300'
         )}
         aria-label={`${track.title} by ${track.artist}`}
       >
-        <td className="w-10 px-3 py-2 text-center">
-          <span
-            className={cn(
-              'font-mono-time text-zinc-600',
-              isActive && 'text-white'
+        {/* Index / Play Button / Playing wave */}
+        <td className="w-12 px-4 py-2.5 text-center">
+          <div className="flex items-center justify-center">
+            {isActive ? (
+              <span className="text-white flex items-center justify-center">
+                <Volume2 size={14} className={isPlaying ? 'animate-pulse text-white' : 'text-zinc-400'} />
+              </span>
+            ) : (
+              <>
+                <span className="font-mono-time text-xs text-zinc-500 group-hover:hidden">
+                  {index + 1}
+                </span>
+                <button
+                  onClick={() => play(track)}
+                  aria-label={`Play ${track.title}`}
+                  className="hidden group-hover:flex text-white hover:scale-110 transition-transform items-center justify-center"
+                >
+                  <Play size={13} fill="currentColor" />
+                </button>
+              </>
             )}
-          >
-            {isActive ? '▶' : index + 1}
-          </span>
+          </div>
         </td>
-        <td className="px-3 py-2">
+
+        {/* Title & Thumbnail */}
+        <td className="px-4 py-2.5">
           <div className="flex items-center gap-3">
-            <div className="relative w-9 h-9 rounded overflow-hidden bg-zinc-800 shrink-0">
-              {track.thumbnailUrl && (
+            <div className="relative w-9 h-9 rounded-md overflow-hidden bg-zinc-800 border border-zinc-700/50 shrink-0">
+              {track.thumbnailUrl ? (
                 <Image src={track.thumbnailUrl} alt="" fill className="object-cover" unoptimized />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-[10px] text-zinc-600">♫</div>
               )}
             </div>
             <div className="min-w-0">
-              <p className={cn('text-sm truncate', isActive ? 'text-white font-medium' : 'text-zinc-200')}>
+              <p className={cn('text-xs font-medium truncate', isActive ? 'text-white font-semibold' : 'text-zinc-200')}>
                 {track.title}
               </p>
             </div>
           </div>
         </td>
-        <td className="px-3 py-2">
-          <p className="text-sm text-zinc-500 truncate">{track.artist}</p>
+
+        {/* Artist */}
+        <td className="px-4 py-2.5">
+          <p className="text-xs text-zinc-400 truncate">{track.artist}</p>
         </td>
-        <td className="px-3 py-2 text-right">
-          <span className="font-mono-time text-zinc-500">{formatTime(track.duration)}</span>
+
+        {/* Duration */}
+        <td className="w-24 px-4 py-2.5 text-right">
+          <span className="font-mono-time text-xs text-zinc-500 font-medium">{formatTime(track.duration)}</span>
         </td>
       </tr>
 

@@ -12,6 +12,7 @@ import { PlayerErrorBoundary } from '@/components/player/PlayerErrorBoundary';
 import { CommandPalette } from '@/components/command-palette/CommandPalette';
 import { SettingsModal } from '@/components/settings/SettingsModal';
 import { PlaylistDetail } from '@/components/playlist/PlaylistDetail';
+import { CenterStageQueue } from '@/components/playlist/CenterStageQueue';
 import { Toast } from '@/components/ui/Toast';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { useHotkeys } from '@/hooks/useHotkeys';
@@ -35,7 +36,7 @@ function AppShell() {
   }, [loadSavedPreferences, loadRecentlyPlayed]);
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#09090b] text-[#fafafa] select-none">
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#09090b] text-[#fafafa] select-none antialiased">
       {/* Headless/PiP playback engine controller */}
       <PlayerErrorBoundary>
         {playbackMode === 'iframe' ? <YouTubeIframe /> : <DirectAudioPlayer />}
@@ -52,17 +53,23 @@ function AppShell() {
           activePlaylistId={activePlaylist?.id}
         />
 
-        {/* Center stage */}
+        {/* Center stage: Always shows Compact Now Playing at top + Active Table below */}
         <main className="flex-1 min-w-[500px] overflow-y-auto relative bg-[#09090b]" aria-label="Main content">
           <PlayerErrorBoundary>
-            {activePlaylist ? (
-              <PlaylistDetail
-                playlist={activePlaylist}
-                onClose={() => setActivePlaylist(null)}
-              />
-            ) : (
+            <div className="max-w-5xl mx-auto w-full pb-8">
+              {/* Top Compact Hero */}
               <PlayerHero />
-            )}
+
+              {/* Bottom Table: Selected Playlist OR Playback Queue */}
+              {activePlaylist ? (
+                <PlaylistDetail
+                  playlist={activePlaylist}
+                  onClose={() => setActivePlaylist(null)}
+                />
+              ) : (
+                <CenterStageQueue />
+              )}
+            </div>
           </PlayerErrorBoundary>
         </main>
 
