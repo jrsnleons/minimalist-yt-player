@@ -172,13 +172,12 @@ export function PlaylistsView() {
                 </div>
               ) : (
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                  <table className="w-full text-left border-collapse" role="grid" aria-label={`Tracks in ${selectedPlaylist.name}`}>
+                  <table className="w-full text-left border-collapse table-fixed" role="grid" aria-label={`Tracks in ${selectedPlaylist.name}`}>
                     <thead className="sticky top-0 z-10 bg-[#0f0f13]">
                       <tr className="border-b border-[#222228] text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
-                        <th className="w-12 px-3 py-2 text-center">#</th>
-                        <th className="px-3 py-2">Title</th>
-                        <th className="px-3 py-2">Artist</th>
-                        <th className="w-36 px-3 py-2 text-right">Actions</th>
+                        <th className="w-10 px-2 py-2 text-center">#</th>
+                        <th className="px-2 py-2">Track</th>
+                        <th className="w-48 px-2 py-2 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#1e1e24]/40">
@@ -287,27 +286,31 @@ export function PlaylistsView() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingPlaylist(pl);
-                          }}
-                          className="p-1 rounded text-zinc-500 hover:text-white hover:bg-[#27272f] transition-all cursor-pointer"
-                          title="Edit playlist"
-                        >
-                          <Pencil size={12} />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeletePlaylist(pl);
-                          }}
-                          className="p-1 rounded text-zinc-500 hover:text-red-400 hover:bg-[#27272f] transition-all cursor-pointer"
-                          title="Delete playlist"
-                        >
-                          <Trash2 size={12} />
-                        </button>
+                      <div className="flex items-center gap-1 text-zinc-500 shrink-0">
+                        <Tooltip content="Edit playlist" side="top">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingPlaylist(pl);
+                            }}
+                            className="p-1 rounded text-zinc-500 hover:text-white hover:bg-[#27272f] transition-colors cursor-pointer"
+                            aria-label="Edit playlist"
+                          >
+                            <Pencil size={12} />
+                          </button>
+                        </Tooltip>
+                        <Tooltip content="Delete playlist" side="top">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeletePlaylist(pl);
+                            }}
+                            className="p-1 rounded text-zinc-500 hover:text-red-400 hover:bg-[#27272f] transition-colors cursor-pointer"
+                            aria-label="Delete playlist"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </Tooltip>
                       </div>
                     </div>
                   ))}

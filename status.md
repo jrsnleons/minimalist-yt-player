@@ -1,28 +1,20 @@
 # Minimalist YT Player — Build Status & Handoff
 
-## Current Phase: Static Pinned Viewport, Noir Gradient & Noise, and Playlist Metadata Editing Completed ✅
+## Current Phase: Dynamic Blurred Hero Ambient Glow & Settings Toggle Completed ✅
 ## Current Step: Ready for Testing & Daily Use
 
 ## ✅ Completed Updates
 
-### 1. Static Unscrollable Page with Internal Scrollable Tables
-- **Fixed/Pinned Elements**:
-  - **Top Navigation** (`TopNav.tsx`): Pinned permanently at the top.
-  - **Now Playing Hero** (`PlayerHero.tsx`): Pinned directly under the header.
-  - **Tab Navigator** (Queue, Search, Playlists, Recently Played, Vibe): Pinned with sliding spring pill indicator.
-- **Scrollable Content**:
-  - Only the track rows, search results, and playlist cards scroll inside their respective container (`flex-1 min-h-0 overflow-y-auto`) with custom sleek scrollbars and sticky table headers (`sticky top-0`).
+### 1. Dynamic Blurred Artwork / Video Ambient Glow
+- **Ambient Backdrop Layer ([PlayerHero.tsx](file:///Users/jello/Documents/dev/minimalist-yt-player/components/player/PlayerHero.tsx))**:
+  - Dynamically projects an ultra-blurred (`blur-3xl`), scaled (`scale-150`), color-matched ambient glow extracted from the active track artwork / video.
+  - Smooth 600ms crossfade transitions with `framer-motion` `AnimatePresence` whenever tracks change.
+  - Overlaid with a dark noir gradient mask to maintain high contrast and legibility for all transport controls, scrubbers, and titles.
 
-### 2. Dark Noir Gradient & Analog Film Grain Texture
-- **Canvas Base**: Deep noir radial gradient (`radial-gradient(ellipse 90% 70% at 50% 0%, #15151c, #0a0a0d, #050507)`).
-- **Procedural Film Grain Noise Layer** (`.noir-noise-bg`): High-frequency SVG fractal turbulence noise overlay blended onto the canvas.
-- **Grungy Vignette Effect** (`.noir-vignette`): Inset edge shadow creating an immersive, analog studio listening ambiance.
-
-### 3. Playlist Metadata Editing
-- Added [EditPlaylistModal.tsx](file:///Users/jello/Documents/dev/minimalist-yt-player/components/playlist/EditPlaylistModal.tsx).
-- Allows editing playlist **Name** and **Description** with live character counters.
-- Dedicated **Pencil (Edit)** button in both the playlist detail header and playlist grid cards.
-- Instant IndexedDB persistence via `db.playlists.update`.
+### 2. Optional Settings Toggle ([SettingsModal.tsx](file:///Users/jello/Documents/dev/minimalist-yt-player/components/settings/SettingsModal.tsx))
+- Added a dedicated switch in **Settings ➔ Visual & Player Ambiance**:
+  - **Dynamic Blurred Artwork Glow** (Enabled by default, user-configurable).
+  - Preference is persisted locally in IndexedDB (`db.preferences`).
 
 ---
 

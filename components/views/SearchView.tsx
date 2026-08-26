@@ -115,13 +115,12 @@ export function SearchView() {
             )}
           </div>
         ) : (
-          <table className="w-full text-left border-collapse" role="grid">
+          <table className="w-full text-left border-collapse table-fixed" role="grid">
             <thead className="sticky top-0 z-10 bg-[#0f0f13]">
               <tr className="border-b border-[#222228] text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
-                <th className="w-12 px-3 py-2 text-center">#</th>
-                <th className="px-3 py-2">Title</th>
-                <th className="px-3 py-2">Artist</th>
-                <th className="w-36 px-3 py-2 text-right">Actions</th>
+                <th className="w-10 px-2 py-2 text-center">#</th>
+                <th className="px-2 py-2">Track</th>
+                <th className="w-48 px-2 py-2 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#1e1e24]/40">
