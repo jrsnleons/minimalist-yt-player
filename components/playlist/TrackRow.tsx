@@ -2,12 +2,15 @@
 
 import { useState, useRef } from 'react';
 import Image from 'next/image';
-import { Play, Volume2, Plus, ListPlus } from 'lucide-react';
+import { Play, Volume2, Plus, ListPlus, GripVertical, Trash2, ListStart, CornerDownRight } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { db } from '@/db/schema';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { TrackContextMenu } from '@/components/context-menu/TrackContextMenu';
 import { AddToPlaylistModal } from './AddToPlaylistModal';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { formatTime, cn } from '@/lib/utils';
 import type { Track, Playlist } from '@/types';
 
@@ -16,15 +19,40 @@ interface TrackRowProps {
   index: number;
   playlist?: Playlist;
   isActive?: boolean;
+  isSortable?: boolean;
+  sortableId?: string;
+  onRemoveFromQueue?: () => void;
 }
 
-export function TrackRow({ track, index, playlist, isActive }: TrackRowProps) {
+export function TrackRow({
+  track,
+  index,
+  playlist,
+  isActive,
+  isSortable = false,
+  sortableId,
+  onRemoveFromQueue,
+}: TrackRowProps) {
   const { play, playNext, addToQueue, isPlaying, showToast } = usePlayerStore();
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState(false);
   const rowRef = useRef<HTMLTableRowElement>(null);
 
   const playlists = useLiveQuery(() => db.playlists.toArray(), []);
+
+  // Sortable hook setup if enabled
+  const sortable = useSortable({
+    id: sortableId || track.id,
+    disabled: !isSortable,
+  });
+
+  const sortableStyle = isSortable
+    ? {
+        transform: CSS.Transform.toString(sortable.transform),
+        transition: sortable.transition,
+        opacity: sortable.isDragging ? 0.35 : 1,
+      }
+    : undefined;
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -50,30 +78,50 @@ export function TrackRow({ track, index, playlist, isActive }: TrackRowProps) {
       trackIds: playlist.trackIds.filter((id) => id !== track.id),
       updatedAt: Date.now(),
     });
+    showToast(`Removed from "${playlist.name}"`);
+  };
+
+  const handlePlayNext = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    playNext(track);
+    showToast(`"${track.title}" will play next after active song`);
   };
 
   return (
     <>
       <tr
-        ref={rowRef}
+        ref={isSortable ? sortable.setNodeRef : rowRef}
+        style={sortableStyle}
         onContextMenu={handleContextMenu}
         onDoubleClick={() => play(track)}
         className={cn(
-          'group cursor-pointer select-none transition-colors border-b border-[#18181f]/40',
-          isActive ? 'bg-[#1e1e26] text-white' : 'hover:bg-[#15151c] text-zinc-300'
+          'group cursor-pointer select-none transition-colors border-b border-[#18181f]/40 text-xs',
+          isActive ? 'bg-[#1e1e26] text-white font-medium' : 'hover:bg-[#15151c] text-zinc-300'
         )}
         aria-label={`${track.title} by ${track.artist}`}
       >
-        {/* Index / Active Equalizer */}
+        {/* Grip Handle / Index / Playing indicator */}
         <td className="w-12 px-3 py-2 text-center">
-          <div className="flex items-center justify-center">
+          <div className="flex items-center justify-center gap-1">
+            {isSortable ? (
+              <button
+                {...sortable.attributes}
+                {...sortable.listeners}
+                aria-label="Drag to reorder"
+                className="cursor-grab active:cursor-grabbing text-zinc-600 group-hover:text-zinc-400 p-0.5"
+                title="Drag to reorder"
+              >
+                <GripVertical size={13} />
+              </button>
+            ) : null}
+
             {isActive ? (
               <span className="text-white flex items-center justify-center">
-                <Volume2 size={14} className={isPlaying ? 'animate-pulse text-white' : 'text-zinc-400'} />
+                <Volume2 size={13} className={isPlaying ? 'animate-pulse text-white' : 'text-zinc-400'} />
               </span>
             ) : (
               <>
-                <span className="font-mono-time text-xs text-zinc-500 group-hover:hidden">
+                <span className={cn('font-mono-time text-zinc-500', isSortable ? 'hidden group-hover:hidden' : 'group-hover:hidden')}>
                   {index + 1}
                 </span>
                 <button
@@ -82,9 +130,9 @@ export function TrackRow({ track, index, playlist, isActive }: TrackRowProps) {
                     play(track);
                   }}
                   aria-label={`Play ${track.title}`}
-                  className="hidden group-hover:flex text-white hover:scale-110 transition-transform items-center justify-center"
+                  className={cn('text-white hover:scale-110 transition-transform items-center justify-center', isSortable ? 'hidden' : 'hidden group-hover:flex')}
                 >
-                  <Play size={13} fill="currentColor" />
+                  <Play size={12} fill="currentColor" />
                 </button>
               </>
             )}
@@ -94,7 +142,7 @@ export function TrackRow({ track, index, playlist, isActive }: TrackRowProps) {
         {/* Title & Artwork */}
         <td className="px-3 py-2 min-w-0">
           <div className="flex items-center gap-3">
-            <div className="relative w-9 h-9 rounded-md overflow-hidden bg-zinc-800 border border-zinc-700/50 shrink-0">
+            <div className="relative w-8 h-8 rounded overflow-hidden bg-zinc-800 border border-zinc-700/50 shrink-0">
               {track.thumbnailUrl ? (
                 <Image src={track.thumbnailUrl} alt="" fill className="object-cover" unoptimized />
               ) : (
@@ -102,7 +150,7 @@ export function TrackRow({ track, index, playlist, isActive }: TrackRowProps) {
               )}
             </div>
             <div className="min-w-0 flex-1">
-              <p className={cn('text-xs font-medium truncate', isActive ? 'text-white font-semibold' : 'text-zinc-200')}>
+              <p className={cn('truncate font-medium', isActive ? 'text-white font-semibold' : 'text-zinc-200')}>
                 {track.title}
               </p>
             </div>
@@ -111,40 +159,83 @@ export function TrackRow({ track, index, playlist, isActive }: TrackRowProps) {
 
         {/* Artist */}
         <td className="px-3 py-2">
-          <p className="text-xs text-zinc-400 truncate">{track.artist}</p>
+          <p className="text-zinc-400 truncate">{track.artist}</p>
         </td>
 
-        {/* Inline Actions & Duration */}
+        {/* Actions & Duration */}
         <td className="px-3 py-2 text-right">
-          <div className="flex items-center justify-end gap-1.5">
-            {/* Quick Add to Queue */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                addToQueue(track);
-                showToast(`Added to queue`);
-              }}
-              aria-label={`Add ${track.title} to queue`}
-              className="opacity-0 group-hover:opacity-100 p-1.5 rounded text-zinc-400 hover:text-white hover:bg-[#27272f] transition-all"
-              title="Add to queue"
-            >
-              <Plus size={13} />
-            </button>
+          <div className="flex items-center justify-end gap-1">
+            {/* 1. Quick Play Now */}
+            <Tooltip content="Play now" side="top">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  play(track);
+                }}
+                aria-label="Play now"
+                className="opacity-0 group-hover:opacity-100 p-1.5 rounded text-zinc-400 hover:text-white hover:bg-[#27272f] transition-all"
+              >
+                <Play size={12} fill="currentColor" />
+              </button>
+            </Tooltip>
 
-            {/* Quick Add to Playlist */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsPlaylistModalOpen(true);
-              }}
-              aria-label={`Add ${track.title} to playlist`}
-              className="opacity-0 group-hover:opacity-100 p-1.5 rounded text-zinc-400 hover:text-white hover:bg-[#27272f] transition-all"
-              title="Add to playlist"
-            >
-              <ListPlus size={13} />
-            </button>
+            {/* 2. Quick Play Next (after active song) */}
+            <Tooltip content="Play Next (after active song)" side="top">
+              <button
+                onClick={handlePlayNext}
+                aria-label="Play next"
+                className="opacity-0 group-hover:opacity-100 p-1.5 rounded text-zinc-400 hover:text-emerald-300 hover:bg-[#27272f] transition-all"
+              >
+                <ListStart size={13} />
+              </button>
+            </Tooltip>
 
-            <span className="font-mono-time text-xs text-zinc-500 font-medium w-12 text-right">
+            {/* 3. Quick Add to Queue */}
+            <Tooltip content="Add to end of queue" side="top">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  addToQueue(track);
+                  showToast(`Added "${track.title}" to queue`);
+                }}
+                aria-label="Add to queue"
+                className="opacity-0 group-hover:opacity-100 p-1.5 rounded text-zinc-400 hover:text-white hover:bg-[#27272f] transition-all"
+              >
+                <Plus size={13} />
+              </button>
+            </Tooltip>
+
+            {/* 4. Quick Add to Playlist */}
+            <Tooltip content="Add to playlist" side="top">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsPlaylistModalOpen(true);
+                }}
+                aria-label="Add to playlist"
+                className="opacity-0 group-hover:opacity-100 p-1.5 rounded text-zinc-400 hover:text-white hover:bg-[#27272f] transition-all"
+              >
+                <ListPlus size={13} />
+              </button>
+            </Tooltip>
+
+            {/* 5. Remove from queue if applicable */}
+            {onRemoveFromQueue && (
+              <Tooltip content="Remove from queue" side="top">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRemoveFromQueue();
+                  }}
+                  aria-label="Remove from queue"
+                  className="opacity-0 group-hover:opacity-100 p-1.5 rounded text-zinc-400 hover:text-red-400 hover:bg-[#27272f] transition-all"
+                >
+                  <Trash2 size={12} />
+                </button>
+              </Tooltip>
+            )}
+
+            <span className="font-mono-time text-[11px] text-zinc-500 font-medium w-12 text-right ml-1">
               {formatTime(track.duration)}
             </span>
           </div>
@@ -162,7 +253,7 @@ export function TrackRow({ track, index, playlist, isActive }: TrackRowProps) {
           onPlayNow={() => play(track)}
           onPlayNext={() => {
             playNext(track);
-            showToast(`Playing next: ${track.title}`);
+            showToast(`"${track.title}" will play next`);
           }}
           onAddToQueue={() => {
             addToQueue(track);

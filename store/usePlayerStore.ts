@@ -203,7 +203,9 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   playNext: (track) => {
     const { queue, queueIndex } = get();
     const newQueue = [...queue];
-    newQueue.splice(queueIndex + 1, 0, track);
+    // If a track is active, insert immediately after it; otherwise insert at start
+    const insertIndex = queueIndex >= 0 ? queueIndex + 1 : 0;
+    newQueue.splice(insertIndex, 0, track);
     set({ queue: newQueue });
     db.tracks.put(track).catch(() => {});
   },

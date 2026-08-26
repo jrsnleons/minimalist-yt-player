@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
-import { Search, Play, Plus, ListPlus, Loader2, Zap, Music, Clock } from 'lucide-react';
+import { Search, Play, Plus, ListPlus, ListStart, Loader2, Zap, Music, Clock } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/schema';
 import { usePlayerStore } from '@/store/usePlayerStore';
@@ -388,22 +388,37 @@ export function CommandPalette() {
                                   <span>Play</span>
                                 </button>
 
-                                {/* 2. Add to Queue */}
+                                {/* 2. Play Next (After active song) */}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    playNext(t);
+                                    showToast(`"${t.title}" will play next after active song`);
+                                  }}
+                                  aria-label={`Play ${t.title} next`}
+                                  className="flex items-center gap-1 px-2 py-1 rounded bg-[#27272f] hover:bg-zinc-700 text-emerald-300 text-[11px] font-medium transition-colors border border-zinc-700/60"
+                                  title="Play Next (after active song)"
+                                >
+                                  <ListStart size={12} />
+                                  <span>Next</span>
+                                </button>
+
+                                {/* 3. Add to Queue */}
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     addToQueue(t);
-                                    showToast(`Added "${t.title}" to Queue`);
+                                    showToast(`Added "${t.title}" to end of Queue`);
                                   }}
                                   aria-label={`Add ${t.title} to Queue`}
                                   className="flex items-center gap-1 px-2 py-1 rounded bg-[#27272f] hover:bg-zinc-700 text-zinc-200 text-[11px] font-medium transition-colors border border-zinc-700/60"
-                                  title="Add to Queue"
+                                  title="Add to end of Queue"
                                 >
                                   <Plus size={12} />
                                   <span>Queue</span>
                                 </button>
 
-                                {/* 3. Add to Playlist */}
+                                {/* 4. Add to Playlist */}
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();

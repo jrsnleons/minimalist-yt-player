@@ -2,6 +2,20 @@
 
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 import { db } from '@/db/schema';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { TrackRow } from '@/components/playlist/TrackRow';
@@ -26,6 +40,32 @@ export function PlaylistsView() {
       .map((x) => x.track);
   }, [selectedPlaylist?.trackIds]);
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id || !selectedPlaylist || !playlistTracks) return;
+
+    const fromIndex = playlistTracks.findIndex((t) => t.id === active.id);
+    const toIndex = playlistTracks.findIndex((t) => t.id === over.id);
+
+    if (fromIndex >= 0 && toIndex >= 0) {
+      const newTrackIds = [...selectedPlaylist.trackIds];
+      const [moved] = newTrackIds.splice(fromIndex, 1);
+      newTrackIds.splice(toIndex, 0, moved);
+
+      await db.playlists.update(selectedPlaylist.id, {
+        trackIds: newTrackIds,
+        updatedAt: Date.now(),
+      });
+      setSelectedPlaylist({ ...selectedPlaylist, trackIds: newTrackIds });
+      showToast(`Playlist reordered`);
+    }
+  };
+
   const handlePlayAll = () => {
     if (!playlistTracks || playlistTracks.length === 0) return;
     play(playlistTracks[0], playlistTracks);
@@ -41,7 +81,7 @@ export function PlaylistsView() {
     }
   };
 
-  // If a playlist is selected, show its detail table
+  // If a playlist is selected, show its detail table with drag-to-reorder
   if (selectedPlaylist) {
     const totalDuration = (playlistTracks ?? []).reduce((acc, t) => acc + (t.duration || 0), 0);
 
@@ -90,7 +130,7 @@ export function PlaylistsView() {
           </div>
         </div>
 
-        {/* Table */}
+        {/* Drag and Drop Sortable Table */}
         <div className="overflow-x-auto">
           {!playlistTracks || playlistTracks.length === 0 ? (
             <div className="py-16 text-center text-zinc-500 text-xs">
@@ -99,27 +139,36 @@ export function PlaylistsView() {
               <p className="text-zinc-600 mt-1">Add tracks from search, queue, or recently played</p>
             </div>
           ) : (
-            <table className="w-full text-left border-collapse" role="grid">
-              <thead>
-                <tr className="border-b border-[#222228] text-[11px] font-semibold text-zinc-500 uppercase tracking-wider bg-[#0f0f13]">
-                  <th className="w-12 px-4 py-2.5 text-center">#</th>
-                  <th className="px-4 py-2.5">Title</th>
-                  <th className="px-4 py-2.5">Artist</th>
-                  <th className="w-32 px-4 py-2.5 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#1e1e24]/40">
-                {playlistTracks.map((track, i) => (
-                  <TrackRow
-                    key={track.id}
-                    track={track}
-                    index={i}
-                    playlist={selectedPlaylist}
-                    isActive={currentTrack?.id === track.id}
-                  />
-                ))}
-              </tbody>
-            </table>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <table className="w-full text-left border-collapse" role="grid" aria-label={`Tracks in ${selectedPlaylist.name}`}>
+                <thead>
+                  <tr className="border-b border-[#222228] text-[10px] font-bold text-zinc-500 uppercase tracking-wider bg-[#0f0f13]">
+                    <th className="w-12 px-3 py-2.5 text-center">#</th>
+                    <th className="px-3 py-2.5">Title</th>
+                    <th className="px-3 py-2.5">Artist</th>
+                    <th className="w-36 px-3 py-2.5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#1e1e24]/40">
+                  <SortableContext
+                    items={playlistTracks.map((t) => t.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {playlistTracks.map((track, i) => (
+                      <TrackRow
+                        key={track.id}
+                        track={track}
+                        index={i}
+                        isSortable={true}
+                        sortableId={track.id}
+                        playlist={selectedPlaylist}
+                        isActive={currentTrack?.id === track.id}
+                      />
+                    ))}
+                  </SortableContext>
+                </tbody>
+              </table>
+            </DndContext>
           )}
         </div>
       </div>
