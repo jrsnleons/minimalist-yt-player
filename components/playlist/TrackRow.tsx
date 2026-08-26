@@ -11,6 +11,7 @@ import { usePlayerStore } from '@/store/usePlayerStore';
 import { TrackContextMenu } from '@/components/context-menu/TrackContextMenu';
 import { AddToPlaylistModal } from './AddToPlaylistModal';
 import { Tooltip } from '@/components/ui/Tooltip';
+import { MarqueeText } from '@/components/ui/MarqueeText';
 import { formatTime, cn } from '@/lib/utils';
 import type { Track, Playlist } from '@/types';
 
@@ -36,6 +37,7 @@ export function TrackRow({
   const { play, playNext, addToQueue, isPlaying, showToast } = usePlayerStore();
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState(false);
+  const [isRowHovered, setIsRowHovered] = useState(false);
   const rowRef = useRef<HTMLTableRowElement>(null);
 
   const playlists = useLiveQuery(() => db.playlists.toArray(), []);
@@ -94,13 +96,15 @@ export function TrackRow({
         style={sortableStyle}
         onContextMenu={handleContextMenu}
         onDoubleClick={() => play(track)}
+        onMouseEnter={() => setIsRowHovered(true)}
+        onMouseLeave={() => setIsRowHovered(false)}
         className={cn(
           'group cursor-pointer select-none transition-colors border-b border-[#18181f]/40 text-xs w-full',
           isActive ? 'bg-[#1e1e26] text-white font-medium' : 'hover:bg-[#15151c] text-zinc-300'
         )}
         aria-label={`${track.title} by ${track.artist}`}
       >
-        {/* Grip Handle / Index / Playing indicator (Compact 38px) */}
+        {/* Grip Handle / Index / Playing indicator */}
         <td className="w-10 px-2 py-2 text-center shrink-0">
           <div className="flex items-center justify-center gap-1">
             {isSortable ? (
@@ -139,7 +143,7 @@ export function TrackRow({
           </div>
         </td>
 
-        {/* Title, Artist & Artwork (Single combined column to eliminate wide overflow) */}
+        {/* Title & Artist with On-Hover Smooth Gliding Marquee */}
         <td className="px-2 py-2 min-w-0 max-w-0 w-auto">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="relative w-8 h-8 rounded-lg overflow-hidden bg-zinc-800 border border-zinc-700/50 shrink-0">
@@ -149,18 +153,19 @@ export function TrackRow({
                 <div className="w-full h-full flex items-center justify-center text-[10px] text-zinc-600">♫</div>
               )}
             </div>
-            <div className="min-w-0 flex-1">
-              <p className={cn('truncate font-medium leading-snug', isActive ? 'text-white font-semibold' : 'text-zinc-200')}>
-                {track.title}
-              </p>
-              <p className="text-[10px] text-zinc-400 truncate mt-0.5 leading-none">
-                {track.artist}
-              </p>
+            <div className="min-w-0 flex-1 overflow-hidden">
+              <MarqueeText
+                text={track.title}
+                subText={track.artist}
+                isParentHovered={isRowHovered}
+                className={cn('text-xs font-medium leading-snug', isActive ? 'text-white font-semibold' : 'text-zinc-200')}
+                subClassName="text-zinc-400"
+              />
             </div>
           </div>
         </td>
 
-        {/* Actions & Duration Cluster (Always cleanly visible & compact without overflow) */}
+        {/* Actions & Duration Cluster */}
         <td className="w-48 px-2 py-2 text-right shrink-0">
           <div className="flex items-center justify-end gap-1">
             {/* 1. Quick Play Now */}

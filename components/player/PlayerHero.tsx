@@ -7,6 +7,7 @@ import { usePlayerStore } from '@/store/usePlayerStore';
 import { TransportControls } from './TransportControls';
 import { CustomScrubber } from './CustomScrubber';
 import { VolumeSlider } from './VolumeSlider';
+import { MarqueeText } from '@/components/ui/MarqueeText';
 import { Search, Sparkles, Music2, Loader2 } from 'lucide-react';
 import type { Track } from '@/types';
 
@@ -47,7 +48,7 @@ export function PlayerHero() {
     try {
       const res = await fetch('/api/search?q=lofi+chill+beats+focus');
       const data = await res.json();
-      const results: Track[] = data.results ?? [];
+      const results: Track[] = data.results ?? data.tracks ?? [];
 
       if (results.length > 0) {
         play(results[0], results);
@@ -148,20 +149,14 @@ export function PlayerHero() {
 
         {/* Center/Right Details and Controls */}
         <div className="flex-1 min-w-0 flex flex-col justify-between h-full w-full">
-          {/* Track Titles */}
-          <div className="min-w-0 mb-2 text-center md:text-left">
-            <h2
-              className="text-base md:text-lg font-bold text-white tracking-tight truncate"
-              title={currentTrack.title}
-            >
-              {currentTrack.title}
-            </h2>
-            <p
-              className="text-xs md:text-sm text-zinc-400 font-medium truncate mt-0.5"
-              title={currentTrack.artist}
-            >
-              {currentTrack.artist}
-            </p>
+          {/* Track Titles with Smooth Marquee on Hover */}
+          <div className="min-w-0 mb-2 text-center md:text-left overflow-hidden">
+            <MarqueeText
+              text={currentTrack.title}
+              subText={currentTrack.artist}
+              className="text-base md:text-lg font-bold text-white tracking-tight leading-snug"
+              subClassName="text-xs md:text-sm text-zinc-400 font-medium mt-0.5"
+            />
           </div>
 
           {/* Scrubber Progress Bar */}

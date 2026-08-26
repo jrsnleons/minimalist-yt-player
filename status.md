@@ -1,21 +1,22 @@
 # Minimalist YT Player — Build Status & Handoff
 
-## Current Phase: Compact Table Layout, Zero Horizontal Overflow & High-Visibility Action Buttons Completed ✅
+## Current Phase: Clean Distraction-Free Search & Unified Songs/Playlists Search Completed ✅
 ## Current Step: Ready for Testing & Daily Use
 
 ## ✅ Completed Updates
 
-### 1. Zero Horizontal Overflow (`table-fixed w-full`)
-- Converted all track and playlist tables (`PlaylistsView`, `CenterStageQueue`, `SearchView`, `RecentlyPlayedView`, `VibeSuggestionsView`) to a responsive, fixed 3-column architecture:
-  1. **# / Drag Grip / Playing Animation** (`w-10 text-center shrink-0`)
-  2. **Track (Title + Artist subtitle)** (`w-auto min-w-0 max-w-0 truncate`)
-  3. **Action Cluster & Duration** (`w-48 text-right shrink-0`)
-- Completely eliminated any horizontal left/right scrolling across all screen sizes.
+### 1. Clean, Distraction-Free Search
+- Removed all suggested and trending discovery chips from [SearchView.tsx](file:///Users/jello/Documents/dev/minimalist-yt-player/components/views/SearchView.tsx).
+- Added a quick clear (✕) button and instant real-time debounced query input.
 
-### 2. High-Visibility Compact Action Buttons ([TrackRow.tsx](file:///Users/jello/Documents/dev/minimalist-yt-player/components/playlist/TrackRow.tsx))
-- **Permanent Button Visibility**: Action buttons (**Play Now**, **Play Next**, **Add to Queue**, **Add to Playlist**, **Remove**) are now permanently visible and accessible with clean hover feedback rather than being completely hidden (`opacity-0`).
-- **Compact Padding**: Sized and padded for clean alignment that never overflows the container or requires horizontal scrolling.
-- **Playlist Grid Cards**: Edit (Pencil) and Delete (Trash) buttons on playlist cards are now always clearly visible and actionable with single-hover tooltips.
+### 2. Search Both Songs & YouTube Playlists
+- Added segmented search filter pills:
+  - **All** (Default): Searches and displays both individual tracks and public YouTube playlists in clean, structured sections.
+  - **Songs**: Focuses results exclusively on single tracks with compact 3-column table actions.
+  - **Playlists**: Focuses results exclusively on public YouTube playlists.
+- **1-Click Playlist Actions**:
+  - ▶ **Play Playlist**: Fetches the playlist instantly and begins playback with all tracks loaded into the queue.
+  - 📥 **Import to Library**: Saves the playlist and its tracks directly into local IndexedDB in 1 click.
 
 ---
 

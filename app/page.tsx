@@ -70,7 +70,7 @@ function AppShell() {
         <TopNav />
       </div>
 
-      {/* 2. Static Desktop Body (Unscrollable Viewport, Scrollable Content Area) */}
+      {/* 2. Static Desktop Body (Zero Horizontal Scroll, Vertical Only Content Scroll) */}
       <main className="flex-1 min-h-0 max-w-4xl mx-auto w-full px-4 pt-3 pb-3 flex flex-col overflow-hidden relative z-10" aria-label="Main content">
         <PlayerErrorBoundary>
           {/* Pinned A: Compact Now Playing Card at Top (shrink-0) */}
@@ -78,9 +78,9 @@ function AppShell() {
             <PlayerHero />
           </div>
 
-          {/* Pinned B: Single-Column Section Navigation Tabs (shrink-0) */}
-          <div className="shrink-0 mb-3 border-b border-[#27272a] px-2 bg-[#0c0c10]/95 backdrop-blur-md rounded-xl p-1.5 shadow-sm">
-            <div className="flex items-center gap-1 overflow-x-auto relative">
+          {/* Pinned B: Single-Column Section Navigation Tabs (100% Fit Grid, No Left-Right Scrolling) */}
+          <div className="shrink-0 mb-3 border-b border-[#27272a] px-1.5 bg-[#0c0c10]/95 backdrop-blur-md rounded-xl p-1.5 shadow-sm overflow-hidden">
+            <div className="grid grid-cols-5 gap-1 w-full relative">
               {tabs.map(({ key, label, icon: Icon, badge }) => {
                 const isActive = activeTab === key;
                 return (
@@ -90,7 +90,7 @@ function AppShell() {
                     aria-selected={isActive}
                     role="tab"
                     className={cn(
-                      'relative flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 cursor-pointer transition-colors',
+                      'relative flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors w-full text-center',
                       isActive ? 'text-white' : 'text-zinc-400 hover:text-zinc-200 hover:bg-[#141419]'
                     )}
                   >
@@ -103,13 +103,13 @@ function AppShell() {
                       />
                     )}
 
-                    <span className="relative z-10 flex items-center gap-1.5">
-                      <Icon size={13} className={isActive ? 'text-white' : 'text-zinc-500'} />
-                      <span>{label}</span>
+                    <span className="relative z-10 flex items-center justify-center gap-1.5 min-w-0">
+                      <Icon size={13} className={cn('shrink-0', isActive ? 'text-white' : 'text-zinc-500')} />
+                      <span className="truncate">{label}</span>
                       {typeof badge === 'number' && badge > 0 && (
                         <span
                           className={cn(
-                            'px-1.5 py-0.2 rounded-full text-[10px] font-mono-time transition-colors',
+                            'px-1.5 py-0.2 rounded-full text-[10px] font-mono-time shrink-0 transition-colors hidden sm:inline-block',
                             isActive ? 'bg-[#2e2e38] text-white' : 'bg-[#181820] text-zinc-500'
                           )}
                         >
@@ -123,7 +123,7 @@ function AppShell() {
             </div>
           </div>
 
-          {/* Scrollable C: Active Content Container (flex-1 min-h-0 overflow-hidden) */}
+          {/* Scrollable C: Active Content Container (Vertical Scroll Only) */}
           <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
             <AnimatePresence mode="wait">
               <motion.div
@@ -132,7 +132,7 @@ function AppShell() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
                 transition={{ duration: 0.16, ease: 'easeOut' }}
-                className="h-full flex-1 flex flex-col min-h-0"
+                className="h-full flex-1 flex flex-col min-h-0 overflow-x-hidden"
               >
                 {activeTab === 'queue' && <CenterStageQueue />}
                 {activeTab === 'search' && <SearchView />}
