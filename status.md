@@ -1,20 +1,21 @@
 # Minimalist YT Player — Build Status & Handoff
 
-## Current Phase: Dynamic Blurred Hero Ambient Glow & Settings Toggle Completed ✅
+## Current Phase: Compact Table Layout, Zero Horizontal Overflow & High-Visibility Action Buttons Completed ✅
 ## Current Step: Ready for Testing & Daily Use
 
 ## ✅ Completed Updates
 
-### 1. Dynamic Blurred Artwork / Video Ambient Glow
-- **Ambient Backdrop Layer ([PlayerHero.tsx](file:///Users/jello/Documents/dev/minimalist-yt-player/components/player/PlayerHero.tsx))**:
-  - Dynamically projects an ultra-blurred (`blur-3xl`), scaled (`scale-150`), color-matched ambient glow extracted from the active track artwork / video.
-  - Smooth 600ms crossfade transitions with `framer-motion` `AnimatePresence` whenever tracks change.
-  - Overlaid with a dark noir gradient mask to maintain high contrast and legibility for all transport controls, scrubbers, and titles.
+### 1. Zero Horizontal Overflow (`table-fixed w-full`)
+- Converted all track and playlist tables (`PlaylistsView`, `CenterStageQueue`, `SearchView`, `RecentlyPlayedView`, `VibeSuggestionsView`) to a responsive, fixed 3-column architecture:
+  1. **# / Drag Grip / Playing Animation** (`w-10 text-center shrink-0`)
+  2. **Track (Title + Artist subtitle)** (`w-auto min-w-0 max-w-0 truncate`)
+  3. **Action Cluster & Duration** (`w-48 text-right shrink-0`)
+- Completely eliminated any horizontal left/right scrolling across all screen sizes.
 
-### 2. Optional Settings Toggle ([SettingsModal.tsx](file:///Users/jello/Documents/dev/minimalist-yt-player/components/settings/SettingsModal.tsx))
-- Added a dedicated switch in **Settings ➔ Visual & Player Ambiance**:
-  - **Dynamic Blurred Artwork Glow** (Enabled by default, user-configurable).
-  - Preference is persisted locally in IndexedDB (`db.preferences`).
+### 2. High-Visibility Compact Action Buttons ([TrackRow.tsx](file:///Users/jello/Documents/dev/minimalist-yt-player/components/playlist/TrackRow.tsx))
+- **Permanent Button Visibility**: Action buttons (**Play Now**, **Play Next**, **Add to Queue**, **Add to Playlist**, **Remove**) are now permanently visible and accessible with clean hover feedback rather than being completely hidden (`opacity-0`).
+- **Compact Padding**: Sized and padded for clean alignment that never overflows the container or requires horizontal scrolling.
+- **Playlist Grid Cards**: Edit (Pencil) and Delete (Trash) buttons on playlist cards are now always clearly visible and actionable with single-hover tooltips.
 
 ---
 

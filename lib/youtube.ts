@@ -127,6 +127,51 @@ export async function searchTracks(query: string): Promise<Track[]> {
   return tracks;
 }
 
+/** Search public YouTube playlists via Innertube */
+export async function searchPlaylists(query: string): Promise<import('@/types').SearchPlaylist[]> {
+  try {
+    const yt = await getInnertube();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const searchRes = (await yt.search(query, { type: 'playlist' })) as any;
+    const playlists: import('@/types').SearchPlaylist[] = [];
+
+    const rawList = searchRes.playlists || [];
+    for (const pl of rawList) {
+      const id = pl.content_id || pl.id;
+      if (!id || typeof id !== 'string') continue;
+
+      const title =
+        pl.metadata?.title?.text ||
+        pl.title?.text ||
+        pl.title?.toString?.() ||
+        'YouTube Playlist';
+
+      const author =
+        pl.metadata?.metadata?.metadata_rows?.[0]?.metadata_parts?.[0]?.text?.text ||
+        pl.author?.name ||
+        'YouTube';
+
+      const thumbnailUrl =
+        pl.content_image?.primary_thumbnail?.image?.[0]?.url ||
+        pl.thumbnails?.[0]?.url ||
+        `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+
+      playlists.push({
+        id,
+        title: String(title),
+        author: String(author),
+        thumbnailUrl,
+      });
+      if (playlists.length >= 15) break;
+    }
+
+    return playlists;
+  } catch (err) {
+    console.error('[searchPlaylists] Error:', err);
+    return [];
+  }
+}
+
 /** Get radio/automix suggestions for a videoId */
 export async function getRadioSuggestions(videoId: string): Promise<Track[]> {
   const yt = await getInnertube();

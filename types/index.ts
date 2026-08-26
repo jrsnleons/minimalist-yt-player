@@ -18,6 +18,13 @@ export interface Playlist {
   trackIds: string[]; // Ordered array of Track IDs
 }
 
+export interface SearchPlaylist {
+  id: string; // YouTube Playlist ID (e.g. PL...)
+  title: string;
+  author: string;
+  thumbnailUrl: string;
+}
+
 export interface HistoryEntry {
   id?: number; // Auto-incremented
   trackId: string; // Reference to Track.id
@@ -35,6 +42,8 @@ export type PlaybackMode = 'iframe' | 'direct-audio';
 
 export interface SearchResult {
   results: Track[];
+  tracks?: Track[];
+  playlists?: SearchPlaylist[];
 }
 
 export interface RadioResult {
