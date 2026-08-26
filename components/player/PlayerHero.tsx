@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
+import { AnimatePresence, motion } from 'framer-motion';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { TransportControls } from './TransportControls';
 import { CustomScrubber } from './CustomScrubber';
@@ -38,7 +39,7 @@ const EVERGREEN_RADIO_TRACKS: Track[] = [
 ];
 
 export function PlayerHero() {
-  const { currentTrack, toggleCommandPalette, play, showToast } = usePlayerStore();
+  const { currentTrack, blurredHeroBackground, toggleCommandPalette, play, showToast } = usePlayerStore();
   const [isStartingRadio, setIsStartingRadio] = useState(false);
 
   const handleQuickStartRadio = async () => {
@@ -65,7 +66,7 @@ export function PlayerHero() {
 
   if (!currentTrack) {
     return (
-      <div className="flex flex-col items-center justify-center p-8 text-center rounded-2xl border border-[#27272a] bg-[#121216]/90 backdrop-blur-sm shadow-md">
+      <div className="flex flex-col items-center justify-center p-8 text-center rounded-2xl border border-[#27272a] bg-[#121216]/90 backdrop-blur-md shadow-md">
         <div className="w-14 h-14 rounded-2xl bg-[#1e1e26] border border-zinc-700/60 flex items-center justify-center mb-3 text-zinc-300 shadow-inner">
           <Music2 size={28} />
         </div>
@@ -78,7 +79,7 @@ export function PlayerHero() {
           <button
             onClick={toggleCommandPalette}
             aria-label="Open Command Palette"
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white text-black text-xs font-semibold hover:bg-zinc-200 transition-colors shadow-md"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white text-black text-xs font-semibold hover:bg-zinc-200 transition-colors shadow-md cursor-pointer"
           >
             <Search size={14} />
             <span>Search YouTube</span>
@@ -90,7 +91,7 @@ export function PlayerHero() {
           <button
             onClick={handleQuickStartRadio}
             disabled={isStartingRadio}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[#2e2e38] bg-[#181820] text-zinc-200 text-xs font-medium hover:bg-[#24242e] hover:border-zinc-600 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[#2e2e38] bg-[#181820] text-zinc-200 text-xs font-medium hover:bg-[#24242e] hover:border-zinc-600 transition-colors disabled:opacity-50 cursor-pointer"
           >
             {isStartingRadio ? (
               <Loader2 size={13} className="animate-spin text-amber-300" />
@@ -105,8 +106,31 @@ export function PlayerHero() {
   }
 
   return (
-    <div className="p-5 rounded-2xl border border-[#27272a] bg-[#121216] shadow-xl">
-      <div className="flex flex-col md:flex-row items-center gap-5">
+    <div className="relative p-5 rounded-2xl border border-[#27272a] bg-[#121216] shadow-xl overflow-hidden">
+      {/* Dynamic Blurred Video/Artwork Background Effect */}
+      {blurredHeroBackground && currentTrack.thumbnailUrl && (
+        <AnimatePresence>
+          <motion.div
+            key={currentTrack.id}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.6, ease: 'easeInOut' }}
+            className="absolute -inset-16 pointer-events-none z-0 overflow-hidden"
+          >
+            {/* Ultra-blurred artwork layer */}
+            <div
+              className="absolute inset-0 bg-cover bg-center scale-150 filter blur-3xl opacity-30"
+              style={{ backgroundImage: `url(${currentTrack.thumbnailUrl})` }}
+            />
+            {/* Dark vignette blending mask */}
+            <div className="absolute inset-0 bg-gradient-to-t from-[#121216] via-[#121216]/80 to-[#121216]/40" />
+          </motion.div>
+        </AnimatePresence>
+      )}
+
+      {/* Main Content Layer */}
+      <div className="relative z-10 flex flex-col md:flex-row items-center gap-5">
         {/* Album Artwork */}
         <div className="relative w-32 h-32 md:w-36 md:h-36 rounded-xl overflow-hidden shadow-2xl bg-zinc-900 border border-zinc-700/60 shrink-0">
           {currentTrack.thumbnailUrl ? (

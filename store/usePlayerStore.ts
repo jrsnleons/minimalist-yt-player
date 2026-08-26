@@ -28,6 +28,7 @@ interface PlayerState {
   rightSidebarOpen: boolean;
   commandPaletteOpen: boolean;
   settingsOpen: boolean;
+  blurredHeroBackground: boolean;
   toastMessage: string | null;
 
   // Actions — Playback
@@ -64,6 +65,7 @@ interface PlayerState {
   toggleSettings: () => void;
   openSettings: () => void;
   closeSettings: () => void;
+  toggleBlurredHeroBackground: () => void;
   showToast: (message: string) => void;
   dismissToast: () => void;
 
@@ -96,6 +98,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   rightSidebarOpen: true,
   commandPaletteOpen: false,
   settingsOpen: false,
+  blurredHeroBackground: true,
   toastMessage: null,
 
   // --- Playback Actions ---
@@ -281,6 +284,14 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   openSettings: () => set({ settingsOpen: true }),
   closeSettings: () => set({ settingsOpen: false }),
 
+  toggleBlurredHeroBackground: () => {
+    set((s) => {
+      const next = !s.blurredHeroBackground;
+      db.preferences.put({ key: 'blurredHeroBackground', value: next }).catch(() => {});
+      return { blurredHeroBackground: next };
+    });
+  },
+
   showToast: (message) => {
     set({ toastMessage: message });
     setTimeout(() => {
@@ -320,12 +331,13 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   loadSavedPreferences: async () => {
     try {
-      const [volPref, repeatPref, modePref, leftPref, rightPref] = await Promise.all([
+      const [volPref, repeatPref, modePref, leftPref, rightPref, blurPref] = await Promise.all([
         db.preferences.get('volume'),
         db.preferences.get('repeatMode'),
         db.preferences.get('playbackMode'),
         db.preferences.get('leftSidebarOpen'),
         db.preferences.get('rightSidebarOpen'),
+        db.preferences.get('blurredHeroBackground'),
       ]);
 
       set((s) => ({
@@ -334,6 +346,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         playbackMode: typeof modePref?.value === 'string' ? (modePref.value as PlaybackMode) : s.playbackMode,
         leftSidebarOpen: typeof leftPref?.value === 'boolean' ? leftPref.value : s.leftSidebarOpen,
         rightSidebarOpen: typeof rightPref?.value === 'boolean' ? rightPref.value : s.rightSidebarOpen,
+        blurredHeroBackground: typeof blurPref?.value === 'boolean' ? blurPref.value : s.blurredHeroBackground,
       }));
     } catch {
       // Ignore preference load error

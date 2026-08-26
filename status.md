@@ -1,21 +1,28 @@
 # Minimalist YT Player — Build Status & Handoff
 
-## Current Phase: Tooltip Isolation, Global Pointer Cursors & Smooth Transitions Completed ✅
+## Current Phase: Static Pinned Viewport, Noir Gradient & Noise, and Playlist Metadata Editing Completed ✅
 ## Current Step: Ready for Testing & Daily Use
 
 ## ✅ Completed Updates
 
-### 1. Tooltip Hover Isolation Fix
-- **Root Cause**: The previous CSS-only tooltip used `.group:hover`, which matched the parent track row's `.group` class, causing all action tooltips on a row to trigger simultaneously when hovering over the row.
-- **Fix**: Re-architected [Tooltip.tsx](file:///Users/jello/Documents/dev/minimalist-yt-player/components/ui/Tooltip.tsx) with discrete local hover listeners, `150ms` debounced display timer, and `framer-motion` `AnimatePresence`. Now, only the specific button being hovered displays its tooltip one by one.
+### 1. Static Unscrollable Page with Internal Scrollable Tables
+- **Fixed/Pinned Elements**:
+  - **Top Navigation** (`TopNav.tsx`): Pinned permanently at the top.
+  - **Now Playing Hero** (`PlayerHero.tsx`): Pinned directly under the header.
+  - **Tab Navigator** (Queue, Search, Playlists, Recently Played, Vibe): Pinned with sliding spring pill indicator.
+- **Scrollable Content**:
+  - Only the track rows, search results, and playlist cards scroll inside their respective container (`flex-1 min-h-0 overflow-y-auto`) with custom sleek scrollbars and sticky table headers (`sticky top-0`).
 
-### 2. Universal Pointer Cursors
-- Added a global interactive rule in [globals.css](file:///Users/jello/Documents/dev/minimalist-yt-player/app/globals.css) ensuring all `button`, `[role="button"]`, `input[type="range"]`, tabs, and action items always render `cursor: pointer`.
+### 2. Dark Noir Gradient & Analog Film Grain Texture
+- **Canvas Base**: Deep noir radial gradient (`radial-gradient(ellipse 90% 70% at 50% 0%, #15151c, #0a0a0d, #050507)`).
+- **Procedural Film Grain Noise Layer** (`.noir-noise-bg`): High-frequency SVG fractal turbulence noise overlay blended onto the canvas.
+- **Grungy Vignette Effect** (`.noir-vignette`): Inset edge shadow creating an immersive, analog studio listening ambiance.
 
-### 3. Smooth Transitions (`framer-motion`)
-- **Fluid Sliding Tab Pill Indicator**: When switching between tabs (Queue, Search, Playlists, Recently Played, Vibe Suggestions), a spring-animated background pill slides smoothly to the active tab.
-- **View Enter/Exit Animations**: Tab content transitions with a subtle `opacity + translateY` easeOut animation.
-- **Playlist Grid & Detail Transitions**: Smooth horizontal slide transitions when navigating into a playlist and back to the playlist grid.
+### 3. Playlist Metadata Editing
+- Added [EditPlaylistModal.tsx](file:///Users/jello/Documents/dev/minimalist-yt-player/components/playlist/EditPlaylistModal.tsx).
+- Allows editing playlist **Name** and **Description** with live character counters.
+- Dedicated **Pencil (Edit)** button in both the playlist detail header and playlist grid cards.
+- Instant IndexedDB persistence via `db.playlists.update`.
 
 ---
 
@@ -50,6 +57,7 @@ minimalist-yt-player/
 │   │   ├── AddToPlaylistModal.tsx
 │   │   ├── CenterStageQueue.tsx
 │   │   ├── CreatePlaylistModal.tsx
+│   │   ├── EditPlaylistModal.tsx
 │   │   ├── ImportPlaylistModal.tsx
 │   │   ├── PlaylistDetail.tsx
 │   │   └── TrackRow.tsx
