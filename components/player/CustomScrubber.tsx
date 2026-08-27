@@ -6,10 +6,17 @@ import { formatTime, cn } from '@/lib/utils';
 interface CustomScrubberProps {
   className?: string;
   compact?: boolean;
+  accentColor?: string;
 }
 
-export function CustomScrubber({ className, compact = false }: CustomScrubberProps) {
-  const { progress, duration, seek } = usePlayerStore();
+export function CustomScrubber({
+  className,
+  compact = false,
+  accentColor = '#ffffff',
+}: CustomScrubberProps) {
+  const progress = usePlayerStore((s) => s.progress);
+  const duration = usePlayerStore((s) => s.duration);
+  const seek = usePlayerStore((s) => s.seek);
 
   const percentage = duration > 0 ? Math.min(100, Math.max(0, (progress / duration) * 100)) : 0;
 
@@ -18,7 +25,7 @@ export function CustomScrubber({ className, compact = false }: CustomScrubberPro
   };
 
   return (
-    <div className={cn('flex items-center gap-2.5 w-full select-none', className)}>
+    <div className={cn('flex items-center gap-3 w-full select-none', className)}>
       {!compact && (
         <span
           className="font-mono-time text-zinc-400 text-xs w-11 text-right shrink-0 font-medium"
@@ -28,14 +35,23 @@ export function CustomScrubber({ className, compact = false }: CustomScrubberPro
         </span>
       )}
 
-      <div className="relative flex-1 flex items-center h-4 group cursor-pointer">
+      <div className="relative flex-1 flex items-center h-6 group cursor-pointer">
         {/* Track Background */}
-        <div className="absolute inset-x-0 h-1 bg-[#27272a] rounded-full overflow-hidden pointer-events-none group-hover:h-1.5 transition-all">
+        <div className="absolute inset-x-0 h-1.5 bg-zinc-800 rounded-full overflow-hidden pointer-events-none group-hover:h-2 transition-all shadow-inner">
           <div
-            className="h-full bg-white group-hover:bg-white rounded-full transition-all duration-75"
-            style={{ width: `${percentage}%` }}
+            className="h-full rounded-full transition-all duration-75"
+            style={{
+              width: `${percentage}%`,
+              backgroundColor: accentColor || '#ffffff',
+            }}
           />
         </div>
+
+        {/* Draggable Thumb Knob */}
+        <div
+          className="absolute w-3.5 h-3.5 rounded-full bg-white shadow-lg border border-zinc-950 pointer-events-none transition-transform transform -translate-x-1/2 opacity-0 group-hover:opacity-100 group-hover:scale-110"
+          style={{ left: `${percentage}%` }}
+        />
 
         {/* Range slider input */}
         <input
@@ -50,7 +66,7 @@ export function CustomScrubber({ className, compact = false }: CustomScrubberPro
           aria-valuemax={duration}
           aria-valuenow={progress}
           aria-valuetext={`${formatTime(progress)} of ${formatTime(duration)}`}
-          className="w-full h-4 opacity-0 group-hover:opacity-100 cursor-pointer relative z-10 transition-opacity"
+          className="w-full h-full opacity-0 cursor-pointer relative z-10"
         />
       </div>
 

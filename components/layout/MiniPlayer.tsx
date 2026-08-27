@@ -89,12 +89,12 @@ export function MiniPlayer() {
           </button>
         </Tooltip>
 
-        {/* Video PiP */}
+        {/* Video on artwork toggle */}
         {playbackMode === 'iframe' && (
-          <Tooltip content={`${isVideoEnabled ? 'Hide video' : 'Show video PiP'} (V)`} side="top">
+          <Tooltip content={`${isVideoEnabled ? 'Switch to album cover' : 'Watch video on cover'} (V)`} side="top">
             <button
               onClick={toggleVideo}
-              aria-label={isVideoEnabled ? 'Hide video' : 'Show video PiP'}
+              aria-label={isVideoEnabled ? 'Switch to album cover (V)' : 'Watch video on cover (V)'}
               aria-pressed={isVideoEnabled}
               className={cn(
                 'p-1.5 rounded-md transition-colors',

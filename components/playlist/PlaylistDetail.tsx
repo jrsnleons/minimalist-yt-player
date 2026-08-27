@@ -4,6 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/schema';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { TrackRow } from './TrackRow';
+import { TrackRowSkeleton } from '@/components/ui/Skeleton';
 import { formatTime } from '@/lib/utils';
 import type { Playlist, Track } from '@/types';
 import { Music, Trash2, Play, ArrowLeft } from 'lucide-react';
@@ -99,18 +100,21 @@ export function PlaylistDetail({ playlist, onClose }: PlaylistDetailProps) {
       {/* Track Table */}
       <div className="overflow-x-auto">
         {!tracks ? (
-          <div className="p-4 space-y-2">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-3 py-2 px-3">
-                <div className="skeleton w-8 h-8 rounded" />
-                <div className="flex-1 space-y-1.5">
-                  <div className="skeleton h-3 w-48 rounded" />
-                  <div className="skeleton h-2.5 w-32 rounded" />
-                </div>
-                <div className="skeleton h-3 w-12 rounded" />
-              </div>
-            ))}
-          </div>
+          <table className="w-full text-left border-collapse" role="grid" aria-label={`Loading tracks in ${playlist.name}`}>
+            <thead>
+              <tr className="border-b border-[#222228] text-[11px] font-semibold text-zinc-500 uppercase tracking-wider bg-[#0f0f13]">
+                <th className="w-12 px-4 py-2.5 text-center">#</th>
+                <th className="px-4 py-2.5">Title</th>
+                <th className="px-4 py-2.5">Artist</th>
+                <th className="w-24 px-4 py-2.5 text-right">Duration</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#1e1e24]/40">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <TrackRowSkeleton key={`pl-detail-skel-${i}`} index={i} />
+              ))}
+            </tbody>
+          </table>
         ) : tracks.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-zinc-500 text-center">
             <Music size={28} className="mb-2 text-zinc-700" />

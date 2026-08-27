@@ -78,25 +78,58 @@ export function useYouTubePlayer() {
   const playerRef = useRef<YT.Player | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const rafRef = useRef<number>(0);
+  const lastPollRef = useRef<number>(0);
   const isAPIReady = useRef(false);
   const pendingVideoId = useRef<string | null>(null);
   const isSkippingRef = useRef(false);
+  const skipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { currentTrack, isPlaying, volume, isMuted, seekTarget, setProgress, setDuration, next, showToast } =
-    usePlayerStore();
+  // Use atomic selectors to prevent subscribing to progress or other unrelated state changes
+  const currentTrackId = usePlayerStore((s) => s.currentTrack?.id);
+  const isPlaying = usePlayerStore((s) => s.isPlaying);
+  const volume = usePlayerStore((s) => s.volume);
+  const isMuted = usePlayerStore((s) => s.isMuted);
+  const seekTarget = usePlayerStore((s) => s.seekTarget);
+  const setProgress = usePlayerStore((s) => s.setProgress);
+  const setDuration = usePlayerStore((s) => s.setDuration);
+  const showToast = usePlayerStore((s) => s.showToast);
 
-  /** Progress polling via rAF */
+  /** Progress polling throttled to ~250ms to avoid 60fps React state re-render cascades */
   const startPolling = useCallback(() => {
     cancelAnimationFrame(rafRef.current);
-    const poll = () => {
+    const poll = (time: number) => {
       if (playerRef.current && isAPIReady.current) {
-        try {
-          const current = playerRef.current.getCurrentTime();
-          const total = playerRef.current.getDuration();
-          if (typeof current === 'number' && !isNaN(current)) setProgress(current);
-          if (typeof total === 'number' && !isNaN(total) && total > 0) setDuration(total);
-        } catch {
-          // Player may not be ready yet
+        if (time - lastPollRef.current >= 250) {
+          lastPollRef.current = time;
+          try {
+            const current = playerRef.current.getCurrentTime();
+            const total = playerRef.current.getDuration();
+            if (typeof current === 'number' && Number.isFinite(current)) setProgress(current);
+            if (typeof total === 'number' && Number.isFinite(total) && total > 0) {
+              setDuration(total);
+
+              // Auto crossfade fade-out and fade-in calculation
+              const state = usePlayerStore.getState();
+              const crossfadeSec = state.crossfadeDuration;
+              if (crossfadeSec > 0 && !state.isMuted && total > crossfadeSec * 2) {
+                const timeLeft = total - current;
+                let targetVol = state.volume;
+                if (current < crossfadeSec) {
+                  // Fade in
+                  const factor = Math.max(0, Math.min(1, current / crossfadeSec));
+                  targetVol = Math.round(state.volume * factor);
+                  playerRef.current.setVolume(targetVol);
+                } else if (timeLeft < crossfadeSec) {
+                  // Fade out
+                  const factor = Math.max(0, Math.min(1, timeLeft / crossfadeSec));
+                  targetVol = Math.round(state.volume * factor);
+                  playerRef.current.setVolume(targetVol);
+                }
+              }
+            }
+          } catch {
+            // Player may not be ready yet
+          }
         }
       }
       rafRef.current = requestAnimationFrame(poll);
@@ -116,7 +149,8 @@ export function useYouTubePlayer() {
       showToast(`${reason} — auto-skipping…`);
       stopPolling();
 
-      setTimeout(async () => {
+      if (skipTimerRef.current) clearTimeout(skipTimerRef.current);
+      skipTimerRef.current = setTimeout(async () => {
         const state = usePlayerStore.getState();
         const hasNextInQueue =
           state.queue.length > 0 && state.queueIndex < state.queue.length - 1;
@@ -138,6 +172,7 @@ export function useYouTubePlayer() {
           }
         }
         isSkippingRef.current = false;
+        skipTimerRef.current = null;
       }, 600);
     },
     [showToast, stopPolling]
@@ -168,7 +203,13 @@ export function useYouTubePlayer() {
             onReady: () => {
               if (!isMounted) return;
               isAPIReady.current = true;
-              player.setVolume(usePlayerStore.getState().volume);
+              const storeState = usePlayerStore.getState();
+              if (storeState.isMuted) {
+                player.mute();
+              } else {
+                player.unMute();
+                player.setVolume(storeState.volume);
+              }
               if (pendingVideoId.current) {
                 player.loadVideoById({ videoId: pendingVideoId.current });
                 pendingVideoId.current = null;
@@ -183,9 +224,15 @@ export function useYouTubePlayer() {
                 state.next();
               } else if (event.data === 1) {
                 // PLAYING
+                if (!state.isPlaying) {
+                  usePlayerStore.setState({ isPlaying: true });
+                }
                 startPolling();
               } else if (event.data === 2) {
                 // PAUSED
+                if (state.isPlaying) {
+                  usePlayerStore.setState({ isPlaying: false });
+                }
                 stopPolling();
               }
             },
@@ -225,6 +272,10 @@ export function useYouTubePlayer() {
     return () => {
       isMounted = false;
       stopPolling();
+      if (skipTimerRef.current) {
+        clearTimeout(skipTimerRef.current);
+        skipTimerRef.current = null;
+      }
       try {
         playerRef.current?.destroy();
       } catch {}
@@ -235,7 +286,7 @@ export function useYouTubePlayer() {
 
   /** Load video when currentTrack changes */
   useEffect(() => {
-    const videoId = currentTrack?.id;
+    const videoId = currentTrackId;
     if (!videoId) return;
 
     if (isAPIReady.current && playerRef.current) {
@@ -247,7 +298,7 @@ export function useYouTubePlayer() {
     } else {
       pendingVideoId.current = videoId;
     }
-  }, [currentTrack?.id]);
+  }, [currentTrackId]);
 
   /** Sync play/pause */
   useEffect(() => {
@@ -279,6 +330,9 @@ export function useYouTubePlayer() {
     if (!seekTarget || !playerRef.current || !isAPIReady.current) return;
     try {
       playerRef.current.seekTo(seekTarget.time, true);
+      if (usePlayerStore.getState().isPlaying) {
+        playerRef.current.playVideo();
+      }
     } catch {}
   }, [seekTarget]);
 

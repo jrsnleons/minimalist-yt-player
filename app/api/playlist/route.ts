@@ -1,8 +1,13 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { getInnertube } from '@/lib/youtube';
+import { parseISO8601Duration } from '@/lib/utils';
 import type { Track } from '@/types';
 
 const YOUTUBE_API_KEY = process.env.YOUTUBE_DATA_API_KEY;
+
+const CACHE_HEADERS = {
+  'Cache-Control': 'public, s-maxage=1800, stale-while-revalidate=86400',
+};
 
 function parseDurationText(text?: string): number {
   if (!text) return 180;
@@ -75,12 +80,8 @@ async function fetchViaDataAPI(playlistId: string): Promise<{ title: string; des
     if (detailRes.ok) {
       const detailData = await detailRes.json();
       for (const item of detailData.items ?? []) {
-        const match = item.contentDetails?.duration?.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
-        if (!match) continue;
-        const h = parseInt(match[1] ?? '0', 10);
-        const m = parseInt(match[2] ?? '0', 10);
-        const s = parseInt(match[3] ?? '0', 10);
-        durationMap.set(item.id, h * 3600 + m * 60 + s);
+        const secs = parseISO8601Duration(item.contentDetails?.duration);
+        if (secs > 0) durationMap.set(item.id, secs);
       }
     }
 
@@ -178,14 +179,17 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
 
     if (tracks.length > 0) {
-      return NextResponse.json({
-        id: playlistId,
-        title,
-        description,
-        author,
-        trackCount: tracks.length,
-        tracks,
-      });
+      return NextResponse.json(
+        {
+          id: playlistId,
+          title,
+          description,
+          author,
+          trackCount: tracks.length,
+          tracks,
+        },
+        { headers: CACHE_HEADERS }
+      );
     }
   } catch (err) {
     console.error('[playlist] yt.music.getPlaylist error:', err);
@@ -244,14 +248,17 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
 
     if (tracks.length > 0) {
-      return NextResponse.json({
-        id: playlistId,
-        title: String(title),
-        description: String(description),
-        author,
-        trackCount: tracks.length,
-        tracks,
-      });
+      return NextResponse.json(
+        {
+          id: playlistId,
+          title: String(title),
+          description: String(description),
+          author,
+          trackCount: tracks.length,
+          tracks,
+        },
+        { headers: CACHE_HEADERS }
+      );
     }
   } catch (err) {
     console.error('[playlist] yt.getPlaylist error:', err);
@@ -261,13 +268,16 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     const fallback = await fetchViaDataAPI(playlistId);
     if (fallback && fallback.tracks.length > 0) {
-      return NextResponse.json({
-        id: playlistId,
-        title: fallback.title,
-        description: fallback.description,
-        trackCount: fallback.tracks.length,
-        tracks: fallback.tracks,
-      });
+      return NextResponse.json(
+        {
+          id: playlistId,
+          title: fallback.title,
+          description: fallback.description,
+          trackCount: fallback.tracks.length,
+          tracks: fallback.tracks,
+        },
+        { headers: CACHE_HEADERS }
+      );
     }
   } catch (err) {
     console.error('[playlist] Data API fallback error:', err);

@@ -1,25 +1,25 @@
 @import "tailwindcss";
 
 @theme {
-  --color-obsidian: #09090b;
-  --color-surface-base: #09090b;
-  --color-surface-panel: #0f0f13;
-  --color-surface-card: #141418;
-  --color-surface-hover: #1c1c22;
-  --color-border-subtle: #222228;
-  --color-border-medium: #2e2e36;
+  --color-obsidian: #050507;
+  --color-surface-base: #060608;
+  --color-surface-panel: #0a0a0e;
+  --color-surface-card: #101015;
+  --color-surface-hover: #171720;
+  --color-border-subtle: rgba(255, 255, 255, 0.07);
+  --color-border-medium: rgba(255, 255, 255, 0.14);
 
-  --color-zinc-950: #09090b;
-  --color-zinc-900: #141418;
-  --color-zinc-850: #1a1a20;
-  --color-zinc-800: #27272a;
-  --color-zinc-700: #3f3f46;
-  --color-zinc-600: #52525b;
-  --color-zinc-500: #71717a;
-  --color-zinc-400: #a1a1aa;
-  --color-zinc-300: #d4d4d8;
-  --color-zinc-200: #e4e4e7;
-  --color-zinc-100: #f4f4f5;
+  --color-zinc-950: #070709;
+  --color-zinc-900: #0f0f13;
+  --color-zinc-850: #15151b;
+  --color-zinc-800: #202028;
+  --color-zinc-700: #333340;
+  --color-zinc-600: #4e4e5e;
+  --color-zinc-500: #717182;
+  --color-zinc-400: #9e9eb0;
+  --color-zinc-300: #c8c8d8;
+  --color-zinc-200: #e2e2ec;
+  --color-zinc-100: #f2f2f8;
   --color-white: #fafafa;
 
   --font-sans: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -54,11 +54,11 @@ button:disabled,
 html {
   color-scheme: dark;
   height: 100%;
-  background-color: #060608;
+  background-color: #040406;
 }
 
 body {
-  background: radial-gradient(ellipse 90% 70% at 50% 0%, #15151c 0%, #0a0a0d 50%, #050507 100%);
+  background: radial-gradient(ellipse 95% 75% at 50% 0%, #111118 0%, #060609 50%, #030305 100%);
   color: #fafafa;
   font-family: var(--font-sans);
   height: 100%;
@@ -75,7 +75,7 @@ body {
   inset: 0;
   pointer-events: none;
   z-index: 1;
-  opacity: 0.038;
+  opacity: 0.032;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
   background-repeat: repeat;
   mix-blend-mode: overlay;
@@ -87,36 +87,46 @@ body {
   inset: 0;
   pointer-events: none;
   z-index: 2;
-  box-shadow: inset 0 0 140px rgba(0, 0, 0, 0.85);
+  box-shadow: inset 0 0 160px rgba(0, 0, 0, 0.9);
 }
 
 /* ─── Custom Sleek Scrollbar ─────────────────────────────────── */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #27272f;
-  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #3f3f4c;
+  background: rgba(255, 255, 255, 0.24);
 }
 
 /* ─── Focus Styles ───────────────────────────────────────────── */
 :focus-visible {
-  outline: 1.5px solid #a1a1aa;
+  outline: 1.5px solid rgba(255, 255, 255, 0.6);
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: 6px;
+}
+
+/* Prevent double outline on inputs, textareas, and select elements that have custom focus styling */
+input:focus,
+input:focus-visible,
+textarea:focus,
+textarea:focus-visible,
+select:focus,
+select:focus-visible {
+  outline: none !important;
 }
 
 /* ─── Selection ──────────────────────────────────────────────── */
 ::selection {
-  background: #3f3f46;
-  color: #fafafa;
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
 }
 
 /* ─── Input Range (Scrubber/Volume) ──────────────────────────── */
@@ -136,7 +146,7 @@ input[type='range']:focus {
 
 input[type='range']::-webkit-slider-runnable-track {
   height: 4px;
-  background: #27272a;
+  background: #1c1c24;
   border-radius: 9999px;
   border: none;
 }
@@ -149,7 +159,7 @@ input[type='range']::-webkit-slider-thumb {
   border-radius: 50%;
   background: #fafafa;
   margin-top: -4px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
   transition: transform 0.15s ease, background-color 0.15s ease;
 }
 
@@ -160,7 +170,7 @@ input[type='range']:hover::-webkit-slider-thumb {
 
 input[type='range']::-moz-range-track {
   height: 4px;
-  background: #27272a;
+  background: #1c1c24;
   border-radius: 9999px;
   border: none;
 }
@@ -171,7 +181,7 @@ input[type='range']::-moz-range-thumb {
   border-radius: 50%;
   background: #fafafa;
   border: none;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
   transition: transform 0.15s ease;
 }
 
@@ -207,16 +217,59 @@ input[type='range']:hover::-moz-range-thumb {
 .skeleton {
   background: linear-gradient(
     90deg,
-    #18181b 25%,
-    #27272a 50%,
-    #18181b 75%
+    rgba(255, 255, 255, 0.03) 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.03) 100%
   );
   background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-  border-radius: 4px;
+  animation: shimmer 1.6s ease-in-out infinite;
+  border-radius: 6px;
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.02) 0%,
+    rgba(255, 255, 255, 0.07) 35%,
+    rgba(255, 255, 255, 0.12) 50%,
+    rgba(255, 255, 255, 0.07) 65%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
 }
 
 @keyframes shimmer {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
+}
+
+/* ─── Onyx Specular Highlights & Surface Classes ──────────────── */
+.onyx-card {
+  background: #0b0b0f;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.7);
+}
+
+.onyx-glass {
+  background: rgba(11, 11, 15, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.onyx-button-primary {
+  background: #ffffff;
+  color: #050507;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+
+.onyx-button-primary:hover {
+  background: #e4e4e7;
+  transform: translateY(-1px);
+}
+
+.onyx-button-primary:active {
+  transform: scale(0.98);
 }

@@ -63,7 +63,7 @@ export type CommandPaletteScope = 'local' | 'youtube' | 'actions';
 // Data Safety & Backup Schemas
 export interface LibraryBackup {
   version: 1;
-  appName: 'minimalist-yt-player';
+  appName: 'onyx' | 'minimalist-yt-player';
   exportedAt: number; // Unix timestamp ms
   summary: {
     playlistCount: number;

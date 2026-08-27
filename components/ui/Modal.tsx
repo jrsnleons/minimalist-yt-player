@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -14,6 +15,11 @@ interface ModalProps {
 
 export function Modal({ isOpen, onClose, title, children, className }: ModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -43,26 +49,26 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted || typeof document === 'undefined') return null;
 
-  return (
+  const modalContent = (
     <dialog
       ref={dialogRef}
       onCancel={handleCancel}
       onClick={handleBackdropClick}
       aria-label={title}
       className={cn(
-        'fixed inset-0 m-auto p-0 rounded-2xl border border-[#27272f] bg-[#0c0c10]',
-        'text-white shadow-2xl backdrop:bg-black/75 backdrop:backdrop-blur-md',
-        'max-w-lg w-full focus:outline-none z-[100]',
+        'fixed inset-0 m-auto p-0 rounded-3xl border border-white/[0.1] bg-[#09090d]/95',
+        'text-white shadow-[0_25px_70px_rgba(0,0,0,0.9)] backdrop:bg-black/80 backdrop:backdrop-blur-xl',
+        'max-w-lg w-full focus:outline-none z-[100] overflow-hidden',
         className
       )}
       style={{ colorScheme: 'dark' }}
     >
       <div className="flex flex-col">
         {title && (
-          <div className="flex items-center justify-between px-5 py-4 border-b border-[#222228] bg-[#121217] rounded-t-2xl">
-            <h2 className="text-sm font-semibold text-white tracking-tight">{title}</h2>
+          <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06] bg-[#0d0d12]/80 shrink-0">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-white font-sans">{title}</h2>
             <button
               type="button"
               onClick={(e) => {
@@ -70,14 +76,16 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
                 onClose();
               }}
               aria-label="Close modal"
-              className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-[#1e1e24] transition-colors cursor-pointer"
+              className="p-1.5 rounded-xl text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-all cursor-pointer"
             >
-              <X size={16} />
+              <X size={15} />
             </button>
           </div>
         )}
-        <div className="p-5">{children}</div>
+        <div className="p-6">{children}</div>
       </div>
     </dialog>
   );
+
+  return createPortal(modalContent, document.body);
 }

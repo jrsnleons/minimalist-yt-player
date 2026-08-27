@@ -1,40 +1,54 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { usePlayerStore } from '@/store/usePlayerStore';
 import type { Track } from '@/types';
 
 export function useRadioSuggestions(
   videoId: string | undefined,
-  instrumentalOnly: boolean,
   excludeIds: string[]
 ) {
   const [suggestions, setSuggestions] = useState<Track[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Serialize excludeIds to a stable string dependency so the effect only
+  // re-runs when the actual IDs change, not on every array reference change.
+  const excludeKey = excludeIds.join(',');
 
   useEffect(() => {
     if (!videoId) {
       setSuggestions([]);
+      setIsLoading(false);
+      setError(null);
       return;
     }
 
     const controller = new AbortController();
+    setIsLoading(true);
+    setError(null);
 
     const params = new URLSearchParams({
       videoId,
-      instrumental: String(instrumentalOnly),
-      exclude: excludeIds.join(','),
+      exclude: excludeKey,
     });
 
     fetch(`/api/radio?${params}`, { signal: controller.signal })
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error(`Radio request failed: ${res.status}`);
+        return res.json();
+      })
       .then((data: { suggestions?: Track[] }) => {
         if (data.suggestions) setSuggestions(data.suggestions);
+        setIsLoading(false);
       })
-      .catch(() => {}); // Abort or error — silent
+      .catch((err: Error) => {
+        if (err.name === 'AbortError') return; // Expected on cleanup
+        setError('Could not load suggestions');
+        setIsLoading(false);
+      });
 
     return () => controller.abort();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [videoId, instrumentalOnly]);
+  }, [videoId, excludeKey]);
 
-  return suggestions;
+  return { suggestions, isLoading, error };
 }

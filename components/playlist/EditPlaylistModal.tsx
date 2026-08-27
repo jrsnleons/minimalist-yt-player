@@ -55,10 +55,10 @@ export function EditPlaylistModal({ playlist, isOpen, onClose, onUpdated }: Edit
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Edit Playlist Details" className="max-w-md">
+    <Modal isOpen={isOpen} onClose={onClose} title="Edit Playlist" className="max-w-md">
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div>
-          <label htmlFor="edit-playlist-name" className="block text-xs font-semibold text-zinc-400 mb-1.5">
+          <label htmlFor="edit-playlist-name" className="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5 font-sans">
             Playlist Name <span className="text-zinc-500">*</span>
           </label>
           <input
@@ -70,13 +70,13 @@ export function EditPlaylistModal({ playlist, isOpen, onClose, onUpdated }: Edit
             autoFocus
             required
             maxLength={80}
-            className="w-full px-3 py-2 rounded-xl bg-[#14141a] border border-zinc-700 text-white text-xs placeholder-zinc-500 focus:outline-none focus:border-zinc-400 shadow-inner"
+            className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] focus:border-white/30 focus:ring-1 focus:ring-white/20 text-white text-xs placeholder-zinc-600 focus:outline-none transition-all"
           />
         </div>
 
         <div>
-          <label htmlFor="edit-playlist-desc" className="block text-xs font-semibold text-zinc-400 mb-1.5">
-            Description <span className="text-zinc-600 font-normal">(optional)</span>
+          <label htmlFor="edit-playlist-desc" className="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5 font-sans">
+            Description <span className="text-zinc-600 font-normal normal-case">(optional)</span>
           </label>
           <textarea
             id="edit-playlist-desc"
@@ -85,25 +85,25 @@ export function EditPlaylistModal({ playlist, isOpen, onClose, onUpdated }: Edit
             placeholder="Add a vibe or description for this playlist…"
             rows={3}
             maxLength={250}
-            className="w-full px-3 py-2 rounded-xl bg-[#14141a] border border-zinc-700 text-white text-xs placeholder-zinc-500 focus:outline-none focus:border-zinc-400 resize-none shadow-inner"
+            className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] focus:border-white/30 focus:ring-1 focus:ring-white/20 text-white text-xs placeholder-zinc-600 focus:outline-none resize-none transition-all"
           />
-          <div className="text-right text-[10px] text-zinc-600 mt-0.5">
+          <div className="text-right text-[10px] font-mono text-zinc-500 mt-1">
             {description.length}/250
           </div>
         </div>
 
-        <div className="flex gap-2 justify-end pt-2 border-t border-[#222228]">
+        <div className="flex gap-2 justify-end pt-2 border-t border-white/[0.06]">
           <button
             type="button"
             onClick={onClose}
-            className="px-3.5 py-1.5 text-xs rounded-lg text-zinc-400 hover:text-white hover:bg-[#1e1e24] transition-colors cursor-pointer"
+            className="px-4 py-2 text-xs font-medium rounded-xl text-zinc-400 hover:text-white hover:bg-white/[0.06] transition-all cursor-pointer"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={!name.trim() || loading}
-            className="px-4 py-1.5 text-xs rounded-lg bg-white text-black font-semibold hover:bg-zinc-200 disabled:opacity-40 transition-colors shadow-sm cursor-pointer"
+            className="px-4 py-2 text-xs font-semibold rounded-xl bg-white text-black hover:bg-zinc-200 disabled:opacity-40 transition-all shadow-sm cursor-pointer"
           >
             {loading ? 'Saving…' : 'Save Changes'}
           </button>

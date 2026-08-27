@@ -1,94 +1,180 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import Image from 'next/image';
-import { Search, Play, Plus, ListPlus, ListStart, Loader2, Zap, Music, Clock } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import {
+  Search,
+  Play,
+  Plus,
+  ListPlus,
+  ListStart,
+  Loader2,
+  Zap,
+  Tv,
+  Radio,
+  Sparkles,
+  Maximize2,
+} from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/schema';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { AddToPlaylistModal } from '@/components/playlist/AddToPlaylistModal';
 import { TrackArtwork } from '@/components/ui/TrackArtwork';
-import { debounce, formatTime, cn } from '@/lib/utils';
+import { CommandPaletteSkeletonItem } from '@/components/ui/Skeleton';
+import { debounce, formatTime, uuid, cn } from '@/lib/utils';
 import { exportFullLibrary } from '@/lib/backup';
-import type { Track, AppAction } from '@/types';
+import type { Track, AppAction, Playlist } from '@/types';
+
+// Helper to detect and parse pasted URLs in search input
+function detectOmniboxUrl(input: string) {
+  const trimmed = input.trim();
+  if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://') && !trimmed.startsWith('youtu.be/')) {
+    return null;
+  }
+
+  // 1. YouTube Video (youtu.be)
+  const youtuBe = trimmed.match(/^https?:\/\/youtu\.be\/([a-zA-Z0-9_-]{11})/);
+  if (youtuBe) {
+    return { type: 'youtube-video' as const, id: youtuBe[1], rawUrl: trimmed };
+  }
+
+  // 2. YouTube Video (watch?v= or shorts/)
+  const ytVideo = trimmed.match(
+    /^https?:\/\/(?:www\.|music\.)?youtube\.com\/(?:watch\?.*v=|shorts\/)([a-zA-Z0-9_-]{11})/
+  );
+  if (ytVideo) {
+    return { type: 'youtube-video' as const, id: ytVideo[1], rawUrl: trimmed };
+  }
+
+  // 3. YouTube Playlist (playlist?list=)
+  const ytPlaylist = trimmed.match(
+    /^https?:\/\/(?:www\.|music\.)?youtube\.com\/playlist\?.*list=([a-zA-Z0-9_-]+)/
+  );
+  if (ytPlaylist) {
+    return { type: 'youtube-playlist' as const, id: ytPlaylist[1], rawUrl: trimmed };
+  }
+
+  // 4. Spotify Track/Playlist/Album
+  const spotify = trimmed.match(
+    /^https?:\/\/open\.spotify\.com\/(?:intl-[a-z]{2,5}\/)?(track|playlist|album|artist)\/([a-zA-Z0-9]+)/
+  );
+  if (spotify) {
+    return {
+      type: 'spotify' as const,
+      mediaType: spotify[1] as 'track' | 'playlist' | 'album' | 'artist',
+      id: spotify[2],
+      rawUrl: trimmed,
+    };
+  }
+
+  return null;
+}
 
 export function CommandPalette() {
-  const {
-    commandPaletteOpen,
-    toggleCommandPalette,
-    play,
-    addToQueue,
-    playNext,
-    clearQueue,
-    toggleShuffle,
-    cycleRepeat,
-    toggleVideo,
-    toggleLeftSidebar,
-    toggleRightSidebar,
-    toggleSettings,
-    shuffleMode,
-    repeatMode,
-    isVideoEnabled,
-    recentlyPlayed,
-    showToast,
-  } = usePlayerStore();
+  const commandPaletteOpen = usePlayerStore((s) => s.commandPaletteOpen);
+  const toggleCommandPalette = usePlayerStore((s) => s.toggleCommandPalette);
+  const play = usePlayerStore((s) => s.play);
+  const addToQueue = usePlayerStore((s) => s.addToQueue);
+  const playNext = usePlayerStore((s) => s.playNext);
+  const clearQueue = usePlayerStore((s) => s.clearQueue);
+  const toggleShuffle = usePlayerStore((s) => s.toggleShuffle);
+  const cycleRepeat = usePlayerStore((s) => s.cycleRepeat);
+  const toggleVideo = usePlayerStore((s) => s.toggleVideo);
+  const toggleSettings = usePlayerStore((s) => s.toggleSettings);
+  const toggleZenMode = usePlayerStore((s) => s.toggleZenMode);
+  const toggleAmbientVisualizer = usePlayerStore((s) => s.toggleAmbientVisualizer);
+  const shuffleMode = usePlayerStore((s) => s.shuffleMode);
+  const repeatMode = usePlayerStore((s) => s.repeatMode);
+  const isVideoEnabled = usePlayerStore((s) => s.isVideoEnabled);
+  const zenMode = usePlayerStore((s) => s.zenMode);
+  const ambientVisualizerEnabled = usePlayerStore((s) => s.ambientVisualizerEnabled);
+  const recentlyPlayed = usePlayerStore((s) => s.recentlyPlayed);
+  const showToast = usePlayerStore((s) => s.showToast);
 
   const [query, setQuery] = useState('');
   const [scope, setScope] = useState<'all' | 'youtube' | 'local' | 'actions'>('all');
   const [ytResults, setYtResults] = useState<Track[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSmartProcessing, setIsSmartProcessing] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [playlistTrack, setPlaylistTrack] = useState<Track | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  // App actions
-  const actions: AppAction[] = [
-    {
-      id: 'open-settings',
-      label: 'Open Settings & Data Safety',
-      action: () => toggleSettings(),
-    },
-    {
-      id: 'export-backup',
-      label: 'Export Full Library Backup (.json)',
-      action: async () => {
-        try {
-          const b = await exportFullLibrary();
-          showToast(`Exported backup with ${b.summary.playlistCount} playlists & ${b.summary.trackCount} tracks!`);
-        } catch {
-          showToast('Failed to export library');
-        }
+  // App actions — memoized to prevent recreation on every render
+  const actions: AppAction[] = useMemo(
+    () => [
+      {
+        id: 'toggle-zen-mode',
+        label: `Toggle Zen Focus Mode (${zenMode ? 'Exit' : 'Enter'})`,
+        shortcut: 'Z',
+        action: () => toggleZenMode(),
       },
-    },
-    {
-      id: 'toggle-video',
-      label: `Toggle Video PiP (${isVideoEnabled ? 'On' : 'Off'})`,
-      shortcut: 'V',
-      action: () => toggleVideo(),
-    },
-    {
-      id: 'toggle-shuffle',
-      label: `Toggle Shuffle (${shuffleMode ? 'On' : 'Off'})`,
-      shortcut: 'S',
-      action: () => toggleShuffle(),
-    },
-    {
-      id: 'cycle-repeat',
-      label: `Cycle Repeat (${repeatMode.toUpperCase()})`,
-      shortcut: 'R',
-      action: () => cycleRepeat(),
-    },
-    {
-      id: 'clear-queue',
-      label: 'Clear Up Next Queue',
-      action: () => {
-        clearQueue();
-        showToast('Queue cleared');
+      {
+        id: 'toggle-visualizer',
+        label: `Toggle Ambient Visualizer (${ambientVisualizerEnabled ? 'On' : 'Off'})`,
+        action: () => toggleAmbientVisualizer(),
       },
-    },
-  ];
+      {
+        id: 'open-settings',
+        label: 'Open Settings & Data Safety',
+        action: () => toggleSettings(),
+      },
+      {
+        id: 'export-backup',
+        label: 'Export Full Library Backup (.json)',
+        action: async () => {
+          try {
+            const b = await exportFullLibrary();
+            showToast(`Exported backup with ${b.summary.playlistCount} playlists & ${b.summary.trackCount} tracks!`);
+          } catch {
+            showToast('Failed to export library');
+          }
+        },
+      },
+      {
+        id: 'toggle-video',
+        label: `Toggle Video Mode (${isVideoEnabled ? 'On' : 'Off'})`,
+        shortcut: 'V',
+        action: () => toggleVideo(),
+      },
+      {
+        id: 'toggle-shuffle',
+        label: `Toggle Shuffle (${shuffleMode ? 'On' : 'Off'})`,
+        shortcut: 'S',
+        action: () => toggleShuffle(),
+      },
+      {
+        id: 'cycle-repeat',
+        label: `Cycle Repeat (${repeatMode.toUpperCase()})`,
+        shortcut: 'R',
+        action: () => cycleRepeat(),
+      },
+      {
+        id: 'clear-queue',
+        label: 'Clear Up Next Queue',
+        action: () => {
+          clearQueue();
+          showToast('Queue cleared');
+        },
+      },
+    ],
+    [
+      zenMode,
+      toggleZenMode,
+      ambientVisualizerEnabled,
+      toggleAmbientVisualizer,
+      toggleSettings,
+      isVideoEnabled,
+      toggleVideo,
+      shuffleMode,
+      toggleShuffle,
+      repeatMode,
+      cycleRepeat,
+      clearQueue,
+      showToast,
+    ]
+  );
 
   // Local tracks search
   const localTracks = useLiveQuery(async () => {
@@ -100,10 +186,13 @@ export function CommandPalette() {
       .toArray();
   }, [query]);
 
+  // Check for smart URL in query
+  const smartUrl = useMemo(() => detectOmniboxUrl(query), [query]);
+
   // YouTube search
   const searchYouTube = useCallback(
     debounce(async (q: string) => {
-      if (!q.trim() || q.trim().length < 2) {
+      if (!q.trim() || q.trim().length < 2 || detectOmniboxUrl(q)) {
         setYtResults([]);
         setIsLoading(false);
         return;
@@ -132,6 +221,12 @@ export function CommandPalette() {
   );
 
   useEffect(() => {
+    if (smartUrl) {
+      setYtResults([]);
+      setIsLoading(false);
+      return;
+    }
+
     if (scope === 'all' || scope === 'youtube') {
       if (query.trim().length >= 2) {
         setIsLoading(true);
@@ -144,7 +239,7 @@ export function CommandPalette() {
       setYtResults([]);
       setIsLoading(false);
     }
-  }, [query, scope, searchYouTube]);
+  }, [query, scope, searchYouTube, smartUrl]);
 
   // Reset and auto-focus
   useEffect(() => {
@@ -152,52 +247,196 @@ export function CommandPalette() {
       setQuery('');
       setActiveIndex(0);
       setScope('all');
+      setIsSmartProcessing(false);
       setTimeout(() => inputRef.current?.focus(), 60);
     }
   }, [commandPaletteOpen]);
 
+  // Smart URL action executors
+  const handleExecuteSmartUrl = useCallback(
+    async (parsed: NonNullable<typeof smartUrl>) => {
+      setIsSmartProcessing(true);
+      try {
+        if (parsed.type === 'youtube-video') {
+          showToast('Loading YouTube video...');
+          const fallbackTrack: Track = {
+            id: parsed.id,
+            title: `YouTube Track (${parsed.id})`,
+            artist: 'YouTube',
+            duration: 0,
+            thumbnailUrl: `https://i.ytimg.com/vi/${parsed.id}/hqdefault.jpg`,
+            addedAt: Date.now(),
+          };
+
+          // Check if already in indexedDB
+          const existing = await db.tracks.get(parsed.id);
+          const trackToPlay = existing || fallbackTrack;
+          play(trackToPlay);
+          toggleCommandPalette();
+
+          // Background enrichment of metadata
+          fetch(`/api/search?q=${parsed.id}`)
+            .then((r) => r.json())
+            .then((data) => {
+              const matched = data.tracks?.[0] || data.results?.[0];
+              if (matched && matched.title) {
+                db.tracks.put(matched).catch(() => {});
+                usePlayerStore.setState((s) => ({
+                  currentTrack: s.currentTrack?.id === parsed.id ? matched : s.currentTrack,
+                }));
+              }
+            })
+            .catch(() => {});
+        } else if (parsed.type === 'youtube-playlist') {
+          showToast('Fetching YouTube playlist...');
+          const res = await fetch(`/api/playlist?url=${encodeURIComponent(parsed.rawUrl)}`);
+          const data = await res.json();
+          if (!res.ok || !data.tracks || data.tracks.length === 0) {
+            throw new Error(data.error || 'No tracks found in playlist');
+          }
+
+          await db.tracks.bulkPut(data.tracks);
+          const newPl: Playlist = {
+            id: uuid(),
+            name: data.title || 'Imported Playlist',
+            description: data.author ? `From ${data.author}` : 'Imported via Search',
+            trackIds: data.tracks.map((t: Track) => t.id),
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          };
+          await db.playlists.add(newPl);
+          play(data.tracks[0], data.tracks);
+          showToast(`Imported & Playing "${newPl.name}" (${data.tracks.length} tracks)!`);
+          toggleCommandPalette();
+        } else if (parsed.type === 'spotify') {
+          showToast(`Importing Spotify ${parsed.mediaType}...`);
+          const res = await fetch(`/api/spotify?url=${encodeURIComponent(parsed.rawUrl)}`);
+          const data = await res.json();
+          if (!res.ok || !data.tracks || data.tracks.length === 0) {
+            throw new Error(data.error || 'Failed to fetch Spotify playlist');
+          }
+
+          const resolveRes = await fetch('/api/spotify/resolve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ queries: data.tracks.slice(0, 15) }),
+          });
+          const resolveData = await resolveRes.json();
+          const matchedTracks = (resolveData.matches || []).filter(Boolean) as Track[];
+
+          if (matchedTracks.length === 0) {
+            throw new Error('Could not match tracks on YouTube');
+          }
+
+          await db.tracks.bulkPut(matchedTracks);
+          const newPl: Playlist = {
+            id: uuid(),
+            name: data.name || `Spotify ${parsed.mediaType}`,
+            description: `Imported from Spotify (${matchedTracks.length} tracks)`,
+            trackIds: matchedTracks.map((t) => t.id),
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          };
+          await db.playlists.add(newPl);
+          play(matchedTracks[0], matchedTracks);
+          showToast(`Imported & Playing "${newPl.name}"!`);
+          toggleCommandPalette();
+        }
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Failed to load URL';
+        showToast(`Smart Import Error: ${msg}`);
+      } finally {
+        setIsSmartProcessing(false);
+      }
+    },
+    [play, showToast, toggleCommandPalette]
+  );
+
   interface ListItem {
     id: string;
-    section: 'Actions' | 'Recently Played' | 'Library' | 'YouTube Search';
-    type: 'action' | 'track';
+    section: 'Smart Action' | 'Actions' | 'Recently Played' | 'Library' | 'YouTube Search';
+    type: 'smart-action' | 'action' | 'track';
     action?: AppAction;
     track?: Track;
+    smartData?: {
+      title: string;
+      subtitle: string;
+      iconType: 'youtube' | 'playlist' | 'spotify';
+      execute: () => Promise<void>;
+    };
   }
 
   const filteredActions = query.trim()
     ? actions.filter((a) => a.label.toLowerCase().includes(query.toLowerCase()))
     : actions;
 
-  const items: ListItem[] = [];
+  const items: ListItem[] = useMemo(() => {
+    const list: ListItem[] = [];
 
-  if (!query.trim()) {
-    if (scope === 'all' || scope === 'actions') {
-      filteredActions.slice(0, 3).forEach((a) => {
-        items.push({ id: `act-${a.id}`, section: 'Actions', type: 'action', action: a });
+    // 0. Smart URL Omnibox Action
+    if (smartUrl) {
+      let title = '';
+      let subtitle = '';
+      let iconType: 'youtube' | 'playlist' | 'spotify' = 'youtube';
+
+      if (smartUrl.type === 'youtube-video') {
+        title = `Play YouTube Video (${smartUrl.id})`;
+        subtitle = 'Directly load and start playback from YouTube';
+        iconType = 'youtube';
+      } else if (smartUrl.type === 'youtube-playlist') {
+        title = 'Import & Play YouTube Playlist';
+        subtitle = `Load all tracks from playlist and add to queue`;
+        iconType = 'playlist';
+      } else if (smartUrl.type === 'spotify') {
+        title = `Import & Play Spotify ${smartUrl.mediaType.toUpperCase()}`;
+        subtitle = `Resolve tracks via YouTube and play instantly`;
+        iconType = 'spotify';
+      }
+
+      list.push({
+        id: 'smart-url-action',
+        section: 'Smart Action',
+        type: 'smart-action',
+        smartData: {
+          title,
+          subtitle,
+          iconType,
+          execute: () => handleExecuteSmartUrl(smartUrl),
+        },
       });
+      return list;
     }
-    if ((scope === 'all' || scope === 'local') && recentlyPlayed.length > 0) {
-      recentlyPlayed.slice(0, 8).forEach((t) => {
-        items.push({ id: `recent-${t.id}`, section: 'Recently Played', type: 'track', track: t });
-      });
+
+    if (!query.trim()) {
+      if (scope === 'all' || scope === 'actions') {
+        filteredActions.slice(0, 4).forEach((a) => {
+          list.push({ id: `act-${a.id}`, section: 'Actions', type: 'action', action: a });
+        });
+      }
+      if ((scope === 'all' || scope === 'local') && recentlyPlayed.length > 0) {
+        recentlyPlayed.slice(0, 8).forEach((t) => {
+          list.push({ id: `recent-${t.id}`, section: 'Recently Played', type: 'track', track: t });
+        });
+      }
+    } else {
+      if (scope === 'all' || scope === 'actions') {
+        filteredActions.forEach((a) => {
+          list.push({ id: `act-${a.id}`, section: 'Actions', type: 'action', action: a });
+        });
+      }
+      if ((scope === 'all' || scope === 'local') && localTracks && localTracks.length > 0) {
+        localTracks.forEach((t) => {
+          list.push({ id: `local-${t.id}`, section: 'Library', type: 'track', track: t });
+        });
+      }
+      if ((scope === 'all' || scope === 'youtube') && ytResults.length > 0) {
+        ytResults.forEach((t) => {
+          list.push({ id: `yt-${t.id}`, section: 'YouTube Search', type: 'track', track: t });
+        });
+      }
     }
-  } else {
-    if (scope === 'all' || scope === 'actions') {
-      filteredActions.forEach((a) => {
-        items.push({ id: `act-${a.id}`, section: 'Actions', type: 'action', action: a });
-      });
-    }
-    if ((scope === 'all' || scope === 'local') && localTracks && localTracks.length > 0) {
-      localTracks.forEach((t) => {
-        items.push({ id: `local-${t.id}`, section: 'Library', type: 'track', track: t });
-      });
-    }
-    if ((scope === 'all' || scope === 'youtube') && ytResults.length > 0) {
-      ytResults.forEach((t) => {
-        items.push({ id: `yt-${t.id}`, section: 'YouTube Search', type: 'track', track: t });
-      });
-    }
-  }
+    return list;
+  }, [smartUrl, query, scope, filteredActions, recentlyPlayed, localTracks, ytResults, handleExecuteSmartUrl]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown') {
@@ -210,7 +449,9 @@ export function CommandPalette() {
       e.preventDefault();
       const current = items[activeIndex];
       if (!current) return;
-      if (current.type === 'action' && current.action) {
+      if (current.type === 'smart-action' && current.smartData) {
+        current.smartData.execute();
+      } else if (current.type === 'action' && current.action) {
         current.action.action();
         toggleCommandPalette();
       } else if (current.type === 'track' && current.track) {
@@ -233,23 +474,25 @@ export function CommandPalette() {
 
   if (!commandPaletteOpen) return null;
 
+  const activeItemId = items[activeIndex] ? `cmd-item-${items[activeIndex].id}` : undefined;
+
   return (
     <>
       <div className="fixed inset-0 z-[200] flex items-start justify-center pt-16 px-4" role="presentation">
         {/* Backdrop */}
-        <div className="fixed inset-0 bg-black/75 backdrop-blur-md" onClick={toggleCommandPalette} aria-hidden="true" />
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-xl" onClick={toggleCommandPalette} aria-hidden="true" />
 
         {/* Modal Container */}
         <div
-          className="relative w-full max-w-2xl rounded-2xl border border-[#27272f] bg-[#0c0c10] shadow-2xl overflow-hidden flex flex-col backdrop-blur-2xl text-white select-none"
+          className="relative w-full max-w-2xl rounded-3xl border border-white/[0.1] bg-[#09090d]/95 shadow-[0_25px_70px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col backdrop-blur-2xl text-white select-none"
           role="combobox"
           aria-expanded="true"
           aria-haspopup="listbox"
           aria-label="Command palette"
         >
           {/* Input Header */}
-          <div className="flex items-center gap-3 px-4 py-3.5 border-b border-[#222228] bg-[#121218]">
-            {isLoading ? (
+          <div className="flex items-center gap-3 px-5 py-4 border-b border-white/[0.06] bg-[#0d0d12]/80">
+            {isLoading || isSmartProcessing ? (
               <Loader2 size={18} className="text-zinc-400 animate-spin shrink-0" />
             ) : (
               <Search size={18} className="text-zinc-400 shrink-0" />
@@ -263,212 +506,286 @@ export function CommandPalette() {
                 setActiveIndex(0);
               }}
               onKeyDown={handleKeyDown}
-              placeholder="Search songs, artists, library, actions..."
+              placeholder="Search tracks, library, actions, or paste YouTube/Spotify links…"
               aria-label="Search query input"
               aria-autocomplete="list"
+              aria-activedescendant={activeItemId}
               className="flex-1 bg-transparent text-white placeholder-zinc-500 text-sm focus:outline-none"
             />
-            <kbd className="px-2 py-0.5 text-[10px] rounded bg-[#1e1e24] border border-zinc-700 text-zinc-400 font-mono-time shrink-0">
+            <kbd className="px-2 py-0.5 text-[10px] rounded-lg bg-white/[0.06] border border-white/[0.08] text-zinc-400 font-mono shrink-0">
               ESC
             </kbd>
           </div>
 
-          {/* Scope Filters */}
-          <div className="flex items-center px-4 border-b border-[#1e1e24] bg-[#0f0f14] text-xs" role="tablist">
-            {[
-              { key: 'all', label: 'All Results' },
-              { key: 'youtube', label: 'YouTube' },
-              { key: 'local', label: 'Library' },
-              { key: 'actions', label: 'Commands' },
-            ].map(({ key, label }) => (
-              <button
-                key={key}
-                onClick={() => {
-                  setScope(key as typeof scope);
-                  setActiveIndex(0);
-                }}
-                role="tab"
-                aria-selected={scope === key}
-                className={cn(
-                  'px-3 py-2.5 border-b-2 font-medium transition-colors',
-                  scope === key
-                    ? 'border-white text-white'
-                    : 'border-transparent text-zinc-500 hover:text-zinc-300'
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          {/* Scope Filters (Only if no smart URL active) */}
+          {!smartUrl && (
+            <div className="flex items-center px-4 border-b border-white/[0.06] bg-[#09090d] text-xs" role="tablist">
+              {[
+                { key: 'all', label: 'All Results' },
+                { key: 'youtube', label: 'YouTube' },
+                { key: 'local', label: 'Library' },
+                { key: 'actions', label: 'Commands' },
+              ].map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => {
+                    setScope(key as typeof scope);
+                    setActiveIndex(0);
+                  }}
+                  role="tab"
+                  aria-selected={scope === key}
+                  className={cn(
+                    'px-3 py-2.5 border-b-2 font-medium transition-colors cursor-pointer',
+                    scope === key
+                      ? 'border-white text-white'
+                      : 'border-transparent text-zinc-500 hover:text-zinc-300'
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Results List */}
           <div
             ref={listRef}
             role="listbox"
-            className="max-h-[420px] overflow-y-auto py-2 divide-y divide-[#1e1e24]/50"
+            aria-label="Command and search results"
+            className="max-h-[420px] overflow-y-auto py-2 divide-y divide-white/[0.04]"
           >
-            {items.length === 0 ? (
-              <div className="py-12 text-center text-zinc-500 text-xs">
-                {isLoading ? 'Searching YouTube Music...' : query ? 'No tracks found' : 'Type to search tracks or commands'}
+            {isLoading && items.length === 0 ? (
+              <div className="py-2 px-2 space-y-1">
+                <div className="px-2.5 py-1 text-[10px] font-bold text-zinc-500 uppercase tracking-wider font-sans flex items-center gap-1.5">
+                  <Loader2 size={11} className="animate-spin text-zinc-400" />
+                  <span>Searching YouTube catalog…</span>
+                </div>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <CommandPaletteSkeletonItem key={`cmd-skel-${i}`} />
+                ))}
+              </div>
+            ) : items.length === 0 ? (
+              <div className="py-14 text-center text-zinc-500 text-xs">
+                {query ? 'No results found' : 'Type to search tracks or commands'}
               </div>
             ) : (
-              (['Actions', 'Recently Played', 'Library', 'YouTube Search'] as const).map((sectionName) => {
-                const sectionItems = items.filter((item) => item.section === sectionName);
-                if (sectionItems.length === 0) return null;
+              (['Smart Action', 'Actions', 'Recently Played', 'Library', 'YouTube Search'] as const).map(
+                (sectionName) => {
+                  const sectionItems = items.filter((item) => item.section === sectionName);
+                  if (sectionItems.length === 0) return null;
 
-                return (
-                  <div key={sectionName} className="py-1.5 px-2">
-                    <div className="px-2.5 py-1 text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
-                      {sectionName}
-                    </div>
-                    <div className="space-y-1 mt-1">
-                      {sectionItems.map((item) => {
-                        const itemGlobalIndex = items.indexOf(item);
-                        const isSelected = itemGlobalIndex === activeIndex;
+                  return (
+                    <div key={sectionName} className="py-1.5 px-2">
+                      <div className="px-2.5 py-1 text-[10px] font-bold text-zinc-500 uppercase tracking-wider font-sans">
+                        {sectionName}
+                      </div>
+                      <div className="space-y-1 mt-1">
+                        {sectionItems.map((item) => {
+                          const itemGlobalIndex = items.indexOf(item);
+                          const isSelected = itemGlobalIndex === activeIndex;
+                          const itemId = `cmd-item-${item.id}`;
 
-                        if (item.type === 'action' && item.action) {
-                          return (
-                            <button
-                              key={item.id}
-                              onClick={() => {
-                                item.action!.action();
-                                toggleCommandPalette();
-                              }}
-                              onMouseEnter={() => setActiveIndex(itemGlobalIndex)}
-                              role="option"
-                              aria-selected={isSelected}
-                              className={cn(
-                                'w-full flex items-center justify-between px-3 py-2 rounded-lg text-left text-xs transition-colors',
-                                isSelected ? 'bg-[#1e1e26] text-white' : 'text-zinc-300 hover:bg-[#14141a]'
-                              )}
-                            >
-                              <div className="flex items-center gap-2.5">
-                                <Zap size={14} className={isSelected ? 'text-white' : 'text-zinc-500'} />
-                                <span>{item.action.label}</span>
-                              </div>
-                              {item.action.shortcut && (
-                                <kbd className="px-1.5 py-0.5 text-[10px] rounded bg-[#27272f] border border-zinc-700 text-zinc-300 font-mono-time">
-                                  {item.action.shortcut}
+                          // 1. Smart Omnibox URL Item
+                          if (item.type === 'smart-action' && item.smartData) {
+                            return (
+                              <button
+                                key={item.id}
+                                id={itemId}
+                                onClick={() => item.smartData!.execute()}
+                                onMouseEnter={() => setActiveIndex(itemGlobalIndex)}
+                                role="option"
+                                aria-selected={isSelected}
+                                disabled={isSmartProcessing}
+                                className={cn(
+                                  'w-full flex items-center justify-between p-3 rounded-2xl text-left transition-all border cursor-pointer',
+                                  isSelected
+                                    ? 'bg-white/[0.1] border-white/30 text-white shadow-lg'
+                                    : 'bg-white/[0.03] border-white/[0.08] text-zinc-200 hover:bg-white/[0.06]'
+                                )}
+                              >
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <div className="w-10 h-10 rounded-xl bg-white/[0.06] border border-white/[0.1] flex items-center justify-center shrink-0 text-white">
+                                    {isSmartProcessing ? (
+                                      <Loader2 size={18} className="animate-spin" />
+                                    ) : item.smartData.iconType === 'spotify' ? (
+                                      <Radio size={18} className="text-emerald-400" />
+                                    ) : item.smartData.iconType === 'playlist' ? (
+                                      <ListPlus size={18} className="text-white" />
+                                    ) : (
+                                      <Play size={18} className="text-white fill-white" />
+                                    )}
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-xs font-semibold text-white truncate flex items-center gap-1.5">
+                                      <span>{item.smartData.title}</span>
+                                      <Sparkles size={11} className="text-amber-400" />
+                                    </p>
+                                    <p className="text-[11px] text-zinc-400 truncate mt-0.5">
+                                      {item.smartData.subtitle}
+                                    </p>
+                                  </div>
+                                </div>
+                                <kbd className="px-2 py-1 text-[10px] rounded-lg bg-white text-black font-semibold shadow-sm shrink-0 ml-3">
+                                  ENTER ↵
                                 </kbd>
-                              )}
-                            </button>
-                          );
-                        }
+                              </button>
+                            );
+                          }
 
-                        if (item.type === 'track' && item.track) {
-                          const t = item.track;
-                          return (
-                            <div
-                              key={item.id}
-                              onMouseEnter={() => setActiveIndex(itemGlobalIndex)}
-                              role="option"
-                              aria-selected={isSelected}
-                              className={cn(
-                                'w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors group',
-                                isSelected ? 'bg-[#1e1e26] text-white' : 'text-zinc-300 hover:bg-[#14141a]'
-                              )}
-                            >
-                              {/* Left track preview */}
-                              <div
+                          // 2. Action Item
+                          if (item.type === 'action' && item.action) {
+                            return (
+                              <button
+                                key={item.id}
+                                id={itemId}
                                 onClick={() => {
-                                  play(t);
+                                  item.action!.action();
                                   toggleCommandPalette();
                                 }}
-                                className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
+                                onMouseEnter={() => setActiveIndex(itemGlobalIndex)}
+                                role="option"
+                                aria-selected={isSelected}
+                                className={cn(
+                                  'w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-xs transition-all cursor-pointer',
+                                  isSelected ? 'bg-white/[0.08] text-white border border-white/[0.12]' : 'text-zinc-300 hover:bg-white/[0.03] border border-transparent'
+                                )}
                               >
-                                <TrackArtwork track={t} size="sm" rounded="md" />
-
-                                <div className="min-w-0 flex-1">
-                                  <p className="text-xs font-medium truncate">{t.title}</p>
-                                  <p className="text-[11px] text-zinc-400 truncate">{t.artist}</p>
+                                <div className="flex items-center gap-2.5">
+                                  <Zap size={14} className={isSelected ? 'text-white' : 'text-zinc-500'} />
+                                  <span>{item.action.label}</span>
                                 </div>
-                              </div>
+                                {item.action.shortcut && (
+                                  <kbd className="px-1.5 py-0.5 text-[10px] rounded-md bg-white/[0.06] border border-white/[0.08] text-zinc-300 font-mono">
+                                    {item.action.shortcut}
+                                  </kbd>
+                                )}
+                              </button>
+                            );
+                          }
 
-                              {/* Right Actions: Duration + Play Now + Add to Queue + Add to Playlist */}
-                              <div className="flex items-center gap-2 shrink-0 ml-3">
-                                <span className="font-mono-time text-[11px] text-zinc-500 mr-1">
-                                  {formatTime(t.duration)}
-                                </span>
-
-                                {/* 1. Play Now */}
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
+                          // 3. Track Item
+                          if (item.type === 'track' && item.track) {
+                            const t = item.track;
+                            return (
+                              <div
+                                key={item.id}
+                                id={itemId}
+                                onMouseEnter={() => setActiveIndex(itemGlobalIndex)}
+                                role="option"
+                                aria-selected={isSelected}
+                                className={cn(
+                                  'w-full flex items-center justify-between px-3 py-2 rounded-xl transition-all group',
+                                  isSelected ? 'bg-white/[0.08] text-white border border-white/[0.12]' : 'text-zinc-300 hover:bg-white/[0.03] border border-transparent'
+                                )}
+                              >
+                                {/* Left track preview */}
+                                <div
+                                  onClick={() => {
                                     play(t);
                                     toggleCommandPalette();
                                   }}
-                                  aria-label={`Play ${t.title} now`}
-                                  className="flex items-center gap-1 px-2 py-1 rounded bg-white text-black text-[11px] font-semibold hover:bg-zinc-200 transition-colors shadow-sm"
-                                  title="Play Now"
+                                  className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
                                 >
-                                  <Play size={11} fill="currentColor" />
-                                  <span>Play</span>
-                                </button>
+                                  <TrackArtwork track={t} size="sm" rounded="lg" />
 
-                                {/* 2. Play Next (After active song) */}
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    playNext(t);
-                                    showToast(`"${t.title}" will play next after active song`);
-                                  }}
-                                  aria-label={`Play ${t.title} next`}
-                                  className="flex items-center gap-1 px-2 py-1 rounded bg-[#27272f] hover:bg-zinc-700 text-emerald-300 text-[11px] font-medium transition-colors border border-zinc-700/60"
-                                  title="Play Next (after active song)"
-                                >
-                                  <ListStart size={12} />
-                                  <span>Next</span>
-                                </button>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-xs font-medium truncate">{t.title}</p>
+                                    <p className="text-[11px] text-zinc-400 truncate">{t.artist}</p>
+                                  </div>
+                                </div>
 
-                                {/* 3. Add to Queue */}
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    addToQueue(t);
-                                    showToast(`Added "${t.title}" to end of Queue`);
-                                  }}
-                                  aria-label={`Add ${t.title} to Queue`}
-                                  className="flex items-center gap-1 px-2 py-1 rounded bg-[#27272f] hover:bg-zinc-700 text-zinc-200 text-[11px] font-medium transition-colors border border-zinc-700/60"
-                                  title="Add to end of Queue"
-                                >
-                                  <Plus size={12} />
-                                  <span>Queue</span>
-                                </button>
+                                {/* Right Actions: Duration + Play Now + Add to Queue + Add to Playlist */}
+                                <div className="flex items-center gap-2 shrink-0 ml-3">
+                                  <span className="font-mono text-[11px] text-zinc-500 mr-1">
+                                    {formatTime(t.duration)}
+                                  </span>
 
-                                {/* 4. Add to Playlist */}
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setPlaylistTrack(t);
-                                  }}
-                                  aria-label={`Add ${t.title} to Playlist`}
-                                  className="p-1.5 rounded bg-[#27272f] hover:bg-zinc-700 text-zinc-300 hover:text-white transition-colors border border-zinc-700/60"
-                                  title="Add to Playlist"
-                                >
-                                  <ListPlus size={13} />
-                                </button>
+                                  {/* 1. Play Now */}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      play(t);
+                                      toggleCommandPalette();
+                                    }}
+                                    aria-label={`Play ${t.title} now`}
+                                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white text-black text-[11px] font-semibold hover:bg-zinc-200 transition-all shadow-sm cursor-pointer"
+                                    title="Play Now"
+                                  >
+                                    <Play size={11} fill="currentColor" />
+                                    <span>Play</span>
+                                  </button>
+
+                                  {/* 2. Play Next */}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      playNext(t);
+                                      showToast(`"${t.title}" will play next`);
+                                    }}
+                                    aria-label={`Play ${t.title} next`}
+                                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-zinc-200 text-[11px] font-medium transition-all border border-white/[0.08] cursor-pointer"
+                                    title="Play Next"
+                                  >
+                                    <ListStart size={12} />
+                                    <span>Next</span>
+                                  </button>
+
+                                  {/* 3. Add to Queue */}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      addToQueue(t);
+                                      showToast(`Added "${t.title}" to Queue`);
+                                    }}
+                                    aria-label={`Add ${t.title} to Queue`}
+                                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-zinc-200 text-[11px] font-medium transition-all border border-white/[0.08] cursor-pointer"
+                                    title="Add to end of Queue"
+                                  >
+                                    <Plus size={12} />
+                                    <span>Queue</span>
+                                  </button>
+
+                                  {/* 4. Add to Playlist */}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setPlaylistTrack(t);
+                                    }}
+                                    aria-label={`Add ${t.title} to Playlist`}
+                                    className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 hover:text-white transition-all border border-white/[0.08] cursor-pointer"
+                                    title="Add to Playlist"
+                                  >
+                                    <ListPlus size={13} />
+                                  </button>
+                                </div>
                               </div>
-                            </div>
-                          );
-                        }
+                            );
+                          }
 
-                        return null;
-                      })}
+                          return null;
+                        })}
+                      </div>
                     </div>
-                  </div>
-                );
-              })
+                  );
+                }
+              )
             )}
           </div>
 
           {/* Footer Hints */}
-          <div className="flex items-center justify-between px-4 py-2.5 border-t border-[#1e1e24] bg-[#0e0e13] text-[11px] text-zinc-500">
+          <div className="flex items-center justify-between px-5 py-3 border-t border-white/[0.06] bg-[#060609]/90 text-[11px] text-zinc-500">
             <div className="flex items-center gap-3">
-              <span><kbd className="font-mono-time text-zinc-400">↑↓</kbd> Navigate</span>
-              <span><kbd className="font-mono-time text-zinc-400">↵</kbd> Play</span>
-              <span><kbd className="font-mono-time text-zinc-400">ESC</kbd> Close</span>
+              <span>
+                <kbd className="font-mono text-zinc-400">↑↓</kbd> Navigate
+              </span>
+              <span>
+                <kbd className="font-mono text-zinc-400">↵</kbd> Play / Open
+              </span>
+              <span>
+                <kbd className="font-mono text-zinc-400">ESC</kbd> Close
+              </span>
             </div>
-            <span className="text-[10px] text-zinc-500">Search with 1-click Queue & Playlist</span>
+            <span className="text-[10px] text-zinc-500">Paste YouTube / Spotify link for instant play</span>
           </div>
         </div>
       </div>

@@ -35,8 +35,8 @@ export function parseSpotifyUrl(input: string): ParsedSpotifyUrl | null {
     };
   }
 
-  // 2. HTTP URL match: https://open.spotify.com/playlist/ID?si=...
-  const urlMatch = trimmed.match(/https?:\/\/(?:open\.)?spotify\.com\/(playlist|album|track)\/([a-zA-Z0-9]{15,30})/);
+  // 2. HTTP URL match: https://open.spotify.com/playlist/ID?si=... or https://open.spotify.com/intl-es/playlist/ID
+  const urlMatch = trimmed.match(/https?:\/\/(?:open\.)?spotify\.com\/(?:intl-[a-z]{2,5}\/)?(playlist|album|track)\/([a-zA-Z0-9]{15,30})/);
   if (urlMatch) {
     const type = urlMatch[1] as 'playlist' | 'album' | 'track';
     const id = urlMatch[2];
@@ -59,15 +59,16 @@ export function parseSpotifyUrl(input: string): ParsedSpotifyUrl | null {
   return null;
 }
 
-/** Optional Fallback: Official Spotify Web API Client Credentials */
-async function fetchViaOfficialApi(type: 'playlist' | 'album' | 'track', id: string): Promise<SpotifyPlaylistPreview | null> {
-  const clientId = process.env.SPOTIFY_CLIENT_ID;
-  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
+// In-memory token cache for official Spotify API
+let cachedSpotifyToken: { token: string; expiresAt: number } | null = null;
 
-  if (!clientId || !clientSecret) return null;
+async function getSpotifyApiToken(clientId: string, clientSecret: string): Promise<string | null> {
+  const now = Date.now();
+  if (cachedSpotifyToken && cachedSpotifyToken.expiresAt > now + 60_000) {
+    return cachedSpotifyToken.token;
+  }
 
   try {
-    // 1. Get access token
     const tokenRes = await fetch('https://accounts.spotify.com/api/token', {
       method: 'POST',
       headers: {
@@ -80,6 +81,26 @@ async function fetchViaOfficialApi(type: 'playlist' | 'album' | 'track', id: str
     if (!tokenRes.ok) return null;
     const tokenData = await tokenRes.json();
     const token = tokenData.access_token;
+    const expiresIn = typeof tokenData.expires_in === 'number' ? tokenData.expires_in : 3600;
+    if (token) {
+      cachedSpotifyToken = { token, expiresAt: now + expiresIn * 1000 };
+      return token;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+/** Optional Fallback: Official Spotify Web API Client Credentials */
+async function fetchViaOfficialApi(type: 'playlist' | 'album' | 'track', id: string): Promise<SpotifyPlaylistPreview | null> {
+  const clientId = process.env.SPOTIFY_CLIENT_ID;
+  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret) return null;
+
+  try {
+    const token = await getSpotifyApiToken(clientId, clientSecret);
     if (!token) return null;
 
     const headers = { Authorization: `Bearer ${token}` };

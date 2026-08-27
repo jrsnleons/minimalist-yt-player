@@ -5,7 +5,8 @@ import { cn } from '@/lib/utils';
 import { X } from 'lucide-react';
 
 export function Toast() {
-  const { toastMessage, dismissToast } = usePlayerStore();
+  const toastMessage = usePlayerStore((s) => s.toastMessage);
+  const dismissToast = usePlayerStore((s) => s.dismissToast);
 
   if (!toastMessage) return null;
 
@@ -29,7 +30,7 @@ export function Toast() {
       <button
         onClick={dismissToast}
         aria-label="Dismiss notification"
-        className="p-0.5 text-zinc-400 hover:text-white transition-opacity rounded"
+        className="p-0.5 text-zinc-400 hover:text-white transition-opacity rounded cursor-pointer"
       >
         <X size={14} />
       </button>

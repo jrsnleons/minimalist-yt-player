@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ListMusic, Sparkles, Filter, Trash2, Plus, GripVertical } from 'lucide-react';
+import { ListMusic, Sparkles, Trash2, Plus, GripVertical } from 'lucide-react';
 import { TrackArtwork } from '@/components/ui/TrackArtwork';
 import {
   DndContext,
@@ -22,29 +22,45 @@ import { CSS } from '@dnd-kit/utilities';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { formatTime, cn } from '@/lib/utils';
 import { useRadioSuggestions } from '@/hooks/useRadioSuggestions';
+import { useDynamicTrackPalette } from '@/hooks/useDynamicTrackPalette';
 import type { Track } from '@/types';
 
 function SortableTrackItem({ track, index }: { track: Track; index: number }) {
-  const { play, removeFromQueue, currentTrack } = usePlayerStore();
+  const play = usePlayerStore((s) => s.play);
+  const removeFromQueue = usePlayerStore((s) => s.removeFromQueue);
+  const currentTrackId = usePlayerStore((s) => s.currentTrack?.id);
+  const palette = useDynamicTrackPalette(track);
+  const [isHovered, setIsHovered] = useState(false);
+
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: track.id });
 
-  const style = {
+  const isCurrent = currentTrackId === track.id;
+
+  const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.4 : 1,
+    background: isCurrent
+      ? `linear-gradient(90deg, ${palette.accent}33 0%, ${palette.bgFrom}70 40%, rgba(255,255,255,0.03) 100%)`
+      : isHovered
+      ? `linear-gradient(90deg, ${palette.accent}1f 0%, ${palette.bgFrom}40 35%, rgba(255,255,255,0.015) 100%)`
+      : `linear-gradient(90deg, ${palette.accent}0a 0%, transparent 25%)`,
+    borderLeft: isCurrent
+      ? `3px solid ${palette.accent}`
+      : isHovered
+      ? `3px solid ${palette.accent}80`
+      : '3px solid transparent',
   };
-
-  const isCurrent = currentTrack?.id === track.id;
 
   return (
     <li
       ref={setNodeRef}
       style={style}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       className={cn(
-        'flex items-center gap-2 px-2.5 py-1.5 rounded-lg group transition-colors select-none border',
-        isCurrent
-          ? 'bg-[#1e1e24] border-[#3f3f46] text-white'
-          : 'border-transparent hover:bg-[#18181f] text-zinc-300'
+        'flex items-center gap-2 px-2.5 py-1.5 rounded-xl group transition-all select-none border border-transparent overflow-hidden',
+        isCurrent ? 'text-white' : 'text-zinc-300'
       )}
     >
       {/* Drag handle */}
@@ -58,13 +74,15 @@ function SortableTrackItem({ track, index }: { track: Track; index: number }) {
       </button>
 
       {/* Track Thumbnail */}
-      <TrackArtwork track={track} size="sm" rounded="sm" />
+      <div className="shrink-0">
+        <TrackArtwork track={track} size="sm" rounded="sm" />
+      </div>
 
       {/* Track Info */}
       <button
         onClick={() => play(track)}
         aria-label={`Play ${track.title}`}
-        className="flex-1 min-w-0 text-left"
+        className="flex-1 min-w-0 text-left cursor-pointer"
       >
         <p className={cn('text-xs font-medium truncate', isCurrent ? 'text-white font-semibold' : 'text-zinc-200')}>
           {track.title}
@@ -79,7 +97,7 @@ function SortableTrackItem({ track, index }: { track: Track; index: number }) {
       <button
         onClick={() => removeFromQueue(index)}
         aria-label={`Remove ${track.title} from queue`}
-        className="opacity-0 group-hover:opacity-100 p-1 text-zinc-500 hover:text-red-400 transition-all text-xs rounded hover:bg-[#27272f]"
+        className="opacity-0 group-hover:opacity-100 p-1 text-zinc-500 hover:text-red-400 transition-all text-xs rounded hover:bg-[#27272f] cursor-pointer"
       >
         <Trash2 size={12} />
       </button>
@@ -87,12 +105,58 @@ function SortableTrackItem({ track, index }: { track: Track; index: number }) {
   );
 }
 
+function SidebarSuggestionItem({ track, onAdd }: { track: Track; onAdd: () => void }) {
+  const palette = useDynamicTrackPalette(track);
+  const [isHovered, setIsHovered] = useState(false);
+
+  return (
+    <li
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl group transition-all border border-transparent overflow-hidden"
+      style={{
+        background: isHovered
+          ? `linear-gradient(90deg, ${palette.accent}24 0%, ${palette.bgFrom}45 40%, rgba(255,255,255,0.015) 100%)`
+          : `linear-gradient(90deg, ${palette.accent}08 0%, transparent 22%)`,
+        borderColor: isHovered ? `${palette.accent}45` : 'transparent',
+      }}
+    >
+      <div className="shrink-0">
+        <TrackArtwork track={track} size="sm" rounded="sm" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-medium text-zinc-200 group-hover:text-white truncate">{track.title}</p>
+        <p className="text-[10px] text-zinc-500 truncate">{track.artist}</p>
+      </div>
+      <span className="font-mono-time text-[10px] text-zinc-500 shrink-0">
+        {formatTime(track.duration)}
+      </span>
+      <button
+        onClick={onAdd}
+        aria-label={`Add ${track.title} to queue`}
+        className="p-1 rounded text-zinc-400 hover:text-white hover:bg-[#27272f] transition-colors cursor-pointer"
+        title="Add to queue"
+      >
+        <Plus size={13} />
+      </button>
+    </li>
+  );
+}
+
 export function QueueSidebar() {
-  const { rightSidebarOpen, queue, reorderQueue, addToQueue, clearQueue, currentTrack } = usePlayerStore();
-  const [instrumentalOnly, setInstrumentalOnly] = useState(false);
+  const rightSidebarOpen = usePlayerStore((s) => s.rightSidebarOpen);
+  const queue = usePlayerStore((s) => s.queue);
+  const reorderQueue = usePlayerStore((s) => s.reorderQueue);
+  const addToQueue = usePlayerStore((s) => s.addToQueue);
+  const clearQueue = usePlayerStore((s) => s.clearQueue);
+  const currentTrack = usePlayerStore((s) => s.currentTrack);
+
   const [activeTab, setActiveTab] = useState<'queue' | 'suggestions'>('queue');
 
-  const suggestions = useRadioSuggestions(currentTrack?.id, instrumentalOnly, queue.map((t) => t.id));
+  const { suggestions, isLoading, error } = useRadioSuggestions(
+    currentTrack?.id,
+    queue.map((t) => t.id)
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -126,7 +190,7 @@ export function QueueSidebar() {
               aria-selected={activeTab === 'queue'}
               role="tab"
               className={cn(
-                'flex items-center gap-1.5 py-2.5 px-2 text-xs font-semibold border-b-2 transition-colors',
+                'flex items-center gap-1.5 py-2.5 px-2 text-xs font-semibold border-b-2 transition-colors cursor-pointer',
                 activeTab === 'queue'
                   ? 'border-white text-white'
                   : 'border-transparent text-zinc-500 hover:text-zinc-300'
@@ -146,7 +210,7 @@ export function QueueSidebar() {
               aria-selected={activeTab === 'suggestions'}
               role="tab"
               className={cn(
-                'flex items-center gap-1.5 py-2.5 px-2 text-xs font-semibold border-b-2 transition-colors',
+                'flex items-center gap-1.5 py-2.5 px-2 text-xs font-semibold border-b-2 transition-colors cursor-pointer',
                 activeTab === 'suggestions'
                   ? 'border-white text-white'
                   : 'border-transparent text-zinc-500 hover:text-zinc-300'
@@ -161,7 +225,7 @@ export function QueueSidebar() {
             <button
               onClick={clearQueue}
               aria-label="Clear queue"
-              className="text-[11px] text-zinc-500 hover:text-red-400 transition-colors px-1.5 py-1 rounded hover:bg-[#1e1e24]"
+              className="text-[11px] text-zinc-500 hover:text-red-400 transition-colors px-1.5 py-1 rounded hover:bg-[#1e1e24] cursor-pointer"
             >
               Clear
             </button>
@@ -194,34 +258,13 @@ export function QueueSidebar() {
         {/* Tab 2: Suggestions */}
         {activeTab === 'suggestions' && (
           <div className="flex flex-col flex-1 overflow-hidden">
-            {/* Work-Friendly Filter Toggle Bar */}
-            <div className="flex items-center justify-between px-3 py-2 border-b border-[#222228] bg-[#141419]">
-              <div className="flex items-center gap-1.5">
-                <Filter size={12} className="text-zinc-400" />
-                <span className="text-xs text-zinc-300 font-medium">Work-Friendly Only</span>
-              </div>
-              <button
-                onClick={() => setInstrumentalOnly((v) => !v)}
-                aria-pressed={instrumentalOnly}
-                aria-label={instrumentalOnly ? 'Disable work-friendly filter' : 'Enable work-friendly filter'}
-                className={cn(
-                  'px-2 py-0.5 rounded text-[10px] font-semibold tracking-wide uppercase transition-colors',
-                  instrumentalOnly
-                    ? 'bg-white text-black shadow-sm'
-                    : 'bg-[#27272a] text-zinc-400 hover:text-white'
-                )}
-              >
-                {instrumentalOnly ? 'Active' : 'Off'}
-              </button>
-            </div>
-
             <div className="flex-1 overflow-y-auto p-2">
               {!currentTrack ? (
                 <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
                   <Sparkles size={28} className="text-zinc-700 mb-2" />
                   <p className="text-xs text-zinc-400">Play a track to generate context-aware suggestions</p>
                 </div>
-              ) : suggestions.length === 0 ? (
+              ) : isLoading ? (
                 <div className="p-3 space-y-2">
                   {Array.from({ length: 5 }).map((_, i) => (
                     <div key={i} className="flex items-center gap-2.5 p-1.5">
@@ -233,30 +276,22 @@ export function QueueSidebar() {
                     </div>
                   ))}
                 </div>
+              ) : error ? (
+                <div className="py-12 text-center text-xs text-red-400/80">
+                  <p>{error}</p>
+                </div>
+              ) : suggestions.length === 0 ? (
+                <div className="py-12 text-center text-xs text-zinc-500">
+                  <p>No suggestions available for this track.</p>
+                </div>
               ) : (
                 <ul className="space-y-1">
                   {suggestions.map((track) => (
-                    <li
+                    <SidebarSuggestionItem
                       key={track.id}
-                      className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-[#18181f] group transition-colors border border-transparent"
-                    >
-                      <TrackArtwork track={track} size="sm" rounded="sm" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-zinc-200 truncate">{track.title}</p>
-                        <p className="text-[10px] text-zinc-500 truncate">{track.artist}</p>
-                      </div>
-                      <span className="font-mono-time text-[10px] text-zinc-500 shrink-0">
-                        {formatTime(track.duration)}
-                      </span>
-                      <button
-                        onClick={() => addToQueue(track)}
-                        aria-label={`Add ${track.title} to queue`}
-                        className="p-1 rounded text-zinc-400 hover:text-white hover:bg-[#27272f] transition-colors"
-                        title="Add to queue"
-                      >
-                        <Plus size={13} />
-                      </button>
-                    </li>
+                      track={track}
+                      onAdd={() => addToQueue(track)}
+                    />
                   ))}
                 </ul>
               )}

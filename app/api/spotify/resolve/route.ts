@@ -59,8 +59,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       totalCount: resolved.length,
       matchedCount: resolved.filter(Boolean).length,
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error('[api/spotify/resolve] Error:', err);
-    return NextResponse.json({ error: err.message || 'Resolution failed' }, { status: 500 });
+    const message = err instanceof Error ? err.message : 'Resolution failed';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -1,16 +1,142 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import Image from 'next/image';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { TrackRow } from '@/components/playlist/TrackRow';
-import { TrackArtwork } from '@/components/ui/TrackArtwork';
+import { TrackArtwork, getTrackPalette } from '@/components/ui/TrackArtwork';
+import { getCachedPalette, extractPaletteFromImageUrl } from '@/lib/paletteExtractor';
+import {
+  Skeleton,
+  TrackRowSkeleton,
+  PlaylistCardSkeleton,
+} from '@/components/ui/Skeleton';
 import { db } from '@/db/schema';
-import { debounce, uuid, cn } from '@/lib/utils';
-import { Search, Loader2, Music, Download, Play, X, Disc3, Video } from 'lucide-react';
+import { uuid, cn } from '@/lib/utils';
+import {
+  Search,
+  Loader2,
+  Music,
+  Download,
+  Play,
+  X,
+  Disc3,
+  Video,
+  Sparkles,
+  Zap,
+} from 'lucide-react';
 import type { Track, SearchPlaylist, Playlist } from '@/types';
 
 type SearchFilter = 'all' | 'song' | 'video' | 'playlist';
+
+const QUICK_SEARCH_TAGS = [
+  { label: 'Lofi Focus', query: 'lofi hip hop chill beats study' },
+  { label: 'Cyber Synth', query: 'synthwave retrowave darksynth' },
+  { label: 'Midnight Jazz', query: 'dark ambient jazz noir chillout' },
+  { label: 'Acoustic Calm', query: 'acoustic guitar fingerstyle relaxing' },
+  { label: 'Melodic Deep', query: 'melodic deep house chill vocal' },
+  { label: 'Solo Piano', query: 'peaceful solo piano neoclassical' },
+  { label: 'Anime Chill', query: 'lofi anime aesthetic chill soundtrack' },
+  { label: 'Rock Classics', query: 'classic rock live acoustic' },
+];
+
+function SearchPlaylistCard({
+  playlist,
+  isLoading,
+  onPlay,
+  onImport,
+}: {
+  playlist: SearchPlaylist;
+  isLoading: boolean;
+  onPlay: (pl: SearchPlaylist) => void;
+  onImport: (pl: SearchPlaylist) => void;
+}) {
+  const [isHovered, setIsHovered] = useState(false);
+  const palette = useMemo(() => {
+    return getTrackPalette(playlist.title, playlist.author, playlist.id);
+  }, [playlist.title, playlist.author, playlist.id]);
+
+  const [extractedPalette, setExtractedPalette] = useState(() => getCachedPalette(playlist.thumbnailUrl));
+
+  useEffect(() => {
+    if (!playlist.thumbnailUrl) return;
+    const cached = getCachedPalette(playlist.thumbnailUrl);
+    if (cached) {
+      setExtractedPalette(cached);
+      return;
+    }
+    let isMounted = true;
+    extractPaletteFromImageUrl(playlist.thumbnailUrl).then((p) => {
+      if (isMounted && p) setExtractedPalette(p);
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [playlist.thumbnailUrl]);
+
+  const pal = extractedPalette || palette;
+
+  return (
+    <div
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className="flex items-center justify-between p-3 rounded-2xl border transition-all duration-200 group overflow-hidden"
+      style={{
+        background: isHovered
+          ? `linear-gradient(135deg, ${pal.accent}2c 0%, ${pal.bgFrom}65 55%, #0a0a0f 100%)`
+          : `linear-gradient(135deg, ${pal.accent}12 0%, ${pal.bgFrom}25 55%, #0b0b0f 100%)`,
+        borderColor: isHovered ? `${pal.accent}55` : `${pal.accent}20`,
+      }}
+    >
+      <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
+        <div className="shrink-0">
+          <TrackArtwork
+            src={playlist.thumbnailUrl}
+            title={playlist.title}
+            artist={playlist.author}
+            id={playlist.id}
+            size="md"
+            rounded="lg"
+          />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h5 className="text-xs font-semibold text-zinc-200 group-hover:text-white truncate leading-snug">
+            {playlist.title}
+          </h5>
+          <p className="text-[10px] text-zinc-400 truncate mt-0.5 font-sans">
+            {playlist.author}
+          </p>
+        </div>
+      </div>
+
+      {/* Quick Playlist Actions */}
+      <div className="flex items-center gap-1 shrink-0">
+        <button
+          onClick={() => onPlay(playlist)}
+          disabled={isLoading}
+          className="p-1.5 rounded-xl bg-white text-black hover:bg-zinc-200 transition-all shadow-sm cursor-pointer disabled:opacity-50"
+          title="Play playlist"
+          aria-label={`Play playlist ${playlist.title}`}
+        >
+          {isLoading ? (
+            <Loader2 size={11} className="animate-spin" />
+          ) : (
+            <Play size={11} fill="currentColor" />
+          )}
+        </button>
+
+        <button
+          onClick={() => onImport(playlist)}
+          disabled={isLoading}
+          className="p-1.5 rounded-xl bg-white/[0.04] text-zinc-300 hover:text-white hover:bg-white/[0.08] border border-white/[0.08] transition-all cursor-pointer disabled:opacity-50"
+          title="Import to library"
+          aria-label={`Import playlist ${playlist.title}`}
+        >
+          <Download size={11} />
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export function SearchView() {
   const [query, setQuery] = useState('');
@@ -21,46 +147,59 @@ export function SearchView() {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingPlaylistId, setLoadingPlaylistId] = useState<string | null>(null);
 
-  const { currentTrack, play, showToast } = usePlayerStore();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  const handleSearch = useCallback(
-    debounce(async (q: string, filterType: SearchFilter) => {
-      if (!q.trim() || q.trim().length < 2) {
-        setTracks([]);
-        setVideos([]);
-        setPlaylists([]);
-        setIsLoading(false);
-        return;
+  const currentTrackId = usePlayerStore((s) => s.currentTrack?.id);
+  const play = usePlayerStore((s) => s.play);
+  const showToast = usePlayerStore((s) => s.showToast);
+
+  // Search execution with AbortController and debouncing
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (trimmed.length < 2) {
+      setTracks([]);
+      setVideos([]);
+      setPlaylists([]);
+      setIsLoading(false);
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
       }
-      setIsLoading(true);
+      return;
+    }
+
+    setIsLoading(true);
+
+    const timer = setTimeout(async () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
       try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&type=${filterType}`);
+        const res = await fetch(
+          `/api/search?q=${encodeURIComponent(trimmed)}&type=${searchFilter}`,
+          { signal: controller.signal }
+        );
         const data = await res.json();
         setTracks(data.tracks ?? []);
         setVideos(data.videos ?? []);
         setPlaylists(data.playlists ?? []);
-      } catch {
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name === 'AbortError') {
+          return;
+        }
         setTracks([]);
         setVideos([]);
         setPlaylists([]);
       } finally {
         setIsLoading(false);
       }
-    }, 300),
-    []
-  );
+    }, 280);
 
-  useEffect(() => {
-    if (query.trim().length >= 2) {
-      setIsLoading(true);
-      handleSearch(query, searchFilter);
-    } else {
-      setTracks([]);
-      setVideos([]);
-      setPlaylists([]);
-      setIsLoading(false);
-    }
-  }, [query, searchFilter, handleSearch]);
+    return () => clearTimeout(timer);
+  }, [query, searchFilter]);
 
   const handlePlayPlaylist = async (pl: SearchPlaylist) => {
     setLoadingPlaylistId(pl.id);
@@ -108,151 +247,278 @@ export function SearchView() {
     }
   };
 
+  const handleSelectQuickTag = (tagQuery: string) => {
+    setQuery(tagQuery);
+    inputRef.current?.focus();
+  };
+
   const hasResults = tracks.length > 0 || videos.length > 0 || playlists.length > 0;
+  const isSearchActive = query.trim().length >= 2;
 
   return (
-    <div className="rounded-2xl border border-[#27272a] bg-[#0f0f13] overflow-hidden shadow-sm h-full flex flex-col min-h-0">
+    <div className="rounded-2xl border border-white/[0.08] bg-[#09090d] overflow-hidden shadow-sm h-full flex flex-col min-h-0">
       {/* Pinned Search Input Header */}
-      <div className="p-4 border-b border-[#222228] bg-[#121217] shrink-0 space-y-3">
+      <div className="p-4 border-b border-white/[0.06] bg-[#0c0c10] shrink-0 space-y-3">
         {/* Search Bar with Filter Pills */}
         <div className="flex items-center gap-3">
-          <div className="relative flex-1 flex items-center">
-            <Search size={15} className="absolute left-3.5 text-zinc-400 pointer-events-none" />
+          {/* Unified search bar container with smooth focus ring, eliminating double outlines */}
+          <div className="relative flex-1 flex items-center rounded-2xl bg-white/[0.04] border border-white/[0.08] focus-within:border-white/30 focus-within:ring-2 focus-within:ring-white/10 focus-within:bg-white/[0.06] transition-all duration-200 group shadow-inner">
+            <Search
+              size={15}
+              className="absolute left-3.5 text-zinc-400 group-focus-within:text-white transition-colors pointer-events-none shrink-0"
+            />
             <input
+              ref={inputRef}
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search YouTube for songs, videos, artists, or playlists…"
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  e.preventDefault();
+                  setQuery('');
+                }
+              }}
+              placeholder="Search songs, artists, videos, or curated playlists…"
               autoFocus
-              className="w-full pl-9 pr-9 py-2 rounded-xl bg-[#181820] border border-[#2e2e38] text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-400 transition-colors shadow-inner"
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck="false"
+              enterKeyHint="search"
+              className="w-full bg-transparent border-0 outline-none focus:outline-none focus:ring-0 text-xs text-white placeholder-zinc-500 py-2.5 pl-9 pr-16"
             />
-            {query.trim() && (
-              <button
-                onClick={() => setQuery('')}
-                className="absolute right-3 p-0.5 rounded text-zinc-500 hover:text-white transition-colors cursor-pointer"
-                aria-label="Clear search"
-              >
-                <X size={13} />
-              </button>
-            )}
-            {isLoading && (
-              <Loader2 size={13} className="absolute right-3.5 text-zinc-400 animate-spin" />
-            )}
+            <div className="absolute right-2.5 flex items-center gap-1.5 shrink-0">
+              {isLoading && (
+                <Loader2 size={13} className="text-zinc-400 animate-spin" />
+              )}
+              {query.trim() ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuery('');
+                    inputRef.current?.focus();
+                  }}
+                  className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer"
+                  aria-label="Clear search query"
+                  title="Clear (ESC)"
+                >
+                  <X size={13} />
+                </button>
+              ) : (
+                <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[9px] font-mono text-zinc-500 bg-white/[0.04] border border-white/[0.08] rounded-md pointer-events-none">
+                  ESC
+                </kbd>
+              )}
+            </div>
           </div>
 
           {/* Clean Segmented Filter Selector */}
-          <div className="flex items-center bg-[#181820] border border-[#2e2e38] p-0.5 rounded-xl shrink-0">
-            {(['all', 'song', 'video', 'playlist'] as const).map((filter) => (
-              <button
-                key={filter}
-                onClick={() => setSearchFilter(filter)}
-                className={cn(
-                  'px-2.5 py-1.5 rounded-lg text-[11px] font-semibold capitalize transition-all cursor-pointer',
-                  searchFilter === filter
-                    ? 'bg-white text-black shadow-sm'
-                    : 'text-zinc-400 hover:text-zinc-200'
-                )}
-              >
-                {filter === 'all'
-                  ? 'All'
-                  : filter === 'song'
-                  ? 'Songs'
+          <div
+            className="flex items-center bg-white/[0.03] border border-white/[0.08] p-0.5 rounded-xl shrink-0"
+            role="tablist"
+            aria-label="Search filter category"
+          >
+            {(['all', 'song', 'video', 'playlist'] as const).map((filter) => {
+              const count =
+                filter === 'song'
+                  ? tracks.length
                   : filter === 'video'
-                  ? 'Videos'
-                  : 'Playlists'}
-              </button>
-            ))}
+                  ? videos.length
+                  : filter === 'playlist'
+                  ? playlists.length
+                  : null;
+
+              return (
+                <button
+                  key={filter}
+                  onClick={() => setSearchFilter(filter)}
+                  role="tab"
+                  aria-selected={searchFilter === filter}
+                  className={cn(
+                    'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold capitalize transition-all cursor-pointer',
+                    searchFilter === filter
+                      ? 'bg-white text-black shadow-sm'
+                      : 'text-zinc-400 hover:text-zinc-200'
+                  )}
+                >
+                  <span>
+                    {filter === 'all'
+                      ? 'All'
+                      : filter === 'song'
+                      ? 'Songs'
+                      : filter === 'video'
+                      ? 'Videos'
+                      : 'Playlists'}
+                  </span>
+                  {count !== null && count > 0 && (
+                    <span
+                      className={cn(
+                        'px-1 py-0.2 rounded text-[9px] font-mono',
+                        searchFilter === filter
+                          ? 'bg-black/10 text-black'
+                          : 'bg-white/[0.06] text-zinc-400'
+                      )}
+                    >
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
 
-      {/* Scrollable Results Area */}
+      {/* Scrollable Results / Skeletons / Empty State Area */}
       <div className="overflow-y-auto flex-1 min-h-0">
-        {!hasResults ? (
-          <div className="py-20 text-center text-zinc-500 text-xs">
-            {isLoading ? (
-              <div className="flex flex-col items-center gap-2">
-                <Loader2 size={24} className="animate-spin text-zinc-400" />
-                <p>Searching YouTube & YouTube Music…</p>
-              </div>
-            ) : query.trim() ? (
-              <p className="text-zinc-400">No results found for &quot;{query}&quot;</p>
-            ) : (
-              <div className="max-w-xs mx-auto">
-                <Disc3 size={28} className="mx-auto text-zinc-700 mb-2" />
-                <p className="font-semibold text-zinc-300">Clean YouTube Music & Video Search</p>
-                <p className="text-zinc-500 text-[11px] mt-1 leading-relaxed">
-                  Search millions of songs, live performances, general YouTube videos, and curated playlists.
+        {isLoading && isSearchActive ? (
+          /* ─── SHIMMER SKELETON LOADING STATE ───────────────────────── */
+          <div className="p-3.5 space-y-4">
+            {/* 1. Playlists Skeleton (if 'all' or 'playlist') */}
+            {(searchFilter === 'all' || searchFilter === 'playlist') && (
+              <section className="space-y-2.5">
+                <div className="flex items-center gap-2 px-1">
+                  <Skeleton className="w-3.5 h-3.5" rounded="sm" />
+                  <Skeleton className="w-24 h-3" rounded="sm" />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                  {Array.from({ length: searchFilter === 'playlist' ? 6 : 3 }).map((_, i) => (
+                    <PlaylistCardSkeleton key={`skeleton-pl-${i}`} />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* 2. Songs Skeleton (if 'all' or 'song') */}
+            {(searchFilter === 'all' || searchFilter === 'song') && (
+              <section className="space-y-2.5">
+                {searchFilter === 'all' && (
+                  <div className="flex items-center gap-2 px-1 pt-1">
+                    <Skeleton className="w-3.5 h-3.5" rounded="sm" />
+                    <Skeleton className="w-28 h-3" rounded="sm" />
+                  </div>
+                )}
+                <div className="rounded-2xl border border-white/[0.06] bg-[#0c0c10] overflow-hidden">
+                  <table className="w-full text-left border-collapse table-fixed" role="grid">
+                    <thead className="sticky top-0 z-10 bg-[#09090d]">
+                      <tr className="border-b border-white/[0.06] text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
+                        <th className="w-10 px-2 py-2 text-center">#</th>
+                        <th className="px-2 py-2">Track</th>
+                        <th className="w-28 px-2 py-2 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/[0.03]">
+                      {Array.from({ length: searchFilter === 'song' ? 8 : 5 }).map((_, i) => (
+                        <TrackRowSkeleton key={`skeleton-song-${i}`} index={i} />
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            )}
+
+            {/* 3. Videos Skeleton (if 'all' or 'video') */}
+            {(searchFilter === 'all' || searchFilter === 'video') && (
+              <section className="space-y-2.5">
+                {searchFilter === 'all' && (
+                  <div className="flex items-center gap-2 px-1 pt-1">
+                    <Skeleton className="w-3.5 h-3.5" rounded="sm" />
+                    <Skeleton className="w-32 h-3" rounded="sm" />
+                  </div>
+                )}
+                <div className="rounded-2xl border border-white/[0.06] bg-[#0c0c10] overflow-hidden">
+                  <table className="w-full text-left border-collapse table-fixed" role="grid">
+                    <thead className="sticky top-0 z-10 bg-[#09090d]">
+                      <tr className="border-b border-white/[0.06] text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
+                        <th className="w-10 px-2 py-2 text-center">#</th>
+                        <th className="px-2 py-2">Video / Track</th>
+                        <th className="w-28 px-2 py-2 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/[0.03]">
+                      {Array.from({ length: searchFilter === 'video' ? 8 : 4 }).map((_, i) => (
+                        <TrackRowSkeleton key={`skeleton-video-${i}`} index={i} />
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            )}
+          </div>
+        ) : !hasResults ? (
+          /* ─── EMPTY OR NO RESULTS STATE ────────────────────────────── */
+          <div className="py-12 px-4 text-center text-zinc-500 text-xs flex flex-col items-center justify-center my-auto">
+            {query.trim() ? (
+              <div className="max-w-sm mx-auto space-y-2">
+                <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-zinc-500 mb-3 mx-auto">
+                  <Search size={20} />
+                </div>
+                <p className="font-bold text-white uppercase tracking-wider text-xs font-sans">
+                  No Results Found
                 </p>
+                <p className="text-zinc-400 text-[11px] leading-relaxed">
+                  We couldn&apos;t find any tracks or playlists matching &quot;<span className="text-zinc-200">{query}</span>&quot;. Try alternative keywords or broader search terms.
+                </p>
+              </div>
+            ) : (
+              <div className="max-w-lg mx-auto space-y-4">
+                <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-zinc-400 mb-2 mx-auto shadow-sm">
+                  <Disc3 size={22} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white uppercase tracking-wider text-xs font-sans">
+                    Explore YouTube Catalog
+                  </h3>
+                  <p className="text-zinc-400 text-[11px] mt-1 max-w-sm mx-auto leading-relaxed">
+                    Search millions of official singles, live sets, concert videos, and curated playlists with zero noise.
+                  </p>
+                </div>
+
+                {/* Quick Discovery Tags */}
+                <div className="pt-2">
+                  <div className="flex items-center justify-center gap-1.5 text-[10px] font-mono text-zinc-500 uppercase tracking-wider mb-2.5">
+                    <Sparkles size={11} className="text-amber-400" />
+                    <span>Popular Searches:</span>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-center gap-1.5 max-w-md mx-auto">
+                    {QUICK_SEARCH_TAGS.map((tag) => (
+                      <button
+                        key={tag.label}
+                        type="button"
+                        onClick={() => handleSelectQuickTag(tag.query)}
+                        className="px-3 py-1.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/[0.18] text-zinc-300 hover:text-white text-xs font-medium transition-all cursor-pointer group shadow-sm flex items-center gap-1.5"
+                      >
+                        <Zap size={10} className="text-zinc-500 group-hover:text-amber-400 transition-colors" />
+                        <span>{tag.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
           </div>
         ) : (
-          <div className="p-3 space-y-4">
+          /* ─── POPULATED RESULTS ────────────────────────────────────── */
+          <div className="p-3.5 space-y-4">
             {/* 1. Playlists Section (Shown in 'all' or 'playlist' mode) */}
             {(searchFilter === 'all' || searchFilter === 'playlist') && playlists.length > 0 && (
               <section className="space-y-2">
                 <div className="flex items-center gap-2 px-1">
                   <Music size={13} className="text-zinc-400" />
-                  <h4 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">
+                  <h4 className="text-xs font-bold text-white uppercase tracking-wider font-sans">
                     Playlists ({playlists.length})
                   </h4>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
-                  {playlists.map((pl) => {
-                    const isPlLoading = loadingPlaylistId === pl.id;
-                    return (
-                      <div
-                        key={pl.id}
-                        className="flex items-center justify-between p-2.5 rounded-xl bg-[#14141a] hover:bg-[#1c1c24] border border-[#27272f] hover:border-zinc-600 transition-all group"
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
-                          <TrackArtwork
-                            src={pl.thumbnailUrl}
-                            title={pl.title}
-                            artist={pl.author}
-                            id={pl.id}
-                            size="md"
-                            rounded="lg"
-                          />
-                          <div className="min-w-0 flex-1">
-                            <h5 className="text-xs font-semibold text-zinc-200 truncate leading-snug">
-                              {pl.title}
-                            </h5>
-                            <p className="text-[10px] text-zinc-500 truncate mt-0.5">
-                              {pl.author}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Quick Playlist Actions */}
-                        <div className="flex items-center gap-1 shrink-0">
-                          <button
-                            onClick={() => handlePlayPlaylist(pl)}
-                            disabled={isPlLoading}
-                            className="p-1.5 rounded-lg bg-white text-black hover:bg-zinc-200 transition-colors shadow-sm cursor-pointer disabled:opacity-50"
-                            title="Play playlist"
-                          >
-                            {isPlLoading ? (
-                              <Loader2 size={11} className="animate-spin" />
-                            ) : (
-                              <Play size={11} fill="currentColor" />
-                            )}
-                          </button>
-
-                          <button
-                            onClick={() => handleImportPlaylist(pl)}
-                            disabled={isPlLoading}
-                            className="p-1.5 rounded-lg bg-[#22222a] text-zinc-300 hover:text-white hover:bg-[#2c2c36] border border-zinc-700 transition-colors cursor-pointer disabled:opacity-50"
-                            title="Import to library"
-                          >
-                            <Download size={11} />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
+                  {playlists.map((pl) => (
+                    <SearchPlaylistCard
+                      key={pl.id}
+                      playlist={pl}
+                      isLoading={loadingPlaylistId === pl.id}
+                      onPlay={handlePlayPlaylist}
+                      onImport={handleImportPlaylist}
+                    />
+                  ))}
                 </div>
               </section>
             )}
@@ -263,28 +529,28 @@ export function SearchView() {
                 {searchFilter === 'all' && (
                   <div className="flex items-center gap-2 px-1 pt-1">
                     <Disc3 size={13} className="text-zinc-400" />
-                    <h4 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wider font-sans">
                       Music Tracks ({tracks.length})
                     </h4>
                   </div>
                 )}
 
-                <div className="rounded-xl border border-[#222228] bg-[#0c0c10] overflow-hidden">
+                <div className="rounded-2xl border border-white/[0.06] bg-[#0c0c10] overflow-hidden">
                   <table className="w-full text-left border-collapse table-fixed" role="grid">
-                    <thead className="sticky top-0 z-10 bg-[#0f0f13]">
-                      <tr className="border-b border-[#222228] text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
+                    <thead className="sticky top-0 z-10 bg-[#09090d]">
+                      <tr className="border-b border-white/[0.06] text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
                         <th className="w-10 px-2 py-2 text-center">#</th>
                         <th className="px-2 py-2">Track</th>
-                        <th className="w-48 px-2 py-2 text-right">Actions</th>
+                        <th className="w-28 px-2 py-2 text-right">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#1e1e24]/40">
+                    <tbody className="divide-y divide-white/[0.03]">
                       {tracks.map((track, i) => (
                         <TrackRow
                           key={`song-${track.id}`}
                           track={track}
                           index={i}
-                          isActive={currentTrack?.id === track.id}
+                          isActive={currentTrackId === track.id}
                         />
                       ))}
                     </tbody>
@@ -293,39 +559,39 @@ export function SearchView() {
               </section>
             )}
 
-            {/* 3. YouTube Videos Section (Shown in 'all' as the 3rd bottom section, or exclusively in 'video' mode) */}
+            {/* 3. YouTube Videos Section (Shown in 'all' or 'video' mode) */}
             {(searchFilter === 'all' || searchFilter === 'video') && videos.length > 0 && (
               <section className="space-y-2">
                 <div className="flex items-center justify-between px-1 pt-1">
                   <div className="flex items-center gap-2">
                     <Video size={13} className="text-zinc-400" />
-                    <h4 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wider font-sans">
                       YouTube Videos ({videos.length})
                     </h4>
                   </div>
                   {searchFilter === 'all' && (
-                    <span className="text-[10px] text-zinc-500 font-medium">
-                      Live sets, full albums, unreleased covers & talks
+                    <span className="text-[10px] text-zinc-500 font-mono">
+                      Live sets, full albums & covers
                     </span>
                   )}
                 </div>
 
-                <div className="rounded-xl border border-[#222228] bg-[#0c0c10] overflow-hidden">
+                <div className="rounded-2xl border border-white/[0.06] bg-[#0c0c10] overflow-hidden">
                   <table className="w-full text-left border-collapse table-fixed" role="grid">
-                    <thead className="sticky top-0 z-10 bg-[#0f0f13]">
-                      <tr className="border-b border-[#222228] text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
+                    <thead className="sticky top-0 z-10 bg-[#09090d]">
+                      <tr className="border-b border-white/[0.06] text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
                         <th className="w-10 px-2 py-2 text-center">#</th>
                         <th className="px-2 py-2">Video / Track</th>
-                        <th className="w-48 px-2 py-2 text-right">Actions</th>
+                        <th className="w-28 px-2 py-2 text-right">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#1e1e24]/40">
+                    <tbody className="divide-y divide-white/[0.03]">
                       {videos.map((videoTrack, i) => (
                         <TrackRow
                           key={`video-${videoTrack.id}`}
                           track={videoTrack}
                           index={i}
-                          isActive={currentTrack?.id === videoTrack.id}
+                          isActive={currentTrackId === videoTrack.id}
                         />
                       ))}
                     </tbody>

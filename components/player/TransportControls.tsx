@@ -14,13 +14,19 @@ interface TransportControlsProps {
 }
 
 export function TransportControls({ className, compact = false }: TransportControlsProps) {
-  const {
-    isPlaying, togglePlay, next, previous,
-    shuffleMode, toggleShuffle,
-    repeatMode, cycleRepeat,
-    isVideoEnabled, toggleVideo,
-    playbackMode, currentTrack,
-  } = usePlayerStore();
+  // Use atomic selectors so this component only re-renders when relevant playback controls change
+  const isPlaying = usePlayerStore((s) => s.isPlaying);
+  const togglePlay = usePlayerStore((s) => s.togglePlay);
+  const next = usePlayerStore((s) => s.next);
+  const previous = usePlayerStore((s) => s.previous);
+  const shuffleMode = usePlayerStore((s) => s.shuffleMode);
+  const toggleShuffle = usePlayerStore((s) => s.toggleShuffle);
+  const repeatMode = usePlayerStore((s) => s.repeatMode);
+  const cycleRepeat = usePlayerStore((s) => s.cycleRepeat);
+  const isVideoEnabled = usePlayerStore((s) => s.isVideoEnabled);
+  const toggleVideo = usePlayerStore((s) => s.toggleVideo);
+  const playbackMode = usePlayerStore((s) => s.playbackMode);
+  const hasCurrentTrack = usePlayerStore((s) => !!s.currentTrack);
 
   const repeatLabel =
     repeatMode === 'off' ? 'Repeat off (R)' : repeatMode === 'all' ? 'Repeat all (R)' : 'Repeat one (R)';
@@ -52,7 +58,7 @@ export function TransportControls({ className, compact = false }: TransportContr
         <button
           onClick={previous}
           aria-label="Previous track"
-          disabled={!currentTrack}
+          disabled={!hasCurrentTrack}
           className="p-2 rounded-lg text-zinc-300 hover:text-white hover:bg-[#18181f] disabled:text-zinc-700 disabled:hover:bg-transparent transition-colors"
         >
           <SkipBack size={compact ? 15 : 18} />
@@ -64,7 +70,7 @@ export function TransportControls({ className, compact = false }: TransportContr
         <button
           onClick={togglePlay}
           aria-label={isPlaying ? 'Pause' : 'Play'}
-          disabled={!currentTrack}
+          disabled={!hasCurrentTrack}
           className={cn(
             'rounded-full transition-all flex items-center justify-center shadow-md active:scale-95',
             compact
@@ -85,7 +91,7 @@ export function TransportControls({ className, compact = false }: TransportContr
         <button
           onClick={next}
           aria-label="Next track"
-          disabled={!currentTrack}
+          disabled={!hasCurrentTrack}
           className="p-2 rounded-lg text-zinc-300 hover:text-white hover:bg-[#18181f] disabled:text-zinc-700 disabled:hover:bg-transparent transition-colors"
         >
           <SkipForward size={compact ? 15 : 18} />
@@ -111,12 +117,12 @@ export function TransportControls({ className, compact = false }: TransportContr
         </Tooltip>
       )}
 
-      {/* Video PiP toggle */}
+      {/* Video on artwork toggle */}
       {!compact && playbackMode === 'iframe' && (
-        <Tooltip content={`${isVideoEnabled ? 'Hide video' : 'Show video PiP'} (V)`} side="top">
+        <Tooltip content={`${isVideoEnabled ? 'Switch to album cover' : 'Watch video on cover'} (V)`} side="top">
           <button
             onClick={toggleVideo}
-            aria-label={isVideoEnabled ? 'Hide video' : 'Show video PiP'}
+            aria-label={isVideoEnabled ? 'Switch to album cover (V)' : 'Watch video on cover (V)'}
             aria-pressed={isVideoEnabled}
             className={cn(
               'p-2 rounded-lg transition-colors',

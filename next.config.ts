@@ -1,10 +1,18 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  // Support standalone build for Docker / self-hosting when requested
+  output: process.env.OUTPUT_STANDALONE === 'true' ? 'standalone' : undefined,
+
+  // Remove X-Powered-By header for security best practices
+  poweredByHeader: false,
+
+  // Strict mode for robust rendering
+  reactStrictMode: true,
+
   // Allow youtubei.js to work in server-side route handlers (Next.js 16+)
   serverExternalPackages: ['youtubei.js'],
-  // No SSR for main app — entirely client-rendered
-  // Only API routes run server-side
+
   images: {
     remotePatterns: [
       {
@@ -19,7 +27,52 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'lh3.googleusercontent.com',
       },
+      {
+        protocol: 'https',
+        hostname: 'i.scdn.co',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.scdn.co',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.spotifycdn.com',
+      },
     ],
+  },
+
+  // Production security headers
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
+          },
+        ],
+      },
+      {
+        // Cache static assets aggressively
+        source: '/favicon.ico',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=86400, stale-while-revalidate=604800',
+          },
+        ],
+      },
+    ];
   },
 };
 

@@ -22,6 +22,9 @@ interface PlayerState {
   repeatMode: RepeatMode;
   playbackMode: PlaybackMode;
   isVideoEnabled: boolean;
+  zenMode: boolean;
+  ambientVisualizerEnabled: boolean;
+  sessionRestoreEnabled: boolean;
 
   // UI
   leftSidebarOpen: boolean;
@@ -50,11 +53,23 @@ interface PlayerState {
   reorderQueue: (fromIndex: number, toIndex: number) => void;
   clearQueue: () => void;
 
+  crossfadeDuration: number; // seconds (0 = off, 1-12)
+  likedTrackIds: string[];
+
   // Actions — Modes
   toggleShuffle: () => void;
   cycleRepeat: () => void;
   toggleVideo: () => void;
   setPlaybackMode: (mode: PlaybackMode) => void;
+  setCrossfadeDuration: (seconds: number) => void;
+  toggleZenMode: (enabled?: boolean) => void;
+  toggleAmbientVisualizer: () => void;
+  toggleSessionRestore: () => void;
+
+  // Actions — Liked Tracks
+  toggleLikeTrack: (track: Track) => Promise<void>;
+  isLiked: (trackId: string) => boolean;
+  loadLikedTracks: () => Promise<void>;
 
   // Actions — UI
   toggleLeftSidebar: () => void;
@@ -69,10 +84,44 @@ interface PlayerState {
   showToast: (message: string) => void;
   dismissToast: () => void;
 
-  // Actions — History
+  // Actions — History & Session
   addToRecentlyPlayed: (track: Track) => void;
   loadRecentlyPlayed: () => Promise<void>;
   loadSavedPreferences: () => Promise<void>;
+  restorePreviousSession: () => Promise<boolean>;
+}
+
+// Kept outside of Zustand state so timer management doesn't cause extra re-renders
+let _toastTimer: ReturnType<typeof setTimeout> | null = null;
+let _sessionSaveTimer: ReturnType<typeof setTimeout> | null = null;
+
+function scheduleSaveSession(state: {
+  currentTrack: Track | null;
+  queue: Track[];
+  queueIndex: number;
+  progress: number;
+  sessionRestoreEnabled: boolean;
+}) {
+  if (!state.sessionRestoreEnabled) return;
+  if (_sessionSaveTimer !== null) {
+    clearTimeout(_sessionSaveTimer);
+  }
+  _sessionSaveTimer = setTimeout(() => {
+    _sessionSaveTimer = null;
+    if (!state.currentTrack && state.queue.length === 0) return;
+    db.preferences
+      .put({
+        key: 'last_session',
+        value: {
+          currentTrack: state.currentTrack,
+          queue: state.queue,
+          queueIndex: state.queueIndex,
+          progress: state.progress,
+          savedAt: Date.now(),
+        },
+      })
+      .catch(() => {});
+  }, 1000);
 }
 
 export const usePlayerStore = create<PlayerState>((set, get) => ({
@@ -93,6 +142,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   repeatMode: 'off',
   playbackMode: 'iframe',
   isVideoEnabled: false,
+  zenMode: false,
+  ambientVisualizerEnabled: true,
+  sessionRestoreEnabled: true,
+  crossfadeDuration: 3,
+  likedTrackIds: [],
 
   leftSidebarOpen: true,
   rightSidebarOpen: true,
@@ -123,14 +177,19 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     get().addToRecentlyPlayed(track);
     db.history.add({ trackId: track.id, playedAt: Date.now(), durationPlayed: 0 }).catch(() => {});
     db.tracks.put(track).catch(() => {});
+    scheduleSaveSession(get());
   },
 
-  pause: () => set({ isPlaying: false }),
+  pause: () => {
+    set({ isPlaying: false });
+    scheduleSaveSession(get());
+  },
 
   togglePlay: () => {
     const { isPlaying, currentTrack } = get();
     if (!currentTrack) return;
     set({ isPlaying: !isPlaying });
+    scheduleSaveSession(get());
   },
 
   next: () => {
@@ -138,14 +197,18 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (queue.length === 0) return;
 
     if (repeatMode === 'one') {
-      // Replay current
+      // Replay current — seekTarget triggers the player to restart
       set({ progress: 0, isPlaying: true, seekTarget: { time: 0, id: Date.now() } });
+      scheduleSaveSession(get());
       return;
     }
 
     let nextIdx: number;
-    if (shuffleMode) {
-      nextIdx = Math.floor(Math.random() * queue.length);
+    if (shuffleMode && queue.length > 1) {
+      // Exclude current index so shuffle never plays the same track twice in a row
+      do {
+        nextIdx = Math.floor(Math.random() * queue.length);
+      } while (nextIdx === queueIndex);
     } else {
       nextIdx = queueIndex + 1;
     }
@@ -155,6 +218,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         nextIdx = 0;
       } else {
         set({ isPlaying: false });
+        scheduleSaveSession(get());
         return;
       }
     }
@@ -163,25 +227,31 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     set({ queueIndex: nextIdx, currentTrack: nextTrack, isPlaying: true, progress: 0 });
     get().addToRecentlyPlayed(nextTrack);
     db.history.add({ trackId: nextTrack.id, playedAt: Date.now(), durationPlayed: 0 }).catch(() => {});
+    scheduleSaveSession(get());
   },
 
   previous: () => {
     const { queue, queueIndex, progress } = get();
     if (queue.length === 0) return;
 
-    // If more than 3s in, restart current track
-    if (progress > 3) {
-      set({ progress: 0, seekTarget: { time: 0, id: Date.now() } });
+    // If more than 3s in or at the first track of queue, restart current track
+    if (progress > 3 || queueIndex <= 0) {
+      set({ progress: 0, isPlaying: true, seekTarget: { time: 0, id: Date.now() } });
+      scheduleSaveSession(get());
       return;
     }
 
-    const prevIdx = Math.max(0, queueIndex - 1);
+    const prevIdx = queueIndex - 1;
     const prevTrack = queue[prevIdx];
     set({ queueIndex: prevIdx, currentTrack: prevTrack, isPlaying: true, progress: 0 });
+    get().addToRecentlyPlayed(prevTrack);
+    db.history.add({ trackId: prevTrack.id, playedAt: Date.now(), durationPlayed: 0 }).catch(() => {});
+    scheduleSaveSession(get());
   },
 
   seek: (seconds) => {
     set({ progress: seconds, seekTarget: { time: seconds, id: Date.now() } });
+    scheduleSaveSession(get());
   },
   setProgress: (seconds) => set({ progress: seconds }),
   setDuration: (seconds) => set({ duration: seconds }),
@@ -201,16 +271,18 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   addToQueue: (track) => {
     set((s) => ({ queue: [...s.queue, track] }));
     db.tracks.put(track).catch(() => {});
+    scheduleSaveSession(get());
   },
 
   playNext: (track) => {
     const { queue, queueIndex } = get();
     const newQueue = [...queue];
-    // If a track is active, insert immediately after it; otherwise insert at start
+    // Insert immediately after the active track; at front if queue is empty
     const insertIndex = queueIndex >= 0 ? queueIndex + 1 : 0;
     newQueue.splice(insertIndex, 0, track);
     set({ queue: newQueue });
     db.tracks.put(track).catch(() => {});
+    scheduleSaveSession(get());
   },
 
   removeFromQueue: (index) => {
@@ -220,17 +292,24 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (index < queueIndex) newIdx = queueIndex - 1;
     if (index === queueIndex) newIdx = Math.min(queueIndex, newQueue.length - 1);
     set({ queue: newQueue, queueIndex: newIdx });
+    scheduleSaveSession(get());
   },
 
   reorderQueue: (fromIndex, toIndex) => {
-    const { queue } = get();
+    const { queue, currentTrack } = get();
     const newQueue = [...queue];
     const [moved] = newQueue.splice(fromIndex, 1);
     newQueue.splice(toIndex, 0, moved);
-    set({ queue: newQueue });
+    // Recompute queueIndex so the currently-playing track stays correct after reorder
+    const newIdx = currentTrack ? newQueue.findIndex((t) => t.id === currentTrack.id) : -1;
+    set({ queue: newQueue, queueIndex: newIdx });
+    scheduleSaveSession(get());
   },
 
-  clearQueue: () => set({ queue: [], queueIndex: -1, currentTrack: null, isPlaying: false }),
+  clearQueue: () => {
+    set({ queue: [], queueIndex: -1, currentTrack: null, isPlaying: false });
+    db.preferences.delete('last_session').catch(() => {});
+  },
 
   // --- Mode Actions ---
 
@@ -240,47 +319,139 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   cycleRepeat: () => {
     const { repeatMode } = get();
-    const next: RepeatMode = repeatMode === 'off' ? 'all' : repeatMode === 'all' ? 'one' : 'off';
-    set({ repeatMode: next });
-    db.preferences.put({ key: 'repeatMode', value: next }).catch(() => {});
+    const modes: RepeatMode[] = ['off', 'all', 'one'];
+    const nextMode = modes[(modes.indexOf(repeatMode) + 1) % modes.length];
+    set({ repeatMode: nextMode });
+    db.preferences.put({ key: 'repeatMode', value: nextMode }).catch(() => {});
   },
 
   toggleVideo: () => {
-    const { playbackMode } = get();
-    if (playbackMode === 'direct-audio') {
-      get().showToast('Video PiP is not available in direct audio mode');
-      return;
-    }
     set((s) => ({ isVideoEnabled: !s.isVideoEnabled }));
+    const { isVideoEnabled, showToast } = get();
+    showToast(isVideoEnabled ? 'Video mode active (on album cover)' : 'Album cover active');
   },
 
   setPlaybackMode: (mode) => {
-    set({ playbackMode: mode, isVideoEnabled: false });
+    set({ playbackMode: mode });
     db.preferences.put({ key: 'playbackMode', value: mode }).catch(() => {});
+  },
+
+  toggleZenMode: (enabled) => {
+    set((s) => ({ zenMode: typeof enabled === 'boolean' ? enabled : !s.zenMode }));
+  },
+
+  toggleAmbientVisualizer: () => {
+    set((s) => {
+      const next = !s.ambientVisualizerEnabled;
+      db.preferences.put({ key: 'ambientVisualizerEnabled', value: next }).catch(() => {});
+      return { ambientVisualizerEnabled: next };
+    });
+  },
+
+  toggleSessionRestore: () => {
+    set((s) => {
+      const next = !s.sessionRestoreEnabled;
+      db.preferences.put({ key: 'sessionRestoreEnabled', value: next }).catch(() => {});
+      if (!next) {
+        db.preferences.delete('last_session').catch(() => {});
+      }
+      return { sessionRestoreEnabled: next };
+    });
+  },
+
+  setCrossfadeDuration: (seconds) => {
+    const val = Math.max(0, Math.min(12, seconds));
+    set({ crossfadeDuration: val });
+    db.preferences.put({ key: 'crossfadeDuration', value: val }).catch(() => {});
+  },
+
+  // --- Liked Tracks Actions ---
+
+  isLiked: (trackId) => {
+    return get().likedTrackIds.includes(trackId);
+  },
+
+  toggleLikeTrack: async (track) => {
+    const { likedTrackIds, showToast } = get();
+    const isCurrentlyLiked = likedTrackIds.includes(track.id);
+
+    if (isCurrentlyLiked) {
+      const nextLiked = likedTrackIds.filter((id) => id !== track.id);
+      set({ likedTrackIds: nextLiked });
+      try {
+        const likedPl = await db.playlists.get('liked-songs');
+        if (likedPl) {
+          await db.playlists.update('liked-songs', {
+            trackIds: likedPl.trackIds.filter((id) => id !== track.id),
+            updatedAt: Date.now(),
+          });
+        }
+      } catch {}
+      showToast(`Removed "${track.title}" from Liked Songs`);
+    } else {
+      const nextLiked = [track.id, ...likedTrackIds];
+      set({ likedTrackIds: nextLiked });
+      try {
+        await db.tracks.put(track);
+        const likedPl = await db.playlists.get('liked-songs');
+        if (likedPl) {
+          await db.playlists.update('liked-songs', {
+            trackIds: [track.id, ...likedPl.trackIds.filter((id) => id !== track.id)],
+            updatedAt: Date.now(),
+          });
+        } else {
+          await db.playlists.add({
+            id: 'liked-songs',
+            name: 'Liked Songs',
+            description: 'Your favorite tracks in one collection ❤️',
+            trackIds: [track.id],
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          });
+        }
+      } catch {}
+      showToast(`Added "${track.title}" to Liked Songs ❤️`);
+    }
+  },
+
+  loadLikedTracks: async () => {
+    try {
+      const likedPl = await db.playlists.get('liked-songs');
+      if (likedPl && Array.isArray(likedPl.trackIds)) {
+        set({ likedTrackIds: likedPl.trackIds });
+      }
+    } catch {}
   },
 
   // --- UI Actions ---
 
   toggleLeftSidebar: () => {
     set((s) => {
-      const open = !s.leftSidebarOpen;
-      db.preferences.put({ key: 'leftSidebarOpen', value: open }).catch(() => {});
-      return { leftSidebarOpen: open };
+      const next = !s.leftSidebarOpen;
+      db.preferences.put({ key: 'leftSidebarOpen', value: next }).catch(() => {});
+      return { leftSidebarOpen: next };
     });
   },
 
   toggleRightSidebar: () => {
     set((s) => {
-      const open = !s.rightSidebarOpen;
-      db.preferences.put({ key: 'rightSidebarOpen', value: open }).catch(() => {});
-      return { rightSidebarOpen: open };
+      const next = !s.rightSidebarOpen;
+      db.preferences.put({ key: 'rightSidebarOpen', value: next }).catch(() => {});
+      return { rightSidebarOpen: next };
     });
   },
 
-  toggleCommandPalette: () => set((s) => ({ commandPaletteOpen: !s.commandPaletteOpen })),
+  toggleCommandPalette: () => {
+    set((s) => ({ commandPaletteOpen: !s.commandPaletteOpen }));
+  },
+
   openCommandPalette: () => set({ commandPaletteOpen: true }),
   closeCommandPalette: () => set({ commandPaletteOpen: false }),
-  toggleSettings: () => set((s) => ({ settingsOpen: !s.settingsOpen })),
+
+  toggleSettings: () => {
+    set((s) => ({ settingsOpen: !s.settingsOpen }));
+  },
+
   openSettings: () => set({ settingsOpen: true }),
   closeSettings: () => set({ settingsOpen: false }),
 
@@ -293,16 +464,24 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   showToast: (message) => {
+    // Cancel any pending dismiss timer before showing a new toast.
+    if (_toastTimer !== null) {
+      clearTimeout(_toastTimer);
+    }
     set({ toastMessage: message });
-    setTimeout(() => {
-      const current = get().toastMessage;
-      if (current === message) {
-        set({ toastMessage: null });
-      }
+    _toastTimer = setTimeout(() => {
+      _toastTimer = null;
+      set({ toastMessage: null });
     }, 3000);
   },
 
-  dismissToast: () => set({ toastMessage: null }),
+  dismissToast: () => {
+    if (_toastTimer !== null) {
+      clearTimeout(_toastTimer);
+      _toastTimer = null;
+    }
+    set({ toastMessage: null });
+  },
 
   // --- History & Persistence Actions ---
 
@@ -331,13 +510,26 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   loadSavedPreferences: async () => {
     try {
-      const [volPref, repeatPref, modePref, leftPref, rightPref, blurPref] = await Promise.all([
+      const [
+        volPref,
+        repeatPref,
+        modePref,
+        leftPref,
+        rightPref,
+        blurPref,
+        vizPref,
+        restorePref,
+        crossfadePref,
+      ] = await Promise.all([
         db.preferences.get('volume'),
         db.preferences.get('repeatMode'),
         db.preferences.get('playbackMode'),
         db.preferences.get('leftSidebarOpen'),
         db.preferences.get('rightSidebarOpen'),
         db.preferences.get('blurredHeroBackground'),
+        db.preferences.get('ambientVisualizerEnabled'),
+        db.preferences.get('sessionRestoreEnabled'),
+        db.preferences.get('crossfadeDuration'),
       ]);
 
       set((s) => ({
@@ -347,9 +539,59 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         leftSidebarOpen: typeof leftPref?.value === 'boolean' ? leftPref.value : s.leftSidebarOpen,
         rightSidebarOpen: typeof rightPref?.value === 'boolean' ? rightPref.value : s.rightSidebarOpen,
         blurredHeroBackground: typeof blurPref?.value === 'boolean' ? blurPref.value : s.blurredHeroBackground,
+        ambientVisualizerEnabled: typeof vizPref?.value === 'boolean' ? vizPref.value : s.ambientVisualizerEnabled,
+        sessionRestoreEnabled: typeof restorePref?.value === 'boolean' ? restorePref.value : s.sessionRestoreEnabled,
+        crossfadeDuration: typeof crossfadePref?.value === 'number' ? crossfadePref.value : s.crossfadeDuration,
       }));
+
+      await get().loadLikedTracks();
     } catch {
       // Ignore preference load error
+    }
+  },
+
+  restorePreviousSession: async () => {
+    try {
+      const restorePref = await db.preferences.get('sessionRestoreEnabled');
+      if (restorePref?.value === false) return false;
+
+      const pref = await db.preferences.get('last_session');
+      if (!pref?.value || typeof pref.value !== 'object') return false;
+
+      const session = pref.value as {
+        currentTrack: Track | null;
+        queue: Track[];
+        queueIndex: number;
+        progress: number;
+      };
+
+      if (!session.currentTrack && (!session.queue || session.queue.length === 0)) {
+        return false;
+      }
+
+      if (session.queue && session.queue.length > 0) {
+        await db.tracks.bulkPut(session.queue).catch(() => {});
+      }
+      if (session.currentTrack) {
+        await db.tracks.put(session.currentTrack).catch(() => {});
+      }
+
+      const queue = Array.isArray(session.queue) ? session.queue : [];
+      const queueIndex = typeof session.queueIndex === 'number' ? session.queueIndex : 0;
+      const progress = typeof session.progress === 'number' && Number.isFinite(session.progress) ? session.progress : 0;
+
+      set({
+        queue,
+        queueIndex: queue.length > 0 ? Math.min(queueIndex, queue.length - 1) : -1,
+        currentTrack: session.currentTrack || (queue.length > 0 ? queue[queueIndex] : null),
+        isPlaying: false, // Intentionally paused on load
+        progress,
+        seekTarget: progress > 0 ? { time: progress, id: Date.now() } : null,
+      });
+
+      return true;
+    } catch {
+      return false;
     }
   },
 }));

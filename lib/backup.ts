@@ -28,7 +28,7 @@ export async function exportFullLibrary(): Promise<LibraryBackup> {
 
   const backup: LibraryBackup = {
     version: 1,
-    appName: 'minimalist-yt-player',
+    appName: 'onyx',
     exportedAt: Date.now(),
     summary: {
       playlistCount: playlists.length,
@@ -44,7 +44,7 @@ export async function exportFullLibrary(): Promise<LibraryBackup> {
   };
 
   const dateStr = new Date().toISOString().split('T')[0];
-  downloadJsonFile(`minimalist-yt-backup-${dateStr}.json`, backup);
+  downloadJsonFile(`onyx-backup-${dateStr}.json`, backup);
   return backup;
 }
 
@@ -65,7 +65,7 @@ export async function exportSinglePlaylist(playlistId: string): Promise<SinglePl
   };
 
   const safeName = playlist.name.toLowerCase().replace(/[^a-z0-9_-]/g, '_');
-  downloadJsonFile(`playlist-${safeName}.json`, backup);
+  downloadJsonFile(`onyx-playlist-${safeName}.json`, backup);
   return backup;
 }
 
@@ -130,7 +130,7 @@ export function validateBackup(jsonContent: unknown): ValidationResult {
   if (Array.isArray(obj.playlists) && Array.isArray(obj.tracks)) {
     const formatted: LibraryBackup = {
       version: 1,
-      appName: 'minimalist-yt-player',
+      appName: 'onyx',
       exportedAt: Date.now(),
       summary: {
         playlistCount: obj.playlists.length,
@@ -174,7 +174,10 @@ export async function restoreFullLibrary(
     // Bulk put new items
     if (tracks.length > 0) await db.tracks.bulkPut(tracks);
     if (playlists.length > 0) await db.playlists.bulkPut(playlists);
-    if (history.length > 0) await db.history.bulkAdd(history);
+    if (history.length > 0) {
+      const cleanHistory = history.map(({ id: _id, ...rest }) => rest);
+      await db.history.bulkAdd(cleanHistory as HistoryEntry[]);
+    }
     if (preferences.length > 0) await db.preferences.bulkPut(preferences);
 
     return {
@@ -211,9 +214,11 @@ export async function restoreFullLibrary(
   if (history.length > 0) {
     const existingHistory = await db.history.toArray();
     const existingKeySet = new Set(existingHistory.map((h) => `${h.trackId}-${h.playedAt}`));
-    const newEntries = history.filter((h) => !existingKeySet.has(`${h.trackId}-${h.playedAt}`));
+    const newEntries = history
+      .filter((h) => !existingKeySet.has(`${h.trackId}-${h.playedAt}`))
+      .map(({ id: _id, ...rest }) => rest);
     if (newEntries.length > 0) {
-      await db.history.bulkAdd(newEntries);
+      await db.history.bulkAdd(newEntries as HistoryEntry[]);
     }
   }
 

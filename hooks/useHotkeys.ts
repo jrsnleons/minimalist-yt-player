@@ -13,40 +13,51 @@ function isInputFocused(): boolean {
   return (
     tag === 'input' ||
     tag === 'textarea' ||
-    (el as HTMLElement).isContentEditable
+    tag === 'select' ||
+    (el as HTMLElement).isContentEditable ||
+    el.getAttribute('role') === 'textbox' ||
+    el.getAttribute('role') === 'combobox'
   );
 }
 
 export function useHotkeys() {
-  const {
-    togglePlay,
-    next,
-    previous,
-    toggleMute,
-    toggleShuffle,
-    cycleRepeat,
-    toggleVideo,
-    toggleLeftSidebar,
-    toggleRightSidebar,
-    toggleCommandPalette,
-    seek,
-    progress,
-    commandPaletteOpen,
-  } = usePlayerStore();
+  const togglePlay = usePlayerStore((s) => s.togglePlay);
+  const next = usePlayerStore((s) => s.next);
+  const previous = usePlayerStore((s) => s.previous);
+  const toggleMute = usePlayerStore((s) => s.toggleMute);
+  const toggleShuffle = usePlayerStore((s) => s.toggleShuffle);
+  const cycleRepeat = usePlayerStore((s) => s.cycleRepeat);
+  const toggleVideo = usePlayerStore((s) => s.toggleVideo);
+  const toggleLeftSidebar = usePlayerStore((s) => s.toggleLeftSidebar);
+  const toggleRightSidebar = usePlayerStore((s) => s.toggleRightSidebar);
+  const toggleCommandPalette = usePlayerStore((s) => s.toggleCommandPalette);
+  const toggleZenMode = usePlayerStore((s) => s.toggleZenMode);
+  const seek = usePlayerStore((s) => s.seek);
+  const commandPaletteOpen = usePlayerStore((s) => s.commandPaletteOpen);
+  const zenMode = usePlayerStore((s) => s.zenMode);
+
+  // NOTE: `progress` is intentionally NOT subscribed here.
+  // Instead, read progress at call-time via getState() to avoid 60fps churn.
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       // Let Cmd+K / Ctrl+K through always
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         toggleCommandPalette();
         return;
       }
 
-      // Escape: close command palette
-      if (e.key === 'Escape' && commandPaletteOpen) {
-        toggleCommandPalette();
-        return;
+      // Escape: close command palette, or exit Zen mode
+      if (e.key === 'Escape') {
+        if (commandPaletteOpen) {
+          toggleCommandPalette();
+          return;
+        }
+        if (zenMode) {
+          toggleZenMode(false);
+          return;
+        }
       }
 
       // All single-key shortcuts are disabled when in a text input
@@ -63,20 +74,20 @@ export function useHotkeys() {
         case 'j':
         case 'J':
           e.preventDefault();
-          seek(Math.max(0, progress - SEEK_LARGE));
+          seek(Math.max(0, usePlayerStore.getState().progress - SEEK_LARGE));
           break;
         case 'l':
         case 'L':
           e.preventDefault();
-          seek(progress + SEEK_LARGE);
+          seek(usePlayerStore.getState().progress + SEEK_LARGE);
           break;
         case 'ArrowLeft':
           e.preventDefault();
-          seek(Math.max(0, progress - SEEK_SMALL));
+          seek(Math.max(0, usePlayerStore.getState().progress - SEEK_SMALL));
           break;
         case 'ArrowRight':
           e.preventDefault();
-          seek(progress + SEEK_SMALL);
+          seek(usePlayerStore.getState().progress + SEEK_SMALL);
           break;
         case 'n':
         case 'N':
@@ -97,6 +108,13 @@ export function useHotkeys() {
         case 'V':
           e.preventDefault();
           toggleVideo();
+          break;
+        case 'z':
+        case 'Z':
+        case 'f':
+        case 'F':
+          e.preventDefault();
+          toggleZenMode();
           break;
         case 's':
         case 'S':
@@ -121,9 +139,20 @@ export function useHotkeys() {
       }
     },
     [
-      togglePlay, next, previous, toggleMute, toggleShuffle, cycleRepeat,
-      toggleVideo, toggleLeftSidebar, toggleRightSidebar, toggleCommandPalette,
-      seek, progress, commandPaletteOpen,
+      togglePlay,
+      next,
+      previous,
+      toggleMute,
+      toggleShuffle,
+      cycleRepeat,
+      toggleVideo,
+      toggleLeftSidebar,
+      toggleRightSidebar,
+      toggleCommandPalette,
+      toggleZenMode,
+      seek,
+      commandPaletteOpen,
+      zenMode,
     ]
   );
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useId } from 'react';
+import { useState, useId, useEffect } from 'react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import type { Track } from '@/types';
@@ -11,7 +11,7 @@ export interface TrackArtworkProps {
   title?: string;
   artist?: string;
   id?: string;
-  size?: 'xs' | 'sm' | 'md' | 'lg' | 'hero' | 'fill';
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'hero' | 'fill';
   className?: string;
   rounded?: 'none' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
   showInitials?: boolean;
@@ -86,12 +86,18 @@ export function TrackArtwork({
   showInitials = true,
 }: TrackArtworkProps) {
   const [imgError, setImgError] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
   const patternId = useId();
 
   const title = propTitle ?? track?.title ?? '';
   const artist = propArtist ?? track?.artist ?? '';
   const id = propId ?? track?.id ?? '';
   const src = propSrc ?? track?.thumbnailUrl;
+
+  useEffect(() => {
+    setImgError(false);
+    setIsLoaded(false);
+  }, [src]);
 
   const isHero = size === 'hero';
   const isSm = size === 'sm' || size === 'xs';
@@ -116,6 +122,8 @@ export function TrackArtwork({
     sm: 'w-8 h-8',
     md: 'w-10 h-10',
     lg: 'w-16 h-16',
+    xl: 'w-24 h-24',
+    '2xl': 'w-48 h-48',
     hero: 'w-full h-full',
     fill: 'w-full h-full',
   }[size];
@@ -131,12 +139,19 @@ export function TrackArtwork({
           className
         )}
       >
+        {!isLoaded && (
+          <div className="absolute inset-0 skeleton-shimmer z-0" />
+        )}
         <Image
           src={src}
           alt={`${title || 'Track'} artwork`}
           fill
-          className="object-cover transition-opacity duration-300"
+          className={cn(
+            'object-cover transition-opacity duration-300 relative z-[1]',
+            isLoaded ? 'opacity-100' : 'opacity-0'
+          )}
           unoptimized
+          onLoad={() => setIsLoaded(true)}
           onError={() => setImgError(true)}
         />
       </div>

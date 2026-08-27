@@ -1,14 +1,28 @@
-import { Innertube } from 'youtubei.js';
-import type { Track } from '@/types';
+import { Innertube, Log, Platform } from 'youtubei.js';
+import type { Track, SearchPlaylist } from '@/types';
 import { isValidTrackDuration } from '@/lib/utils';
 
-let innertubeInstance: Awaited<ReturnType<typeof Innertube.create>> | null = null;
+// Silence verbose YouTube.js parser warnings and errors in terminal
+Log.setLevel(Log.Level.NONE);
 
-export async function getInnertube() {
-  if (!innertubeInstance) {
-    innertubeInstance = await Innertube.create();
+// Configure custom JS evaluator for deciphering n-sig tokens and signature ciphers
+if (Platform?.shim) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  Platform.shim.eval = (data: { output: string }, env: Record<string, any>) => {
+    const fn = new Function(...Object.keys(env), data.output);
+    return fn(...Object.values(env));
+  };
+}
+
+// Cache the Promise, not the instance — this prevents concurrent callers from
+// each triggering Innertube.create() before the first one resolves.
+let innertubePromise: Promise<Awaited<ReturnType<typeof Innertube.create>>> | null = null;
+
+export function getInnertube() {
+  if (!innertubePromise) {
+    innertubePromise = Innertube.create();
   }
-  return innertubeInstance;
+  return innertubePromise;
 }
 
 /** Extract title string from various Innertube representations */
@@ -97,34 +111,39 @@ function toTrack(item: Record<string, unknown>): Track | null {
 
 /** Search YouTube Music via Innertube */
 export async function searchTracks(query: string): Promise<Track[]> {
-  const yt = await getInnertube();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const results = (await yt.music.search(query, { type: 'song' })) as any;
+  try {
+    const yt = await getInnertube();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const results = (await yt.music.search(query, { type: 'song' })) as any;
 
-  const tracks: Track[] = [];
+    const tracks: Track[] = [];
 
-  // 1. Try `results.songs?.contents`
-  const songList = results.songs?.contents || [];
-  for (const item of songList) {
-    const track = toTrack(item as Record<string, unknown>);
-    if (track) tracks.push(track);
-    if (tracks.length >= 25) break;
-  }
+    // 1. Try `results.songs?.contents`
+    const songList = results.songs?.contents || [];
+    for (const item of songList) {
+      const track = toTrack(item as Record<string, unknown>);
+      if (track) tracks.push(track);
+      if (tracks.length >= 25) break;
+    }
 
-  // 2. If empty, try `results.contents` shelves
-  if (tracks.length === 0 && Array.isArray(results.contents)) {
-    for (const shelf of results.contents) {
-      if (Array.isArray(shelf?.contents)) {
-        for (const item of shelf.contents) {
-          const track = toTrack(item as Record<string, unknown>);
-          if (track) tracks.push(track);
-          if (tracks.length >= 25) break;
+    // 2. If empty, try `results.contents` shelves
+    if (tracks.length === 0 && Array.isArray(results.contents)) {
+      for (const shelf of results.contents) {
+        if (Array.isArray(shelf?.contents)) {
+          for (const item of shelf.contents) {
+            const track = toTrack(item as Record<string, unknown>);
+            if (track) tracks.push(track);
+            if (tracks.length >= 25) break;
+          }
         }
       }
     }
-  }
 
-  return tracks;
+    return tracks;
+  } catch (err) {
+    console.error('[searchTracks] Error:', err);
+    return [];
+  }
 }
 
 /** Search general YouTube videos (live performances, covers, talks, long mixes) via Innertube */
@@ -185,12 +204,12 @@ export async function searchVideos(query: string): Promise<Track[]> {
 }
 
 /** Search public YouTube playlists via Innertube */
-export async function searchPlaylists(query: string): Promise<import('@/types').SearchPlaylist[]> {
+export async function searchPlaylists(query: string): Promise<SearchPlaylist[]> {
   try {
     const yt = await getInnertube();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const searchRes = (await yt.search(query, { type: 'playlist' })) as any;
-    const playlists: import('@/types').SearchPlaylist[] = [];
+    const playlists: SearchPlaylist[] = [];
 
     const rawList = searchRes.playlists || [];
     for (const pl of rawList) {
@@ -253,36 +272,68 @@ export async function getRadioSuggestions(videoId: string): Promise<Track[]> {
   }
 }
 
-/** Extract direct audio stream URL for a videoId (Experimental) */
+/** Extract direct audio stream URL for a videoId */
 export async function getStreamUrl(videoId: string): Promise<string> {
   const yt = await getInnertube();
-  const info = await yt.getInfo(videoId);
 
-  const format = info.chooseFormat({
-    quality: 'best',
-    type: 'audio',
-  });
-
-  if (!format) {
-    throw new Error('No audio format found');
-  }
-
-  if (format.url) {
-    return format.url;
-  }
-
+  // 1. Primary: yt.music.getInfo (best audio formats & direct stream URLs)
   try {
-    // In youtubei.js, decipher may return the url string or populate format.url
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const deciphered: any = (format as any).decipher?.(yt.session.player);
-    if (typeof deciphered === 'string' && deciphered.length > 0) {
-      return deciphered;
+    const musicInfo = await yt.music.getInfo(videoId);
+    const format = musicInfo.chooseFormat({
+      quality: 'best',
+      type: 'audio',
+    });
+    if (format) {
+      if (format.url) return format.url;
+      if (typeof format.decipher === 'function') {
+        const deciphered = await format.decipher(yt.session.player);
+        if (deciphered) return deciphered;
+      }
     }
-    if (format.url) {
-      return format.url;
+    const progressive = musicInfo.streaming_data?.formats?.find((f) => f.url && f.has_audio);
+    if (progressive?.url) return progressive.url;
+  } catch (err) {
+    console.warn(`[getStreamUrl] music.getInfo failed for ${videoId}:`, err);
+  }
+
+  // 2. Fallback: yt.getBasicInfo
+  try {
+    const basicInfo = await yt.getBasicInfo(videoId);
+    const format = basicInfo.chooseFormat({
+      quality: 'best',
+      type: 'audio',
+    });
+    if (format) {
+      if (format.url) return format.url;
+      if (typeof format.decipher === 'function') {
+        const deciphered = await format.decipher(yt.session.player);
+        if (deciphered) return deciphered;
+      }
     }
-  } catch {
-    // Deciphering not supported or failed
+    const progressive = basicInfo.streaming_data?.formats?.find((f) => f.url && f.has_audio);
+    if (progressive?.url) return progressive.url;
+  } catch (err) {
+    console.warn(`[getStreamUrl] getBasicInfo failed for ${videoId}:`, err);
+  }
+
+  // 3. Final fallback: yt.getInfo
+  try {
+    const info = await yt.getInfo(videoId);
+    const format = info.chooseFormat({
+      quality: 'best',
+      type: 'audio',
+    });
+    if (format) {
+      if (format.url) return format.url;
+      if (typeof format.decipher === 'function') {
+        const deciphered = await format.decipher(yt.session.player);
+        if (deciphered) return deciphered;
+      }
+    }
+    const progressive = info.streaming_data?.formats?.find((f) => f.url && f.has_audio);
+    if (progressive?.url) return progressive.url;
+  } catch (err) {
+    console.error(`[getStreamUrl] getInfo failed for ${videoId}:`, err);
   }
 
   throw new Error('Could not extract direct stream URL');

@@ -4,13 +4,15 @@ import { useState } from 'react';
 import { db } from '@/db/schema';
 import { Modal } from '@/components/ui/Modal';
 import { uuid } from '@/lib/utils';
+import type { Playlist } from '@/types';
 
 interface CreatePlaylistModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onCreated?: (playlist: Playlist) => void;
 }
 
-export function CreatePlaylistModal({ isOpen, onClose }: CreatePlaylistModalProps) {
+export function CreatePlaylistModal({ isOpen, onClose, onCreated }: CreatePlaylistModalProps) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
@@ -20,16 +22,20 @@ export function CreatePlaylistModal({ isOpen, onClose }: CreatePlaylistModalProp
     if (!name.trim()) return;
     setLoading(true);
     try {
-      await db.playlists.add({
+      const newPlaylist: Playlist = {
         id: uuid(),
         name: name.trim(),
         description: description.trim() || undefined,
         createdAt: Date.now(),
         updatedAt: Date.now(),
         trackIds: [],
-      });
+      };
+      await db.playlists.add(newPlaylist);
       setName('');
       setDescription('');
+      if (onCreated) {
+        onCreated(newPlaylist);
+      }
       onClose();
     } finally {
       setLoading(false);
@@ -40,49 +46,49 @@ export function CreatePlaylistModal({ isOpen, onClose }: CreatePlaylistModalProp
     <Modal isOpen={isOpen} onClose={onClose} title="New Playlist">
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div>
-          <label htmlFor="playlist-name" className="block text-xs text-zinc-400 mb-1.5">
-            Name <span aria-hidden="true">*</span>
+          <label htmlFor="playlist-name" className="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5 font-sans">
+            Name <span className="text-zinc-500">*</span>
           </label>
           <input
             id="playlist-name"
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="My Playlist"
+            placeholder="Midnight Session, Focus Beats…"
             autoFocus
             required
             maxLength={80}
-            className="w-full px-3 py-2 rounded-md bg-zinc-800 border border-zinc-700 text-white text-sm placeholder-zinc-600 focus:outline-none focus:border-zinc-500"
+            className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] focus:border-white/30 focus:ring-1 focus:ring-white/20 text-white text-xs placeholder-zinc-600 focus:outline-none transition-all"
           />
         </div>
         <div>
-          <label htmlFor="playlist-desc" className="block text-xs text-zinc-400 mb-1.5">
-            Description <span className="text-zinc-600">(optional)</span>
+          <label htmlFor="playlist-desc" className="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5 font-sans">
+            Description <span className="text-zinc-600 font-normal normal-case">(optional)</span>
           </label>
           <input
             id="playlist-desc"
             type="text"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Focus beats, study vibes…"
+            placeholder="Curated tracks for late night flow…"
             maxLength={200}
-            className="w-full px-3 py-2 rounded-md bg-zinc-800 border border-zinc-700 text-white text-sm placeholder-zinc-600 focus:outline-none focus:border-zinc-500"
+            className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] focus:border-white/30 focus:ring-1 focus:ring-white/20 text-white text-xs placeholder-zinc-600 focus:outline-none transition-all"
           />
         </div>
-        <div className="flex gap-2 justify-end pt-1">
+        <div className="flex gap-2 justify-end pt-2 border-t border-white/[0.06]">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-sm rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800 transition-opacity"
+            className="px-4 py-2 text-xs font-medium rounded-xl text-zinc-400 hover:text-white hover:bg-white/[0.06] transition-all cursor-pointer"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={!name.trim() || loading}
-            className="px-4 py-2 text-sm rounded-md bg-white text-black font-medium hover:bg-zinc-200 disabled:opacity-40 transition-opacity"
+            className="px-4 py-2 text-xs font-semibold rounded-xl bg-white text-black hover:bg-zinc-200 disabled:opacity-40 shadow-sm transition-all cursor-pointer"
           >
-            {loading ? 'Creating…' : 'Create'}
+            {loading ? 'Creating…' : 'Create Playlist'}
           </button>
         </div>
       </form>

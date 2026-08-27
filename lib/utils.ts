@@ -11,7 +11,7 @@ export function cn(...inputs: ClassValue[]): string {
  * Uses JetBrains Mono font class in components.
  */
 export function formatTime(seconds: number): string {
-  if (isNaN(seconds) || seconds < 0) return '0:00';
+  if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   const s = Math.floor(seconds % 60);
@@ -19,6 +19,20 @@ export function formatTime(seconds: number): string {
     return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   }
   return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+/**
+ * Parse an ISO 8601 duration string (e.g. "PT1H2M3S") to seconds.
+ * Used by YouTube Data API v3 responses.
+ */
+export function parseISO8601Duration(duration: string | undefined | null): number {
+  if (!duration) return 0;
+  const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  if (!match) return 0;
+  const h = parseInt(match[1] ?? '0', 10);
+  const m = parseInt(match[2] ?? '0', 10);
+  const s = parseInt(match[3] ?? '0', 10);
+  return h * 3600 + m * 60 + s;
 }
 
 /** Filter tracks by duration: keep 60s–600s */
@@ -52,9 +66,16 @@ export function debounce<T extends (...args: Parameters<T>) => void>(
   };
 }
 
-/** Generate a cryptographically random UUID */
+/** Generate a unique UUID with fallback */
 export function uuid(): string {
-  return crypto.randomUUID();
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
 }
 
 /** Estimate IndexedDB storage usage in MB */

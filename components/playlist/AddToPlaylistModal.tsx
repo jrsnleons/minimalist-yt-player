@@ -17,7 +17,7 @@ interface AddToPlaylistModalProps {
 }
 
 export function AddToPlaylistModal({ track, isOpen, onClose }: AddToPlaylistModalProps) {
-  const { showToast } = usePlayerStore();
+  const showToast = usePlayerStore((s) => s.showToast);
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
 
@@ -70,8 +70,8 @@ export function AddToPlaylistModal({ track, isOpen, onClose }: AddToPlaylistModa
     <Modal isOpen={isOpen} onClose={onClose} title="Add to Playlist" className="max-w-md">
       <div className="flex flex-col gap-4">
         {/* Selected Track info preview */}
-        <div className="flex items-center gap-3 p-2.5 rounded-lg bg-[#181820] border border-[#27272f]">
-          <TrackArtwork track={track} size="md" rounded="md" />
+        <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/[0.03] border border-white/[0.08]">
+          <TrackArtwork track={track} size="md" rounded="lg" />
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold text-white truncate">{track.title}</p>
             <p className="text-[11px] text-zinc-400 truncate">{track.artist}</p>
@@ -80,12 +80,12 @@ export function AddToPlaylistModal({ track, isOpen, onClose }: AddToPlaylistModa
 
         {/* Existing Playlists list */}
         <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
-          <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider px-1">
+          <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider px-1 font-sans">
             Select Playlist
           </p>
 
           {!playlists || playlists.length === 0 ? (
-            <p className="text-xs text-zinc-500 py-3 text-center">No playlists created yet</p>
+            <p className="text-xs text-zinc-500 py-4 text-center">No playlists created yet</p>
           ) : (
             playlists.map((pl) => {
               const alreadyIn = pl.trackIds.includes(track.id);
@@ -93,18 +93,18 @@ export function AddToPlaylistModal({ track, isOpen, onClose }: AddToPlaylistModa
                 <button
                   key={pl.id}
                   onClick={() => handleAddToPlaylist(pl)}
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-[#14141a] hover:bg-[#1f1f28] border border-[#27272f] text-left transition-colors group"
+                  className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-white/[0.02] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] text-left transition-all group cursor-pointer"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <Music size={14} className="text-zinc-500 group-hover:text-white transition-colors shrink-0" />
                     <span className="text-xs font-medium text-zinc-200 truncate">{pl.name}</span>
                   </div>
                   {alreadyIn ? (
-                    <span className="flex items-center gap-1 text-[10px] text-zinc-500 font-mono-time">
+                    <span className="flex items-center gap-1 text-[10px] text-emerald-400 font-mono">
                       <Check size={12} className="text-emerald-400" /> Added
                     </span>
                   ) : (
-                    <span className="text-[10px] text-zinc-500 font-mono-time">{pl.trackIds.length} tracks</span>
+                    <span className="text-[10px] text-zinc-500 font-mono">{pl.trackIds.length} tracks</span>
                   )}
                 </button>
               );
@@ -112,7 +112,7 @@ export function AddToPlaylistModal({ track, isOpen, onClose }: AddToPlaylistModa
           )}
         </div>
 
-        <div className="border-t border-[#27272f] pt-3">
+        <div className="border-t border-white/[0.06] pt-3">
           {isCreating ? (
             <form onSubmit={handleCreateAndAdd} className="flex gap-2">
               <input
@@ -121,19 +121,19 @@ export function AddToPlaylistModal({ track, isOpen, onClose }: AddToPlaylistModa
                 onChange={(e) => setNewPlaylistName(e.target.value)}
                 placeholder="New playlist name..."
                 autoFocus
-                className="flex-1 px-3 py-1.5 rounded-lg bg-[#14141a] border border-zinc-700 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-400"
+                className="flex-1 px-3.5 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] focus:border-white/30 focus:ring-1 focus:ring-white/20 text-xs text-white placeholder-zinc-500 focus:outline-none transition-all"
               />
               <button
                 type="submit"
                 disabled={!newPlaylistName.trim()}
-                className="px-3 py-1.5 rounded-lg bg-white text-black text-xs font-semibold hover:bg-zinc-200 disabled:opacity-40 transition-colors"
+                className="px-3.5 py-2 rounded-xl bg-white text-black text-xs font-semibold hover:bg-zinc-200 disabled:opacity-40 transition-all cursor-pointer shadow-sm"
               >
                 Create & Add
               </button>
               <button
                 type="button"
                 onClick={() => setIsCreating(false)}
-                className="px-2.5 py-1.5 rounded-lg text-zinc-400 hover:text-white text-xs"
+                className="px-3 py-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/[0.06] text-xs transition-all cursor-pointer"
               >
                 Cancel
               </button>
@@ -141,9 +141,9 @@ export function AddToPlaylistModal({ track, isOpen, onClose }: AddToPlaylistModa
           ) : (
             <button
               onClick={() => setIsCreating(true)}
-              className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg border border-dashed border-[#3f3f46] hover:border-zinc-400 text-zinc-300 hover:text-white text-xs font-medium transition-colors"
+              className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-dashed border-white/[0.12] hover:border-white/30 bg-white/[0.01] hover:bg-white/[0.04] text-zinc-300 hover:text-white text-xs font-medium transition-all cursor-pointer"
             >
-              <Plus size={14} />
+              <Plus size={13} />
               <span>Create New Playlist & Add</span>
             </button>
           )}
