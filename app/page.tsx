@@ -88,24 +88,42 @@ function AppShell() {
     initApp();
   }, [loadSavedPreferences, loadRecentlyPlayed, restorePreviousSession, showToast]);
 
-  // Check for shared playlist in URL params (?s=... or ?share=...)
+  // Check for shared playlist in URL params (?s=... or #s=...)
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const checkShare = async () => {
       try {
         const params = new URLSearchParams(window.location.search);
-        const shareHash = params.get('s') || params.get('share');
+        let shareHash = params.get('s') || params.get('share');
+
+        // Check hash fallback (#s=... or #c_...)
+        if (!shareHash && window.location.hash) {
+          const hashStr = window.location.hash.replace(/^#/, '');
+          const hashParams = new URLSearchParams(hashStr);
+          shareHash =
+            hashParams.get('s') ||
+            hashParams.get('share') ||
+            (hashStr.startsWith('c_') ||
+            hashStr.startsWith('cr_') ||
+            hashStr.startsWith('i_') ||
+            hashStr.startsWith('ir_') ||
+            hashStr.startsWith('z_') ||
+            hashStr.startsWith('r_')
+              ? hashStr
+              : null);
+        }
+
         if (shareHash) {
           const decoded = await decodeSharedPlaylist(shareHash);
           if (decoded && decoded.tracks.length > 0) {
             setSharedPlaylistData(decoded);
             setIsSharedModalOpen(true);
-            // Clean the query string without page reload
+            // Clean the query/hash string without page reload
             window.history.replaceState({}, document.title, window.location.pathname);
           }
         }
-      } catch {
-        // Ignore URL parse error
+      } catch (err) {
+        console.error('[App] Share URL parse error:', err);
       }
     };
     checkShare();

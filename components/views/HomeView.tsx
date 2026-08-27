@@ -214,6 +214,7 @@ export function HomeView({ onNavigateTab, onSelectPlaylist }: HomeViewProps) {
   const play = usePlayerStore((s) => s.play);
   const currentTrack = usePlayerStore((s) => s.currentTrack);
   const recentlyPlayed = usePlayerStore((s) => s.recentlyPlayed);
+  const likedTrackIds = usePlayerStore((s) => s.likedTrackIds);
   const toggleCommandPalette = usePlayerStore((s) => s.toggleCommandPalette);
   const showToast = usePlayerStore((s) => s.showToast);
   const shortcutKey = usePlatformShortcut('⌘K');
@@ -268,9 +269,31 @@ export function HomeView({ onNavigateTab, onSelectPlaylist }: HomeViewProps) {
   const handleSharePlaylist = async (playlist: Playlist, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      const all = await db.tracks.bulkGet(playlist.trackIds);
-      const validTracks = all.filter((t): t is Track => t !== undefined);
-      setSharingPlaylist({ playlist, tracks: validTracks });
+      const trackIds: string[] =
+        playlist.id === 'liked-songs'
+          ? (likedTrackIds && likedTrackIds.length > 0 ? likedTrackIds : playlist.trackIds || [])
+          : playlist.trackIds || [];
+
+      if (!trackIds || trackIds.length === 0) {
+        showToast(`Playlist "${playlist.name}" has no tracks to share`);
+        return;
+      }
+
+      const all = await db.tracks.bulkGet(trackIds);
+      const tracks: Track[] = trackIds.map((id: string, i: number) => {
+        const found = all[i];
+        if (found) return found;
+        return {
+          id,
+          title: `Track ${i + 1}`,
+          artist: 'YouTube Audio',
+          duration: 0,
+          thumbnailUrl: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
+          addedAt: Date.now(),
+        };
+      });
+
+      setSharingPlaylist({ playlist: { ...playlist, trackIds }, tracks });
     } catch {
       showToast('Could not prepare share link');
     }

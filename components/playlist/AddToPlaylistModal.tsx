@@ -5,7 +5,7 @@ import { Modal } from '@/components/ui/Modal';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/schema';
 import { usePlayerStore } from '@/store/usePlayerStore';
-import { uuid } from '@/lib/utils';
+import { uuid, cn } from '@/lib/utils';
 import { TrackArtwork } from '@/components/ui/TrackArtwork';
 import { Music, Plus, Check } from 'lucide-react';
 import type { Track, Playlist } from '@/types';
@@ -20,6 +20,7 @@ export function AddToPlaylistModal({ track, isOpen, onClose }: AddToPlaylistModa
   const showToast = usePlayerStore((s) => s.showToast);
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [recentlyToggled, setRecentlyToggled] = useState<string | null>(null);
 
   const playlists = useLiveQuery(() => db.playlists.toArray(), []);
 
@@ -29,6 +30,9 @@ export function AddToPlaylistModal({ track, isOpen, onClose }: AddToPlaylistModa
     const exists = playlist.trackIds.includes(track.id);
     let updatedTrackIds: string[];
 
+    setRecentlyToggled(playlist.id);
+    setTimeout(() => setRecentlyToggled(null), 1200);
+
     if (exists) {
       updatedTrackIds = playlist.trackIds.filter((id) => id !== track.id);
       showToast(`Removed from "${playlist.name}"`);
@@ -36,7 +40,7 @@ export function AddToPlaylistModal({ track, isOpen, onClose }: AddToPlaylistModa
       updatedTrackIds = [...playlist.trackIds, track.id];
       // Save track metadata to IndexedDB
       await db.tracks.put(track);
-      showToast(`Added to "${playlist.name}"`);
+      showToast(`Added to "${playlist.name}" ✓`);
     }
 
     await db.playlists.update(playlist.id, {
@@ -60,7 +64,7 @@ export function AddToPlaylistModal({ track, isOpen, onClose }: AddToPlaylistModa
     };
 
     await db.playlists.add(newPlaylist);
-    showToast(`Created "${name}" and added track`);
+    showToast(`Created "${name}" and added track ✓`);
     setNewPlaylistName('');
     setIsCreating(false);
     onClose();
@@ -89,18 +93,33 @@ export function AddToPlaylistModal({ track, isOpen, onClose }: AddToPlaylistModa
           ) : (
             playlists.map((pl) => {
               const alreadyIn = pl.trackIds.includes(track.id);
+              const isToggled = recentlyToggled === pl.id;
+
               return (
                 <button
                   key={pl.id}
                   onClick={() => handleAddToPlaylist(pl)}
-                  className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-white/[0.02] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] text-left transition-all group cursor-pointer"
+                  className={cn(
+                    'w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-left transition-all group cursor-pointer active:scale-98',
+                    isToggled
+                      ? 'bg-emerald-500/15 border border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.15)]'
+                      : alreadyIn
+                      ? 'bg-white/[0.04] border border-white/[0.12] hover:bg-white/[0.07]'
+                      : 'bg-white/[0.02] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12]'
+                  )}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <Music size={14} className="text-zinc-500 group-hover:text-white transition-colors shrink-0" />
+                    <Music
+                      size={14}
+                      className={cn(
+                        'transition-colors shrink-0',
+                        alreadyIn ? 'text-emerald-400' : 'text-zinc-500 group-hover:text-white'
+                      )}
+                    />
                     <span className="text-xs font-medium text-zinc-200 truncate">{pl.name}</span>
                   </div>
                   {alreadyIn ? (
-                    <span className="flex items-center gap-1 text-[10px] text-emerald-400 font-mono">
+                    <span className="flex items-center gap-1 text-[10px] text-emerald-400 font-mono font-medium">
                       <Check size={12} className="text-emerald-400" /> Added
                     </span>
                   ) : (
@@ -126,14 +145,14 @@ export function AddToPlaylistModal({ track, isOpen, onClose }: AddToPlaylistModa
               <button
                 type="submit"
                 disabled={!newPlaylistName.trim()}
-                className="px-3.5 py-2 rounded-xl bg-white text-black text-xs font-semibold hover:bg-zinc-200 disabled:opacity-40 transition-all cursor-pointer shadow-sm"
+                className="px-3.5 py-2 rounded-xl bg-white text-black text-xs font-semibold hover:bg-zinc-200 disabled:opacity-40 transition-all cursor-pointer shadow-sm active:scale-95"
               >
                 Create & Add
               </button>
               <button
                 type="button"
                 onClick={() => setIsCreating(false)}
-                className="px-3 py-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/[0.06] text-xs transition-all cursor-pointer"
+                className="px-3 py-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/[0.06] text-xs transition-all cursor-pointer active:scale-95"
               >
                 Cancel
               </button>
@@ -141,7 +160,7 @@ export function AddToPlaylistModal({ track, isOpen, onClose }: AddToPlaylistModa
           ) : (
             <button
               onClick={() => setIsCreating(true)}
-              className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-dashed border-white/[0.12] hover:border-white/30 bg-white/[0.01] hover:bg-white/[0.04] text-zinc-300 hover:text-white text-xs font-medium transition-all cursor-pointer"
+              className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-dashed border-white/[0.12] hover:border-white/30 bg-white/[0.01] hover:bg-white/[0.04] text-zinc-300 hover:text-white text-xs font-medium transition-all cursor-pointer active:scale-98"
             >
               <Plus size={13} />
               <span>Create New Playlist & Add</span>

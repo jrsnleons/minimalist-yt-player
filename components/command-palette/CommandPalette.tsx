@@ -9,11 +9,11 @@ import {
   ListStart,
   Loader2,
   Zap,
-  Tv,
   Radio,
   Sparkles,
-  Maximize2,
+  Check,
 } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/schema';
 import { usePlayerStore } from '@/store/usePlayerStore';
@@ -98,8 +98,21 @@ export function CommandPalette() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [playlistTrack, setPlaylistTrack] = useState<Track | null>(null);
 
+  // Instant tactile button and banner feedback state
+  const [buttonFeedback, setButtonFeedback] = useState<Record<string, 'next' | 'queue'>>({});
+  const [inlineBanner, setInlineBanner] = useState<{ text: string; id: number } | null>(null);
+  const bannerTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+
+  const triggerFeedback = useCallback((message: string) => {
+    if (bannerTimerRef.current) clearTimeout(bannerTimerRef.current);
+    setInlineBanner({ text: message, id: Date.now() });
+    bannerTimerRef.current = setTimeout(() => {
+      setInlineBanner(null);
+    }, 2800);
+  }, []);
 
   // App actions — memoized to prevent recreation on every render
   const actions: AppAction[] = useMemo(
@@ -108,17 +121,25 @@ export function CommandPalette() {
         id: 'toggle-zen-mode',
         label: `Toggle Zen Focus Mode (${zenMode ? 'Exit' : 'Enter'})`,
         shortcut: 'Z',
-        action: () => toggleZenMode(),
+        action: () => {
+          toggleZenMode();
+          triggerFeedback(`Zen Focus Mode ${!zenMode ? 'Enabled' : 'Disabled'}`);
+        },
       },
       {
         id: 'toggle-visualizer',
-        label: `Toggle Ambient Visualizer (${ambientVisualizerEnabled ? 'On' : 'Off'})`,
-        action: () => toggleAmbientVisualizer(),
+        label: `Toggle Ambient Visualizer (${ambientVisualizerEnabled ? 'Turn Off' : 'Turn On'})`,
+        action: () => {
+          toggleAmbientVisualizer();
+          triggerFeedback(`Ambient Visualizer ${!ambientVisualizerEnabled ? 'Turned On' : 'Turned Off'}`);
+        },
       },
       {
         id: 'open-settings',
         label: 'Open Settings & Data Safety',
-        action: () => toggleSettings(),
+        action: () => {
+          toggleSettings();
+        },
       },
       {
         id: 'export-backup',
@@ -126,35 +147,48 @@ export function CommandPalette() {
         action: async () => {
           try {
             const b = await exportFullLibrary();
-            showToast(`Exported backup with ${b.summary.playlistCount} playlists & ${b.summary.trackCount} tracks!`);
+            const msg = `Exported ${b.summary.playlistCount} playlists & ${b.summary.trackCount} tracks!`;
+            triggerFeedback(msg);
+            showToast(msg);
           } catch {
+            triggerFeedback('Failed to export library');
             showToast('Failed to export library');
           }
         },
       },
       {
         id: 'toggle-video',
-        label: `Toggle Video Mode (${isVideoEnabled ? 'On' : 'Off'})`,
+        label: `Toggle Video Mode (${isVideoEnabled ? 'Turn Off' : 'Turn On'})`,
         shortcut: 'V',
-        action: () => toggleVideo(),
+        action: () => {
+          toggleVideo();
+          triggerFeedback(`Video Mode ${!isVideoEnabled ? 'Turned On' : 'Turned Off'}`);
+        },
       },
       {
         id: 'toggle-shuffle',
-        label: `Toggle Shuffle (${shuffleMode ? 'On' : 'Off'})`,
+        label: `Toggle Shuffle (${shuffleMode ? 'Turn Off' : 'Turn On'})`,
         shortcut: 'S',
-        action: () => toggleShuffle(),
+        action: () => {
+          toggleShuffle();
+          triggerFeedback(`Shuffle ${!shuffleMode ? 'Turned On' : 'Turned Off'}`);
+        },
       },
       {
         id: 'cycle-repeat',
         label: `Cycle Repeat (${repeatMode.toUpperCase()})`,
         shortcut: 'R',
-        action: () => cycleRepeat(),
+        action: () => {
+          cycleRepeat();
+          triggerFeedback('Repeat mode updated');
+        },
       },
       {
         id: 'clear-queue',
         label: 'Clear Up Next Queue',
         action: () => {
           clearQueue();
+          triggerFeedback('Cleared Up Next queue');
           showToast('Queue cleared');
         },
       },
@@ -173,6 +207,7 @@ export function CommandPalette() {
       cycleRepeat,
       clearQueue,
       showToast,
+      triggerFeedback,
     ]
   );
 
@@ -248,9 +283,42 @@ export function CommandPalette() {
       setActiveIndex(0);
       setScope('all');
       setIsSmartProcessing(false);
+      setInlineBanner(null);
+      setButtonFeedback({});
       setTimeout(() => inputRef.current?.focus(), 60);
     }
   }, [commandPaletteOpen]);
+
+  // Track button action handlers with instant tactile feedback
+  const handlePlayNextTrack = (t: Track, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setButtonFeedback((prev) => ({ ...prev, [t.id]: 'next' }));
+    playNext(t);
+    triggerFeedback(`"${t.title}" queued to play next`);
+    showToast(`"${t.title}" will play next`);
+    setTimeout(() => {
+      setButtonFeedback((prev) => {
+        const copy = { ...prev };
+        delete copy[t.id];
+        return copy;
+      });
+    }, 1800);
+  };
+
+  const handleAddToQueueTrack = (t: Track, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setButtonFeedback((prev) => ({ ...prev, [t.id]: 'queue' }));
+    addToQueue(t);
+    triggerFeedback(`Added "${t.title}" to Up Next queue`);
+    showToast(`Added "${t.title}" to Queue`);
+    setTimeout(() => {
+      setButtonFeedback((prev) => {
+        const copy = { ...prev };
+        delete copy[t.id];
+        return copy;
+      });
+    }, 1800);
+  };
 
   // Smart URL action executors
   const handleExecuteSmartUrl = useCallback(
@@ -517,6 +585,26 @@ export function CommandPalette() {
             </kbd>
           </div>
 
+          {/* Non-intrusive in-palette action banner */}
+          <AnimatePresence>
+            {inlineBanner && (
+              <motion.div
+                key={inlineBanner.id}
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.15 }}
+                className="px-5 py-2 bg-emerald-500/10 border-b border-emerald-500/20 flex items-center justify-between text-emerald-300 text-xs font-medium"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <Check size={13} className="text-emerald-400 shrink-0" />
+                  <span className="truncate">{inlineBanner.text}</span>
+                </div>
+                <span className="text-[10px] text-emerald-400/80 font-mono tracking-wider shrink-0 ml-2">✓ CONFIRMED</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Scope Filters (Only if no smart URL active) */}
           {!smartUrl && (
             <div className="flex items-center px-4 border-b border-white/[0.06] bg-[#09090d] text-xs" role="tablist">
@@ -597,7 +685,7 @@ export function CommandPalette() {
                                 aria-selected={isSelected}
                                 disabled={isSmartProcessing}
                                 className={cn(
-                                  'w-full flex items-center justify-between p-3 rounded-2xl text-left transition-all border cursor-pointer',
+                                  'w-full flex items-center justify-between p-3 rounded-2xl text-left transition-all border cursor-pointer active:scale-98',
                                   isSelected
                                     ? 'bg-white/[0.1] border-white/30 text-white shadow-lg'
                                     : 'bg-white/[0.03] border-white/[0.08] text-zinc-200 hover:bg-white/[0.06]'
@@ -640,19 +728,23 @@ export function CommandPalette() {
                                 id={itemId}
                                 onClick={() => {
                                   item.action!.action();
-                                  toggleCommandPalette();
+                                  if (item.action!.id === 'open-settings') {
+                                    toggleCommandPalette();
+                                  }
                                 }}
                                 onMouseEnter={() => setActiveIndex(itemGlobalIndex)}
                                 role="option"
                                 aria-selected={isSelected}
                                 className={cn(
-                                  'w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-xs transition-all cursor-pointer',
-                                  isSelected ? 'bg-white/[0.08] text-white border border-white/[0.12]' : 'text-zinc-300 hover:bg-white/[0.03] border border-transparent'
+                                  'w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left text-xs transition-all cursor-pointer active:scale-98',
+                                  isSelected
+                                    ? 'bg-white/[0.08] text-white border border-white/[0.15] shadow-sm'
+                                    : 'text-zinc-300 hover:bg-white/[0.04] border border-transparent'
                                 )}
                               >
                                 <div className="flex items-center gap-2.5">
                                   <Zap size={14} className={isSelected ? 'text-white' : 'text-zinc-500'} />
-                                  <span>{item.action.label}</span>
+                                  <span className="font-medium">{item.action.label}</span>
                                 </div>
                                 {item.action.shortcut && (
                                   <kbd className="px-1.5 py-0.5 text-[10px] rounded-md bg-white/[0.06] border border-white/[0.08] text-zinc-300 font-mono">
@@ -666,6 +758,9 @@ export function CommandPalette() {
                           // 3. Track Item
                           if (item.type === 'track' && item.track) {
                             const t = item.track;
+                            const isNextDone = buttonFeedback[t.id] === 'next';
+                            const isQueueDone = buttonFeedback[t.id] === 'queue';
+
                             return (
                               <div
                                 key={item.id}
@@ -675,7 +770,9 @@ export function CommandPalette() {
                                 aria-selected={isSelected}
                                 className={cn(
                                   'w-full flex items-center justify-between px-3 py-2 rounded-xl transition-all group',
-                                  isSelected ? 'bg-white/[0.08] text-white border border-white/[0.12]' : 'text-zinc-300 hover:bg-white/[0.03] border border-transparent'
+                                  isSelected
+                                    ? 'bg-white/[0.08] text-white border border-white/[0.12]'
+                                    : 'text-zinc-300 hover:bg-white/[0.03] border border-transparent'
                                 )}
                               >
                                 {/* Left track preview */}
@@ -695,8 +792,8 @@ export function CommandPalette() {
                                 </div>
 
                                 {/* Right Actions: Duration + Play Now + Add to Queue + Add to Playlist */}
-                                <div className="flex items-center gap-2 shrink-0 ml-3">
-                                  <span className="font-mono text-[11px] text-zinc-500 mr-1">
+                                <div className="flex items-center gap-1.5 shrink-0 ml-3">
+                                  <span className="font-mono text-[11px] text-zinc-500 mr-1 hidden sm:inline">
                                     {formatTime(t.duration)}
                                   </span>
 
@@ -708,7 +805,7 @@ export function CommandPalette() {
                                       toggleCommandPalette();
                                     }}
                                     aria-label={`Play ${t.title} now`}
-                                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white text-black text-[11px] font-semibold hover:bg-zinc-200 transition-all shadow-sm cursor-pointer"
+                                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white text-black text-[11px] font-semibold hover:bg-zinc-200 transition-all shadow-sm cursor-pointer active:scale-95"
                                     title="Play Now"
                                   >
                                     <Play size={11} fill="currentColor" />
@@ -717,32 +814,42 @@ export function CommandPalette() {
 
                                   {/* 2. Play Next */}
                                   <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      playNext(t);
-                                      showToast(`"${t.title}" will play next`);
-                                    }}
+                                    onClick={(e) => handlePlayNextTrack(t, e)}
                                     aria-label={`Play ${t.title} next`}
-                                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-zinc-200 text-[11px] font-medium transition-all border border-white/[0.08] cursor-pointer"
+                                    className={cn(
+                                      'flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all border cursor-pointer active:scale-95',
+                                      isNextDone
+                                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.2)]'
+                                        : 'bg-white/[0.04] hover:bg-white/[0.08] text-zinc-200 border-white/[0.08]'
+                                    )}
                                     title="Play Next"
                                   >
-                                    <ListStart size={12} />
-                                    <span>Next</span>
+                                    {isNextDone ? (
+                                      <Check size={12} className="text-emerald-400" />
+                                    ) : (
+                                      <ListStart size={12} />
+                                    )}
+                                    <span>{isNextDone ? 'Set Next!' : 'Next'}</span>
                                   </button>
 
                                   {/* 3. Add to Queue */}
                                   <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      addToQueue(t);
-                                      showToast(`Added "${t.title}" to Queue`);
-                                    }}
+                                    onClick={(e) => handleAddToQueueTrack(t, e)}
                                     aria-label={`Add ${t.title} to Queue`}
-                                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-zinc-200 text-[11px] font-medium transition-all border border-white/[0.08] cursor-pointer"
+                                    className={cn(
+                                      'flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all border cursor-pointer active:scale-95',
+                                      isQueueDone
+                                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.2)]'
+                                        : 'bg-white/[0.04] hover:bg-white/[0.08] text-zinc-200 border-white/[0.08]'
+                                    )}
                                     title="Add to end of Queue"
                                   >
-                                    <Plus size={12} />
-                                    <span>Queue</span>
+                                    {isQueueDone ? (
+                                      <Check size={12} className="text-emerald-400" />
+                                    ) : (
+                                      <Plus size={12} />
+                                    )}
+                                    <span>{isQueueDone ? 'Queued!' : 'Queue'}</span>
                                   </button>
 
                                   {/* 4. Add to Playlist */}
@@ -752,7 +859,7 @@ export function CommandPalette() {
                                       setPlaylistTrack(t);
                                     }}
                                     aria-label={`Add ${t.title} to Playlist`}
-                                    className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 hover:text-white transition-all border border-white/[0.08] cursor-pointer"
+                                    className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 hover:text-white transition-all border border-white/[0.08] cursor-pointer active:scale-95"
                                     title="Add to Playlist"
                                   >
                                     <ListPlus size={13} />

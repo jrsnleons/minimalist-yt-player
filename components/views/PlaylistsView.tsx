@@ -236,12 +236,34 @@ export function PlaylistsView({ initialPlaylist = null }: PlaylistsViewProps) {
     }
   };
 
-  const handleSharePlaylist = async (playlist: Playlist) => {
+  const handleSharePlaylist = async (playlist: Playlist, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     try {
-      const trackIds = playlist.id === 'liked-songs' ? (likedPlaylist?.trackIds || likedTrackIds) : playlist.trackIds;
+      const trackIds: string[] =
+        playlist.id === 'liked-songs'
+          ? (likedPlaylist?.trackIds || likedTrackIds)
+          : playlist.trackIds || [];
+
+      if (!trackIds || trackIds.length === 0) {
+        showToast(`Playlist "${playlist.name}" has no tracks to share`);
+        return;
+      }
+
       const all = await db.tracks.bulkGet(trackIds);
-      const validTracks = all.filter((t): t is Track => t !== undefined);
-      setSharingPlaylist({ playlist, tracks: validTracks });
+      const tracks: Track[] = trackIds.map((id: string, i: number) => {
+        const found = all[i];
+        if (found) return found;
+        return {
+          id,
+          title: `Track ${i + 1}`,
+          artist: 'YouTube Audio',
+          duration: 0,
+          thumbnailUrl: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
+          addedAt: Date.now(),
+        };
+      });
+
+      setSharingPlaylist({ playlist: { ...playlist, trackIds }, tracks });
     } catch {
       showToast('Could not prepare share link');
     }
