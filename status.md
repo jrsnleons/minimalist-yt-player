@@ -1,22 +1,25 @@
 # Onyx Audio — Build Status & Handoff
 
-## Current Phase: Sharing & QR Feature Completely Removed ✅
-## Current Step: Ready for Daily Use & Production Deployment
+## Current Phase: Production OG & Canonical URLs Configured (`https://onyx-player.vercel.app`) ✅
+## Current Step: Deployed on Vercel & Production Ready
 
 ## ✅ Latest Updates
 
-### 1. Completely Removed Sharing & QR Code Subsystems
-- **Uninstalled NPM Packages**: Removed `qrcode` and `@types/qrcode` from `dependencies`, `devDependencies`, and `pnpm-lock.yaml`.
-- **Deleted Files**:
-  - `lib/share.ts` (URL compression, binary packing, QR SVG generator)
-  - `components/playlist/SharePlaylistModal.tsx`
-  - `components/playlist/SharedPlaylistImportModal.tsx`
-- **Cleaned UI & App Components**:
-  - `app/page.tsx`: Removed URL share parameter listening, hash detection, and import modal.
-  - `components/views/HomeView.tsx`: Removed Share buttons, `sharingPlaylist` state, and modal wrapper.
-  - `components/views/PlaylistsView.tsx`: Removed Share button from selected playlist header, Liked Songs header, and individual cards.
-  - `components/playlist/PlaylistDetail.tsx`: Removed Share button from playlist detail banner.
-  - `README.md`: Updated feature documentation and tech stack list.
+### 1. Canonical URLs Updated to `https://onyx-player.vercel.app`
+- **Updated `app/layout.tsx`**:
+  - `metadataBase`: Configured to `https://onyx-player.vercel.app` (fallback to `process.env.NEXT_PUBLIC_APP_URL`).
+  - `openGraph.url`: Set to `https://onyx-player.vercel.app`.
+  - `alternates.canonical`: Set to `https://onyx-player.vercel.app`.
+  - Authors URL & Twitter card creator configured.
+- **Updated Deployment & Env Docs**:
+  - `.env.example`: Set `NEXT_PUBLIC_APP_URL=https://onyx-player.vercel.app`.
+  - `DEPLOYMENT.md`: Updated environment table with production Vercel domain.
 
-### 2. Verified Clean Production Build
-- `pnpm build` verified: **0 errors, 0 warnings**, static page generation passed cleanly in Turbopack.
+### 2. High-Resolution Dynamic OpenGraph & Twitter Card Images
+- **Added `app/opengraph-image.tsx` & `app/twitter-image.tsx`**:
+  - Automatically generates 1200×630px high-resolution OpenGraph cards for social sharing on Discord, Twitter/X, iMessage, WhatsApp, Slack, etc.
+  - Dark noir aesthetic with typography, features badge list, and domain pill.
+  - Prerendered as static content (`○ /opengraph-image`, `○ /twitter-image`) with sub-second delivery.
+
+### 3. Clean Build Verification
+- `pnpm build` verified: **0 errors, 0 warnings**, static page generation passed.

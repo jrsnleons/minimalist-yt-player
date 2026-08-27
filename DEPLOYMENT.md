@@ -117,7 +117,7 @@ The player operates **100% out of the box with zero API keys or external account
 
 | Variable | Required | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `NEXT_PUBLIC_APP_URL` | No | `http://localhost:3000` | Canonical site URL used for OpenGraph / Share link generation. |
+| `NEXT_PUBLIC_APP_URL` | No | `https://onyx-player.vercel.app` | Canonical site URL used for OpenGraph and social previews. |
 | `YOUTUBE_DATA_API_KEY` | No | *(None)* | Secondary fallback for search & playlist scraping if default Innertube scraper hits IP rate-limits. |
 | `SPOTIFY_CLIENT_ID` | No | *(None)* | Optional Spotify Web API client ID fallback. |
 | `SPOTIFY_CLIENT_SECRET`| No | *(None)* | Optional Spotify Web API client secret. |
