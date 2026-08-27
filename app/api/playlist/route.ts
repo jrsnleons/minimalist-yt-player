@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { getInnertube } from '@/lib/youtube';
-import { parseISO8601Duration } from '@/lib/utils';
+import { parseISO8601Duration, cleanThumbnailUrl } from '@/lib/utils';
 import type { Track } from '@/types';
 
 const YOUTUBE_API_KEY = process.env.YOUTUBE_DATA_API_KEY;
@@ -97,7 +97,10 @@ async function fetchViaDataAPI(playlistId: string): Promise<{ title: string; des
         title: itemTitle,
         artist: item.snippet?.videoOwnerChannelTitle || item.snippet?.channelTitle || 'YouTube Music',
         duration: durationMap.get(videoId) ?? 200,
-        thumbnailUrl: item.snippet?.thumbnails?.high?.url || item.snippet?.thumbnails?.default?.url || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+        thumbnailUrl: cleanThumbnailUrl(
+          item.snippet?.thumbnails?.high?.url || item.snippet?.thumbnails?.default?.url,
+          videoId
+        ),
         addedAt: Date.now(),
       });
     }
@@ -163,10 +166,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           ? item.duration.seconds
           : parseDurationText(item.duration?.text || item.duration?.toString?.());
 
-      const thumbnailUrl =
-        item.thumbnail?.contents?.[0]?.url ||
-        item.thumbnails?.[0]?.url ||
-        `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+      const thumbnailUrl = cleanThumbnailUrl(
+        item.thumbnail?.contents?.[0]?.url || item.thumbnails?.[0]?.url,
+        id
+      );
 
       tracks.push({
         id,
@@ -232,10 +235,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         '';
 
       const duration = parseDurationText(durationText);
-      const thumbnailUrl =
-        v.content_image?.image?.[0]?.url ||
-        v.thumbnails?.[0]?.url ||
-        `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+      const thumbnailUrl = cleanThumbnailUrl(
+        v.content_image?.image?.[0]?.url || v.thumbnails?.[0]?.url,
+        id
+      );
 
       tracks.push({
         id,

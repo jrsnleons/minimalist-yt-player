@@ -1,6 +1,6 @@
 import { Innertube, Log, Platform } from 'youtubei.js';
 import type { Track, SearchPlaylist } from '@/types';
-import { isValidTrackDuration } from '@/lib/utils';
+import { isValidTrackDuration, cleanThumbnailUrl } from '@/lib/utils';
 
 // Silence verbose YouTube.js parser warnings and errors in terminal
 Log.setLevel(Log.Level.NONE);
@@ -71,18 +71,17 @@ function extractDuration(duration: unknown): number {
   return 0;
 }
 
-/** Extract thumbnail URL */
+/** Extract clean, query-free thumbnail URL */
 function extractThumbnail(id: string, item: Record<string, unknown>): string {
   if (Array.isArray(item.thumbnails) && item.thumbnails.length > 0) {
     const url = item.thumbnails[0]?.url;
-    if (typeof url === 'string') return url;
+    if (typeof url === 'string') return cleanThumbnailUrl(url, id);
   }
   if (Array.isArray(item.thumbnail) && item.thumbnail.length > 0) {
     const url = item.thumbnail[0]?.url;
-    if (typeof url === 'string') return url;
+    if (typeof url === 'string') return cleanThumbnailUrl(url, id);
   }
-  // Fallback to high quality YouTube thumbnail
-  return `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+  return cleanThumbnailUrl(null, id);
 }
 
 /** Convert raw search result item to a Track */
@@ -179,10 +178,10 @@ export async function searchVideos(query: string): Promise<Track[]> {
           ? v.duration
           : extractDuration(v.duration) || 180;
 
-      const thumbnailUrl =
-        v.thumbnails?.[0]?.url ||
-        v.thumbnail?.[0]?.url ||
-        `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+      const thumbnailUrl = cleanThumbnailUrl(
+        v.thumbnails?.[0]?.url || v.thumbnail?.[0]?.url,
+        id
+      );
 
       videos.push({
         id,
@@ -227,10 +226,11 @@ export async function searchPlaylists(query: string): Promise<SearchPlaylist[]> 
         pl.author?.name ||
         'YouTube';
 
-      const thumbnailUrl =
+      const thumbnailUrl = cleanThumbnailUrl(
         pl.content_image?.primary_thumbnail?.image?.[0]?.url ||
-        pl.thumbnails?.[0]?.url ||
-        `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+          pl.thumbnails?.[0]?.url,
+        id
+      );
 
       playlists.push({
         id,

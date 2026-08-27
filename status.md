@@ -1,123 +1,24 @@
 # Onyx Audio — Build Status & Handoff
 
-## Current Phase: Production Build & Multi-Platform Deployment Ready ✅
-## Current Step: Ready for Deployment (Vercel, Docker, Netlify, VPS, Railway, Render)
+## Current Phase: Tooltip Portaling, Command Center Feedback & Share Fixes completed ✅
+## Current Step: Ready for Daily Use & Production Deployment
 
-## ✅ Production Readiness Highlights
+## ✅ Latest Updates
 
-### 1. Production Build & Output Modes ([next.config.ts](file:///Users/jello/Documents/dev/minimalist-yt-player/next.config.ts))
-- **Turbopack Production Compilation**: Tested and verified building in **~1.5 seconds** with 0 errors and 0 warnings.
-- **Dual Output Support**:
-  - Standard edge/serverless build for **Vercel** and **Netlify** (zero config).
-  - Standalone bundled output (`OUTPUT_STANDALONE=true`) for **Docker**, **Kubernetes**, **Coolify**, **Railway**, and **VPS** hosting.
-- **Security & Cache Headers**:
-  - `X-Content-Type-Options: nosniff`
-  - `Referrer-Policy: strict-origin-when-cross-origin`
-  - `Permissions-Policy: camera=(), microphone=(), geolocation=()`
-  - `poweredByHeader: false`
-  - Cache-Control optimization on static assets & API routes.
+### 1. Fixed Cropped Tooltips ([Tooltip.tsx](file:///Users/jello/Documents/dev/minimalist-yt-player/components/ui/Tooltip.tsx))
+- **Portal Rendering**: Moved tooltips into `document.body` via `createPortal` with `position: fixed` and `z-[99999]`.
+- **Zero Overflow Clipping**: Tooltips now calculate exact viewport coordinates with `getBoundingClientRect()`, preventing them from ever getting cropped by `overflow-hidden` containers, cards, tables, or modals.
+- **Viewport Boundary Clamping**: Tooltips automatically clamp within screen edges so text is never cut off near browser margins.
 
-### 2. Multi-Stage Production Docker Support ([Dockerfile](file:///Users/jello/Documents/dev/minimalist-yt-player/Dockerfile), [.dockerignore](file:///Users/jello/Documents/dev/minimalist-yt-player/.dockerignore))
-- Lightweight Alpine Node 20 base image.
-- Non-root `nextjs` user security isolation.
-- Minimal standalone distribution footprint (~120MB).
+### 2. Responsive Command Center & Instant Tactile Feedback ([CommandPalette.tsx](file:///Users/jello/Documents/dev/minimalist-yt-player/components/command-palette/CommandPalette.tsx), [Toast.tsx](file:///Users/jello/Documents/dev/minimalist-yt-player/components/ui/Toast.tsx), [AddToPlaylistModal.tsx](file:///Users/jello/Documents/dev/minimalist-yt-player/components/playlist/AddToPlaylistModal.tsx))
+- **Instant Button State Morphing**: Clicking "Next" or "Queue" immediately transforms the button with a green checkmark (`✓ Set Next!` / `✓ Queued!`) and emerald glow for 1.8s.
+- **In-Palette Confirmation Banner**: Animated non-intrusive banner appears inside the Command Palette header (`✓ Confirmed: Added "Title" to queue`) confirming actions without dismissing the user's flow.
+- **Elevated Global Toasts (`z-[99999]`)**: Portaled `Toast` to `document.body` with `z-[99999]` so toasts are always visible on top of Command Palette (`z-[200]`), modals (`z-[100]`), and Zen mode (`z-50`).
+- **Tactile Active Scaling**: Added `active:scale-95` on all command buttons and playlist rows.
 
-### 3. PWA & Web App Manifest ([app/manifest.ts](file:///Users/jello/Documents/dev/minimalist-yt-player/app/manifest.ts), [app/layout.tsx](file:///Users/jello/Documents/dev/minimalist-yt-player/app/layout.tsx))
-- Next.js 16 Web App Manifest `/manifest.webmanifest` automatically compiled and linked.
-- PWA installability on macOS, Windows, iOS, and Android.
-- OpenGraph, Twitter card, canonical URL, and SEO tags configured.
-
-### 4. Configuration & Deployment Guides ([.env.example](file:///Users/jello/Documents/dev/minimalist-yt-player/.env.example), [DEPLOYMENT.md](file:///Users/jello/Documents/dev/minimalist-yt-player/DEPLOYMENT.md), [README.md](file:///Users/jello/Documents/dev/minimalist-yt-player/README.md))
-- Complete 1-click guides for Vercel, Netlify, Docker Compose, Railway, Render, Fly.io, and VPS.
-- Zero mandatory API keys — 100% operational out of the box.
-
----
-
-## 🗂️ Complete File Tree
-
-```
-onyx/
-├── .dockerignore
-├── .env.example
-├── Dockerfile
-├── DEPLOYMENT.md
-├── README.md
-├── app/
-│   ├── api/
-│   │   ├── playlist/route.ts
-│   │   ├── radio/route.ts
-│   │   ├── search/route.ts
-│   │   ├── spotify/
-│   │   │   ├── resolve/route.ts
-│   │   │   └── route.ts
-│   │   └── stream/route.ts
-│   ├── favicon.ico
-│   ├── globals.css
-│   ├── layout.tsx
-│   ├── manifest.ts
-│   └── page.tsx
-├── components/
-│   ├── command-palette/CommandPalette.tsx
-│   ├── context-menu/TrackContextMenu.tsx
-│   ├── layout/
-│   │   ├── MiniPlayer.tsx
-│   │   ├── QueueSidebar.tsx
-│   │   ├── SidebarPlaylists.tsx
-│   │   └── TopNav.tsx
-│   ├── player/
-│   │   ├── AmbientVisualizer.tsx
-│   │   ├── CustomScrubber.tsx
-│   │   ├── DirectAudioPlayer.tsx
-│   │   ├── PlayerErrorBoundary.tsx
-│   │   ├── PlayerHero.tsx
-│   │   ├── TransportControls.tsx
-│   │   ├── VolumeSlider.tsx
-│   │   ├── YouTubeIframe.tsx
-│   │   └── ZenPlayerView.tsx
-│   ├── playlist/
-│   │   ├── AddToPlaylistModal.tsx
-│   │   ├── CenterStageQueue.tsx
-│   │   ├── CreatePlaylistModal.tsx
-│   │   ├── EditPlaylistModal.tsx
-│   │   ├── ImportPlaylistModal.tsx
-│   │   ├── PlaylistDetail.tsx
-│   │   ├── SharePlaylistModal.tsx
-│   │   ├── SharedPlaylistImportModal.tsx
-│   │   └── TrackRow.tsx
-│   ├── settings/SettingsModal.tsx
-│   ├── ui/
-│   │   ├── MarqueeText.tsx
-│   │   ├── Modal.tsx
-│   │   ├── Skeleton.tsx
-│   │   ├── Toast.tsx
-│   │   ├── Tooltip.tsx
-│   │   └── TrackArtwork.tsx
-│   └── views/
-│       ├── HomeView.tsx
-│       ├── PlaylistsView.tsx
-│       ├── RecentlyPlayedView.tsx
-│       ├── SearchView.tsx
-│       └── VibeSuggestionsView.tsx
-├── db/schema.ts
-├── hooks/
-│   ├── useAdblockCheck.ts
-│   ├── useDirectAudio.ts
-│   ├── useDynamicTrackPalette.ts
-│   ├── useHotkeys.ts
-│   ├── useMediaSession.ts
-│   ├── usePlatformShortcut.ts
-│   ├── useRadioSuggestions.ts
-│   └── useYouTubePlayer.ts
-├── lib/
-│   ├── backup.ts
-│   ├── paletteExtractor.ts
-│   ├── share.ts
-│   ├── spotify.ts
-│   ├── utils.ts
-│   └── youtube.ts
-├── next.config.ts
-├── package.json
-├── store/usePlayerStore.ts
-├── tsconfig.json
-└── types/index.ts
-```
+### 3. Bulletproof Share Button ([SharePlaylistModal.tsx](file:///Users/jello/Documents/dev/minimalist-yt-player/components/playlist/SharePlaylistModal.tsx), [PlaylistDetail.tsx](file:///Users/jello/Documents/dev/minimalist-yt-player/components/playlist/PlaylistDetail.tsx), [HomeView.tsx](file:///Users/jello/Documents/dev/minimalist-yt-player/components/views/HomeView.tsx), [PlaylistsView.tsx](file:///Users/jello/Documents/dev/minimalist-yt-player/components/views/PlaylistsView.tsx), [app/page.tsx](file:///Users/jello/Documents/dev/minimalist-yt-player/app/page.tsx))
+- **Auto Track Hydration**: If `tracks` are empty, `SharePlaylistModal` automatically resolves tracks directly from IndexedDB (`db.tracks.bulkGet`).
+- **Empty Playlist Handling**: Clear friendly state (`"This playlist has no songs yet"`) preventing blank URL generation.
+- **Dual Clipboard Copy Support**: Uses modern `navigator.clipboard.writeText` with automatic fallback to `document.execCommand('copy')` for non-HTTPS or mobile contexts.
+- **Share Button in Header**: Added dedicated Share button in `PlaylistDetail.tsx` header.
+- **Query & Hash Decoder**: `app/page.tsx` parses both `?s=...` and `#s=...` / `#c_...` hashes.

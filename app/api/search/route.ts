@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { searchTracks, searchPlaylists, searchVideos } from '@/lib/youtube';
-import { parseISO8601Duration } from '@/lib/utils';
+import { parseISO8601Duration, cleanThumbnailUrl } from '@/lib/utils';
 import type { Track, SearchPlaylist } from '@/types';
 
 const YOUTUBE_API_KEY = process.env.YOUTUBE_DATA_API_KEY;
@@ -82,7 +82,7 @@ async function searchViaDataAPI(
               title: item.snippet.title,
               artist: item.snippet.channelTitle,
               duration,
-              thumbnailUrl: item.snippet.thumbnails?.high?.url || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+              thumbnailUrl: cleanThumbnailUrl(item.snippet.thumbnails?.high?.url, videoId),
               addedAt: Date.now(),
             });
           }
@@ -120,7 +120,7 @@ async function searchViaDataAPI(
               title: item.snippet.title,
               artist: item.snippet.channelTitle,
               duration,
-              thumbnailUrl: item.snippet.thumbnails?.high?.url || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+              thumbnailUrl: cleanThumbnailUrl(item.snippet.thumbnails?.high?.url, videoId),
               addedAt: Date.now(),
             });
           }
@@ -151,7 +151,10 @@ async function searchViaDataAPI(
               id: playlistId,
               title: item.snippet?.title || 'YouTube Playlist',
               author: item.snippet?.channelTitle || 'YouTube',
-              thumbnailUrl: item.snippet?.thumbnails?.high?.url || item.snippet?.thumbnails?.default?.url || '',
+              thumbnailUrl: cleanThumbnailUrl(
+                item.snippet?.thumbnails?.high?.url || item.snippet?.thumbnails?.default?.url,
+                playlistId
+              ),
             });
           }
         } catch {}

@@ -92,6 +92,7 @@ export function PlayerHero() {
               track={currentTrack}
               size="fill"
               rounded="none"
+              priority={true}
               className="w-full h-full object-cover"
             />
           </div>

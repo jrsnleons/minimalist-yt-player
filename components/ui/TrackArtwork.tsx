@@ -2,7 +2,7 @@
 
 import { useState, useId, useEffect } from 'react';
 import Image from 'next/image';
-import { cn } from '@/lib/utils';
+import { cn, cleanThumbnailUrl } from '@/lib/utils';
 import type { Track } from '@/types';
 
 export interface TrackArtworkProps {
@@ -15,6 +15,8 @@ export interface TrackArtworkProps {
   className?: string;
   rounded?: 'none' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
   showInitials?: boolean;
+  priority?: boolean;
+  loading?: 'lazy' | 'eager';
 }
 
 interface Palette {
@@ -84,6 +86,8 @@ export function TrackArtwork({
   className,
   rounded = 'lg',
   showInitials = true,
+  priority = false,
+  loading,
 }: TrackArtworkProps) {
   const [imgError, setImgError] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -92,7 +96,8 @@ export function TrackArtwork({
   const title = propTitle ?? track?.title ?? '';
   const artist = propArtist ?? track?.artist ?? '';
   const id = propId ?? track?.id ?? '';
-  const src = propSrc ?? track?.thumbnailUrl;
+  const rawSrc = propSrc ?? track?.thumbnailUrl;
+  const src = cleanThumbnailUrl(rawSrc, id);
 
   useEffect(() => {
     setImgError(false);
@@ -101,6 +106,7 @@ export function TrackArtwork({
 
   const isHero = size === 'hero';
   const isSm = size === 'sm' || size === 'xs';
+  const shouldEagerLoad = priority || isHero || loading === 'eager';
 
   const hash = hashTrack(`${title}-${artist}-${id}`);
   const palette = NOIR_PALETTES[hash % NOIR_PALETTES.length];
@@ -146,6 +152,8 @@ export function TrackArtwork({
           src={src}
           alt={`${title || 'Track'} artwork`}
           fill
+          priority={shouldEagerLoad}
+          loading={shouldEagerLoad ? 'eager' : 'lazy'}
           className={cn(
             'object-cover transition-opacity duration-300 relative z-[1]',
             isLoaded ? 'opacity-100' : 'opacity-0'

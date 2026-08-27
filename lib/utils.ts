@@ -84,3 +84,22 @@ export async function estimateStorageMB(): Promise<number> {
   const { usage = 0 } = await navigator.storage.estimate();
   return Math.round((usage / (1024 * 1024)) * 100) / 100;
 }
+
+/**
+ * Strips bloated query strings and tracking tokens from YouTube & CDN thumbnails.
+ * Converts 200+ char URLs (e.g. ?sqp=...&rs=...) into clean ~44 char URLs:
+ * https://i.ytimg.com/vi/{videoId}/hqdefault.jpg
+ */
+export function cleanThumbnailUrl(url?: string | null, videoId?: string): string {
+  if (videoId && /^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
+    return `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+  }
+  if (!url) return '';
+  if (url.includes('ytimg.com/vi/')) {
+    const match = url.match(/ytimg\.com\/vi\/([a-zA-Z0-9_-]{11})/);
+    if (match) {
+      return `https://i.ytimg.com/vi/${match[1]}/hqdefault.jpg`;
+    }
+  }
+  return url.split('?')[0] || url;
+}
