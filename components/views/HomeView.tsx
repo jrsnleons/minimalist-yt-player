@@ -27,9 +27,7 @@ import {
   ChevronRight,
   ArrowRight,
   Heart,
-  QrCode,
 } from 'lucide-react';
-import { SharePlaylistModal } from '@/components/playlist/SharePlaylistModal';
 import type { Playlist, Track } from '@/types';
 
 interface HomeViewProps {
@@ -94,12 +92,10 @@ function HomePlaylistCard({
   playlist,
   onOpen,
   onPlay,
-  onShare,
 }: {
   playlist: Playlist;
   onOpen: () => void;
   onPlay: (e: React.MouseEvent) => void;
-  onShare: (e: React.MouseEvent) => void;
 }) {
   const isLiked = playlist.id === 'liked-songs';
   const palette = useMemo(() => {
@@ -155,14 +151,6 @@ function HomePlaylistCard({
       </div>
 
       <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-        <button
-          onClick={onShare}
-          aria-label={`Share ${playlist.name}`}
-          className="w-7 h-7 rounded-lg bg-white/[0.08] hover:bg-white/[0.18] text-zinc-300 hover:text-white flex items-center justify-center transition-all cursor-pointer shadow-sm"
-          title="Share playlist link & QR code"
-        >
-          <QrCode size={12} />
-        </button>
         <button
           onClick={onPlay}
           aria-label={`Play ${playlist.name}`}
@@ -221,7 +209,6 @@ export function HomeView({ onNavigateTab, onSelectPlaylist }: HomeViewProps) {
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-  const [sharingPlaylist, setSharingPlaylist] = useState<{ playlist: Playlist; tracks: Track[] } | null>(null);
   const [loadingVibeId, setLoadingVibeId] = useState<string | null>(null);
 
   const playlists = useLiveQuery(() => db.playlists.orderBy('updatedAt').reverse().toArray(), []);
@@ -263,39 +250,6 @@ export function HomeView({ onNavigateTab, onSelectPlaylist }: HomeViewProps) {
       showToast(`Playing "${playlist.name}" (${validTracks.length} tracks)`);
     } else {
       showToast('No playable tracks found');
-    }
-  };
-
-  const handleSharePlaylist = async (playlist: Playlist, e: React.MouseEvent) => {
-    e.stopPropagation();
-    try {
-      const trackIds: string[] =
-        playlist.id === 'liked-songs'
-          ? (likedTrackIds && likedTrackIds.length > 0 ? likedTrackIds : playlist.trackIds || [])
-          : playlist.trackIds || [];
-
-      if (!trackIds || trackIds.length === 0) {
-        showToast(`Playlist "${playlist.name}" has no tracks to share`);
-        return;
-      }
-
-      const all = await db.tracks.bulkGet(trackIds);
-      const tracks: Track[] = trackIds.map((id: string, i: number) => {
-        const found = all[i];
-        if (found) return found;
-        return {
-          id,
-          title: `Track ${i + 1}`,
-          artist: 'YouTube Audio',
-          duration: 0,
-          thumbnailUrl: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
-          addedAt: Date.now(),
-        };
-      });
-
-      setSharingPlaylist({ playlist: { ...playlist, trackIds }, tracks });
-    } catch {
-      showToast('Could not prepare share link');
     }
   };
 
@@ -365,7 +319,6 @@ export function HomeView({ onNavigateTab, onSelectPlaylist }: HomeViewProps) {
                     playlist={pl}
                     onOpen={() => handleOpenPlaylist(pl)}
                     onPlay={(e) => handlePlayPlaylist(pl, e)}
-                    onShare={(e) => handleSharePlaylist(pl, e)}
                   />
                 ))}
               </div>
@@ -596,14 +549,6 @@ export function HomeView({ onNavigateTab, onSelectPlaylist }: HomeViewProps) {
           }
         }}
       />
-      {sharingPlaylist && (
-        <SharePlaylistModal
-          isOpen={true}
-          onClose={() => setSharingPlaylist(null)}
-          playlist={sharingPlaylist.playlist}
-          tracks={sharingPlaylist.tracks}
-        />
-      )}
     </div>
   );
 }

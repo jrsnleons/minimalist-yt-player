@@ -19,13 +19,11 @@ import { RecentlyPlayedView } from '@/components/views/RecentlyPlayedView';
 import { VibeSuggestionsView } from '@/components/views/VibeSuggestionsView';
 import { SearchView } from '@/components/views/SearchView';
 import { Toast } from '@/components/ui/Toast';
-import { SharedPlaylistImportModal } from '@/components/playlist/SharedPlaylistImportModal';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { useHotkeys } from '@/hooks/useHotkeys';
 import { useMediaSession } from '@/hooks/useMediaSession';
 import { useAdblockCheck } from '@/hooks/useAdblockCheck';
 import { useDynamicTrackPalette } from '@/hooks/useDynamicTrackPalette';
-import { decodeSharedPlaylist, type SharedPlaylistData } from '@/lib/share';
 import {
   Compass,
   ListMusic,
@@ -61,10 +59,6 @@ function AppShell() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
   const [selectedPlaylistTarget, setSelectedPlaylistTarget] = useState<Playlist | null>(null);
 
-  // Shared playlist URL handler state
-  const [sharedPlaylistData, setSharedPlaylistData] = useState<SharedPlaylistData | null>(null);
-  const [isSharedModalOpen, setIsSharedModalOpen] = useState(false);
-
   // Dynamic color palette extracted from active track
   const palette = useDynamicTrackPalette(currentTrack);
 
@@ -87,47 +81,6 @@ function AppShell() {
     };
     initApp();
   }, [loadSavedPreferences, loadRecentlyPlayed, restorePreviousSession, showToast]);
-
-  // Check for shared playlist in URL params (?s=... or #s=...)
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const checkShare = async () => {
-      try {
-        const params = new URLSearchParams(window.location.search);
-        let shareHash = params.get('s') || params.get('share');
-
-        // Check hash fallback (#s=... or #c_...)
-        if (!shareHash && window.location.hash) {
-          const hashStr = window.location.hash.replace(/^#/, '');
-          const hashParams = new URLSearchParams(hashStr);
-          shareHash =
-            hashParams.get('s') ||
-            hashParams.get('share') ||
-            (hashStr.startsWith('c_') ||
-            hashStr.startsWith('cr_') ||
-            hashStr.startsWith('i_') ||
-            hashStr.startsWith('ir_') ||
-            hashStr.startsWith('z_') ||
-            hashStr.startsWith('r_')
-              ? hashStr
-              : null);
-        }
-
-        if (shareHash) {
-          const decoded = await decodeSharedPlaylist(shareHash);
-          if (decoded && decoded.tracks.length > 0) {
-            setSharedPlaylistData(decoded);
-            setIsSharedModalOpen(true);
-            // Clean the query/hash string without page reload
-            window.history.replaceState({}, document.title, window.location.pathname);
-          }
-        }
-      } catch (err) {
-        console.error('[App] Share URL parse error:', err);
-      }
-    };
-    checkShare();
-  }, []);
 
   const tabs: TabItem[] = [
     { key: 'home', label: 'Home', icon: Compass },
@@ -292,13 +245,6 @@ function AppShell() {
       <CommandPalette />
       <SettingsModal />
       <Toast />
-
-      {/* Shared Playlist Auto-Import Modal */}
-      <SharedPlaylistImportModal
-        isOpen={isSharedModalOpen}
-        onClose={() => setIsSharedModalOpen(false)}
-        data={sharedPlaylistData}
-      />
     </div>
   );
 }

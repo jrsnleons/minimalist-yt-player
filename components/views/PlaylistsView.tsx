@@ -25,7 +25,6 @@ import { getTrackPalette } from '@/components/ui/TrackArtwork';
 import { CreatePlaylistModal } from '@/components/playlist/CreatePlaylistModal';
 import { EditPlaylistModal } from '@/components/playlist/EditPlaylistModal';
 import { ImportPlaylistModal } from '@/components/playlist/ImportPlaylistModal';
-import { SharePlaylistModal } from '@/components/playlist/SharePlaylistModal';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { formatTime, cn } from '@/lib/utils';
 import { exportSinglePlaylist } from '@/lib/backup';
@@ -40,22 +39,18 @@ import {
   Pencil,
   FileDown,
   Heart,
-  QrCode,
-  Share2,
 } from 'lucide-react';
 import type { Playlist, Track } from '@/types';
 
 function PlaylistGridCard({
   playlist,
   onSelect,
-  onShare,
   onExport,
   onEdit,
   onDelete,
 }: {
   playlist: Playlist;
   onSelect: () => void;
-  onShare: (e: React.MouseEvent) => void;
   onExport: (e: React.MouseEvent) => void;
   onEdit: (e: React.MouseEvent) => void;
   onDelete: (e: React.MouseEvent) => void;
@@ -100,15 +95,6 @@ function PlaylistGridCard({
       </div>
 
       <div className="flex items-center gap-0.5 text-zinc-500 shrink-0">
-        <Tooltip content="Share & QR code" side="top">
-          <button
-            onClick={onShare}
-            className="p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
-            aria-label="Share playlist link and QR code"
-          >
-            <QrCode size={12} />
-          </button>
-        </Tooltip>
         <Tooltip content="Export JSON backup" side="top">
           <button
             onClick={onExport}
@@ -154,7 +140,6 @@ export function PlaylistsView({ initialPlaylist = null }: PlaylistsViewProps) {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [editingPlaylist, setEditingPlaylist] = useState<Playlist | null>(null);
-  const [sharingPlaylist, setSharingPlaylist] = useState<{ playlist: Playlist; tracks: Track[] } | null>(null);
 
   // Sync if target playlist changed from outside (e.g. from HomeView)
   useEffect(() => {
@@ -233,39 +218,6 @@ export function PlaylistsView({ initialPlaylist = null }: PlaylistsViewProps) {
       }
     } catch {
       showToast(`Failed to export "${playlist.name}"`);
-    }
-  };
-
-  const handleSharePlaylist = async (playlist: Playlist, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    try {
-      const trackIds: string[] =
-        playlist.id === 'liked-songs'
-          ? (likedPlaylist?.trackIds || likedTrackIds)
-          : playlist.trackIds || [];
-
-      if (!trackIds || trackIds.length === 0) {
-        showToast(`Playlist "${playlist.name}" has no tracks to share`);
-        return;
-      }
-
-      const all = await db.tracks.bulkGet(trackIds);
-      const tracks: Track[] = trackIds.map((id: string, i: number) => {
-        const found = all[i];
-        if (found) return found;
-        return {
-          id,
-          title: `Track ${i + 1}`,
-          artist: 'YouTube Audio',
-          duration: 0,
-          thumbnailUrl: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
-          addedAt: Date.now(),
-        };
-      });
-
-      setSharingPlaylist({ playlist: { ...playlist, trackIds }, tracks });
-    } catch {
-      showToast('Could not prepare share link');
     }
   };
 
@@ -354,16 +306,6 @@ export function PlaylistsView({ initialPlaylist = null }: PlaylistsViewProps) {
                     <span>Play All</span>
                   </button>
                 )}
-                <Tooltip content="Share Playlist & QR Code" side="top">
-                  <button
-                    onClick={() => handleSharePlaylist(selectedPlaylist)}
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] text-white text-xs font-medium transition-colors cursor-pointer"
-                    aria-label="Share playlist link & QR code"
-                  >
-                    <QrCode size={13} className="text-white" />
-                    <span className="text-[11px]">Share</span>
-                  </button>
-                </Tooltip>
                 <Tooltip content="Export playlist as JSON backup" side="top">
                   <button
                     onClick={() => handleExportPlaylist(selectedPlaylist)}
@@ -518,18 +460,6 @@ export function PlaylistsView({ initialPlaylist = null }: PlaylistsViewProps) {
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    <Tooltip content="Share Liked Songs" side="top">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleSharePlaylist(likedPlaylist);
-                        }}
-                        className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer"
-                        aria-label="Share Liked Songs"
-                      >
-                        <QrCode size={14} />
-                      </button>
-                    </Tooltip>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -580,10 +510,6 @@ export function PlaylistsView({ initialPlaylist = null }: PlaylistsViewProps) {
                       key={pl.id}
                       playlist={pl}
                       onSelect={() => setSelectedPlaylist(pl)}
-                      onShare={(e) => {
-                        e.stopPropagation();
-                        handleSharePlaylist(pl);
-                      }}
                       onExport={(e) => {
                         e.stopPropagation();
                         handleExportPlaylist(pl);
@@ -637,15 +563,6 @@ export function PlaylistsView({ initialPlaylist = null }: PlaylistsViewProps) {
           setIsImportModalOpen(false);
         }}
       />
-
-      {sharingPlaylist && (
-        <SharePlaylistModal
-          isOpen={true}
-          onClose={() => setSharingPlaylist(null)}
-          playlist={sharingPlaylist.playlist}
-          tracks={sharingPlaylist.tracks}
-        />
-      )}
     </div>
   );
 }

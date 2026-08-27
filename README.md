@@ -21,10 +21,6 @@
 - **1-Click Heart Favoriting**: Favorite any track instantly from song rows, Player Hero, or Zen Mode.
 - **Dedicated Pinned Collection**: Liked Songs are organized as a prioritized playlist with custom rose styling and instant search.
 
-### 📲 Ultra-Compact Peer-to-Peer QR Playlist Sharing
-- **85%+ Smaller Share Links**: Compact field-delimited compression (`deflate-raw` + Base64Url) creates ultra-short URLs (~120–350 chars).
-- **Instant Phone Camera Scan**: High-contrast, low-density QR code matrix (viewBox 49×49) scans in milliseconds without any login or server database required.
-
 ### 🟢 Zero-Login Spotify & YouTube Importer
 - **Spotify Playlist & Album Importer**: Paste any public Spotify link (`https://open.spotify.com/playlist/...`, `.../album/...`) to automatically resolve and stream tracks on YouTube.
 - **YouTube Playlist Importer**: Fetch and convert any public YouTube playlist in 1 click.
@@ -72,7 +68,6 @@
 - **Drag & Drop**: [@dnd-kit](https://dndkit.com/)
 - **YouTube Engine**: [YouTube.js / Innertube](https://github.com/LuanRT/YouTube.js)
 - **Spotify Extraction**: [spotify-url-info](https://github.com/microlinkhq/spotify-url-info)
-- **QR Generator**: [qrcode](https://github.com/soldair/node-qrcode)
 - **Icons**: [Lucide React](https://lucide.dev/)
 
 ---
