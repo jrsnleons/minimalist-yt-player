@@ -58,7 +58,7 @@ export function EditPlaylistModal({ playlist, isOpen, onClose, onUpdated }: Edit
     <Modal isOpen={isOpen} onClose={onClose} title="Edit Playlist" className="max-w-md">
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div>
-          <label htmlFor="edit-playlist-name" className="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5 font-sans">
+          <label htmlFor="edit-playlist-name" className="block text-xs font-semibold text-zinc-300 mb-1.5 font-sans tracking-tight">
             Playlist Name <span className="text-zinc-500">*</span>
           </label>
           <input
@@ -75,19 +75,19 @@ export function EditPlaylistModal({ playlist, isOpen, onClose, onUpdated }: Edit
         </div>
 
         <div>
-          <label htmlFor="edit-playlist-desc" className="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5 font-sans">
-            Description <span className="text-zinc-600 font-normal normal-case">(optional)</span>
+          <label htmlFor="edit-playlist-desc" className="block text-xs font-semibold text-zinc-300 mb-1.5 font-sans tracking-tight">
+            Description <span className="text-zinc-500 font-normal">(optional)</span>
           </label>
           <textarea
             id="edit-playlist-desc"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Add a vibe or description for this playlist…"
+            placeholder="Add a description for this playlist…"
             rows={3}
             maxLength={250}
-            className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] focus:border-white/30 focus:ring-1 focus:ring-white/20 text-white text-xs placeholder-zinc-600 focus:outline-none resize-none transition-all"
+            className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] focus:border-white/30 focus:ring-1 focus:ring-white/20 text-white text-xs placeholder-zinc-500 focus:outline-none resize-none transition-all"
           />
-          <div className="text-right text-[10px] font-mono text-zinc-500 mt-1">
+          <div className="text-right text-[11px] font-mono text-zinc-400 mt-1">
             {description.length}/250
           </div>
         </div>

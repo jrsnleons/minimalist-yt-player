@@ -68,7 +68,7 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
       <div className="flex flex-col">
         {title && (
           <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06] bg-[#0d0d12]/80 shrink-0">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-white font-sans">{title}</h2>
+            <h2 className="text-sm font-semibold text-white tracking-tight font-sans">{title}</h2>
             <button
               type="button"
               onClick={(e) => {

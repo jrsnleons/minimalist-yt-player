@@ -102,7 +102,7 @@ export function ZenPlayerView() {
           <span className="text-xs font-bold tracking-widest uppercase text-white font-sans">
             ONYX ZEN
           </span>
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded-lg bg-white/[0.05] border border-white/[0.08] text-zinc-400">
+          <span className="text-[11px] font-mono px-2 py-0.5 rounded-lg bg-white/[0.05] border border-white/[0.08] text-zinc-400">
             Press Esc or Z to exit
           </span>
         </div>
@@ -319,7 +319,7 @@ export function ZenPlayerView() {
             </div>
             <h2 className="text-lg font-bold text-white tracking-tight">No Track Active</h2>
             <p className="text-xs text-zinc-400 max-w-sm mt-1 mb-6">
-              Search for any song or quick-start focus radio to enter uninterrupted flow state.
+              Search for any song or start radio playback to listen without distractions.
             </p>
             <div className="flex items-center gap-3">
               <button

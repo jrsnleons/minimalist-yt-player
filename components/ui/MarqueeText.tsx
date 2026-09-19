@@ -75,7 +75,7 @@ export function MarqueeText({
       </div>
 
       {subText && (
-        <p className={cn('text-[10px] text-zinc-400 truncate mt-0.5 leading-none', subClassName)}>
+        <p className={cn('text-[11px] text-zinc-400 truncate mt-0.5 leading-none', subClassName)}>
           {subText}
         </p>
       )}

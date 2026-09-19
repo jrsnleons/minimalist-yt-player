@@ -3,18 +3,18 @@
 @theme {
   --color-obsidian: #050507;
   --color-surface-base: #060608;
-  --color-surface-panel: #0a0a0e;
-  --color-surface-card: #101015;
-  --color-surface-hover: #171720;
-  --color-border-subtle: rgba(255, 255, 255, 0.07);
+  --color-surface-card: #0d0d12;
+  --color-surface-panel: #121218;
+  --color-surface-hover: #1a1a24;
+  --color-border-subtle: rgba(255, 255, 255, 0.08);
   --color-border-medium: rgba(255, 255, 255, 0.14);
 
   --color-zinc-950: #070709;
-  --color-zinc-900: #0f0f13;
-  --color-zinc-850: #15151b;
-  --color-zinc-800: #202028;
-  --color-zinc-700: #333340;
-  --color-zinc-600: #4e4e5e;
+  --color-zinc-900: #0e0e13;
+  --color-zinc-850: #14141b;
+  --color-zinc-800: #1e1e27;
+  --color-zinc-700: #2e2e3b;
+  --color-zinc-600: #4a4a5c;
   --color-zinc-500: #717182;
   --color-zinc-400: #9e9eb0;
   --color-zinc-300: #c8c8d8;
@@ -22,7 +22,7 @@
   --color-zinc-100: #f2f2f8;
   --color-white: #fafafa;
 
-  --font-sans: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-sans: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, sans-serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
@@ -54,11 +54,11 @@ button:disabled,
 html {
   color-scheme: dark;
   height: 100%;
-  background-color: #040406;
+  background-color: #050507;
 }
 
 body {
-  background: radial-gradient(ellipse 95% 75% at 50% 0%, #111118 0%, #060609 50%, #030305 100%);
+  background: radial-gradient(ellipse 90% 70% at 50% 0%, #12121a 0%, #08080c 55%, #050507 100%);
   color: #fafafa;
   font-family: var(--font-sans);
   height: 100%;
@@ -69,25 +69,13 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ─── Atmospheric Noir Noise & Film Grain Overlay ────────────── */
-.noir-noise-bg {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1;
-  opacity: 0.032;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-  background-repeat: repeat;
-  mix-blend-mode: overlay;
-}
-
-/* Subtle Vignette Edge Shadow */
-.noir-vignette {
+/* ─── Atmospheric Depth (Clean Minimal Depth) ─────────────────── */
+.apple-vignette {
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 2;
-  box-shadow: inset 0 0 160px rgba(0, 0, 0, 0.9);
+  box-shadow: inset 0 0 140px rgba(0, 0, 0, 0.65);
 }
 
 /* ─── Custom Sleek Scrollbar ─────────────────────────────────── */
@@ -99,28 +87,25 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.14);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.28);
 }
 
-/* ─── Focus Styles ───────────────────────────────────────────── */
+/* ─── Focus Styles (Apple HIG Standard) ──────────────────────── */
 :focus-visible {
-  outline: 1.5px solid rgba(255, 255, 255, 0.6);
+  outline: 2px solid rgba(255, 255, 255, 0.5);
   outline-offset: 2px;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
-/* Prevent double outline on inputs, textareas, and select elements that have custom focus styling */
 input:focus,
 input:focus-visible,
 textarea:focus,
-textarea:focus-visible,
-select:focus,
-select:focus-visible {
-  outline: none !important;
+textarea:focus-visible {
+  outline: none;
 }
 
 /* ─── Selection ──────────────────────────────────────────────── */
@@ -135,7 +120,7 @@ input[type='range'] {
   appearance: none;
   background: transparent;
   cursor: pointer;
-  height: 14px;
+  height: 16px;
   display: flex;
   align-items: center;
 }
@@ -146,7 +131,7 @@ input[type='range']:focus {
 
 input[type='range']::-webkit-slider-runnable-track {
   height: 4px;
-  background: #1c1c24;
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 9999px;
   border: none;
 }
@@ -157,20 +142,19 @@ input[type='range']::-webkit-slider-thumb {
   height: 12px;
   width: 12px;
   border-radius: 50%;
-  background: #fafafa;
+  background: #ffffff;
   margin-top: -4px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
   transition: transform 0.15s ease, background-color 0.15s ease;
 }
 
 input[type='range']:hover::-webkit-slider-thumb {
-  transform: scale(1.25);
-  background: #ffffff;
+  transform: scale(1.2);
 }
 
 input[type='range']::-moz-range-track {
   height: 4px;
-  background: #1c1c24;
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 9999px;
   border: none;
 }
@@ -179,14 +163,14 @@ input[type='range']::-moz-range-thumb {
   height: 12px;
   width: 12px;
   border-radius: 50%;
-  background: #fafafa;
+  background: #ffffff;
   border: none;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
   transition: transform 0.15s ease;
 }
 
 input[type='range']:hover::-moz-range-thumb {
-  transform: scale(1.25);
+  transform: scale(1.2);
 }
 
 /* ─── Transitions ─────────────────────────────────────────────── */
@@ -223,7 +207,7 @@ input[type='range']:hover::-moz-range-thumb {
   );
   background-size: 200% 100%;
   animation: shimmer 1.6s ease-in-out infinite;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 .skeleton-shimmer {
@@ -244,30 +228,45 @@ input[type='range']:hover::-moz-range-thumb {
   100% { background-position: -200% 0; }
 }
 
-/* ─── Onyx Specular Highlights & Surface Classes ──────────────── */
+/* ─── Apple Liquid Glass & Material Classes (Apple HIG Spec) ─── */
+.apple-liquid-glass {
+  background: rgba(14, 14, 20, 0.82);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.1), 0 16px 40px -8px rgba(0, 0, 0, 0.75);
+}
+
+.apple-card {
+  background: #0d0d12;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06), 0 8px 24px -6px rgba(0, 0, 0, 0.6);
+}
+
 .onyx-card {
-  background: #0b0b0f;
+  background: #0d0d12;
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.7);
 }
 
 .onyx-glass {
-  background: rgba(11, 11, 15, 0.85);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: rgba(14, 14, 20, 0.82);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
 }
 
 .onyx-button-primary {
   background: #ffffff;
   color: #050507;
   font-weight: 600;
-  transition: all 0.15s ease;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .onyx-button-primary:hover {
-  background: #e4e4e7;
-  transform: translateY(-1px);
+  background: #f0f0f4;
+  transform: translateY(-0.5px);
 }
 
 .onyx-button-primary:active {

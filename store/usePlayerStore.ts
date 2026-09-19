@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Track, RepeatMode, PlaybackMode } from '@/types';
 import { db } from '@/db/schema';
+import { useListenTogetherStore } from '@/store/useListenTogetherStore';
 
 interface PlayerState {
   // Playback
@@ -26,13 +27,21 @@ interface PlayerState {
   ambientVisualizerEnabled: boolean;
   sessionRestoreEnabled: boolean;
 
-  // UI
+  // UI & Drawer
   leftSidebarOpen: boolean;
   rightSidebarOpen: boolean;
+  queueDrawerOpen: boolean;
+  sidebarPlayerMode: 'docked' | 'pill';
   commandPaletteOpen: boolean;
   settingsOpen: boolean;
   blurredHeroBackground: boolean;
   toastMessage: string | null;
+  shortcutsModalOpen: boolean;
+
+  // Radio Auto-Continuation
+  radioQueue: Track[];
+  radioSeedTrackIds: string[];
+  songsPlayedSinceRadioRefresh: number;
 
   // Actions — Playback
   play: (track: Track, queue?: Track[]) => void;
@@ -71,18 +80,29 @@ interface PlayerState {
   isLiked: (trackId: string) => boolean;
   loadLikedTracks: () => Promise<void>;
 
-  // Actions — UI
+  // Actions — UI & Drawer
   toggleLeftSidebar: () => void;
   toggleRightSidebar: () => void;
+  toggleQueueDrawer: (open?: boolean) => void;
+  setSidebarPlayerMode: (mode: 'docked' | 'pill') => void;
+  toggleSidebarPlayerMode: () => void;
   toggleCommandPalette: () => void;
   openCommandPalette: () => void;
   closeCommandPalette: () => void;
   toggleSettings: () => void;
   openSettings: () => void;
   closeSettings: () => void;
+  toggleShortcutsModal: (open?: boolean) => void;
+  openShortcutsModal: () => void;
+  closeShortcutsModal: () => void;
   toggleBlurredHeroBackground: () => void;
   showToast: (message: string) => void;
   dismissToast: () => void;
+
+  // Actions — Radio Auto-Continuation
+  refreshRadioQueue: () => Promise<void>;
+  removeFromRadioQueue: (index: number) => void;
+  addRadioTrackToManualQueue: (track: Track) => void;
 
   // Actions — History & Session
   addToRecentlyPlayed: (track: Track) => void;
@@ -150,29 +170,67 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   leftSidebarOpen: true,
   rightSidebarOpen: true,
+  queueDrawerOpen: false,
+  sidebarPlayerMode: 'docked',
   commandPaletteOpen: false,
   settingsOpen: false,
   blurredHeroBackground: true,
   toastMessage: null,
+  shortcutsModalOpen: false,
+
+  radioQueue: [],
+  radioSeedTrackIds: [],
+  songsPlayedSinceRadioRefresh: 0,
 
   // --- Playback Actions ---
 
   play: (track, queue) => {
     const state = get();
+    const updatedSeeds = [track.id, ...state.radioSeedTrackIds.filter((id) => id !== track.id)].slice(0, 5);
+    const newPlayedCount = state.songsPlayedSinceRadioRefresh + 1;
+
     if (queue) {
       const idx = queue.findIndex((t) => t.id === track.id);
-      set({ queue, queueIndex: idx >= 0 ? idx : 0, currentTrack: track, isPlaying: true, progress: 0 });
+      set({
+        queue,
+        queueIndex: idx >= 0 ? idx : 0,
+        currentTrack: track,
+        isPlaying: true,
+        progress: 0,
+        radioSeedTrackIds: updatedSeeds,
+        songsPlayedSinceRadioRefresh: newPlayedCount,
+      });
     } else {
       // If track is already in queue, jump to it
       const existingIdx = state.queue.findIndex((t) => t.id === track.id);
       if (existingIdx >= 0) {
-        set({ queueIndex: existingIdx, currentTrack: track, isPlaying: true, progress: 0 });
+        set({
+          queueIndex: existingIdx,
+          currentTrack: track,
+          isPlaying: true,
+          progress: 0,
+          radioSeedTrackIds: updatedSeeds,
+          songsPlayedSinceRadioRefresh: newPlayedCount,
+        });
       } else {
         // Add to queue and play
         const newQueue = [...state.queue, track];
-        set({ queue: newQueue, queueIndex: newQueue.length - 1, currentTrack: track, isPlaying: true, progress: 0 });
+        set({
+          queue: newQueue,
+          queueIndex: newQueue.length - 1,
+          currentTrack: track,
+          isPlaying: true,
+          progress: 0,
+          radioSeedTrackIds: updatedSeeds,
+          songsPlayedSinceRadioRefresh: newPlayedCount,
+        });
       }
     }
+
+    if (newPlayedCount >= 5 || state.radioQueue.length === 0) {
+      get().refreshRadioQueue();
+    }
+
     // Record to history
     get().addToRecentlyPlayed(track);
     db.history.add({ trackId: track.id, playedAt: Date.now(), durationPlayed: 0 }).catch(() => {});
@@ -194,7 +252,32 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   next: () => {
     const { queue, queueIndex, shuffleMode, repeatMode } = get();
-    if (queue.length === 0) return;
+    if (queue.length === 0) {
+      // If queue is empty, check radioQueue
+      const { radioQueue, radioSeedTrackIds } = get();
+      if (radioQueue.length > 0) {
+        const [nextRadioTrack, ...remainingRadio] = radioQueue;
+        const updatedSeeds = [nextRadioTrack.id, ...radioSeedTrackIds.filter((id) => id !== nextRadioTrack.id)].slice(0, 5);
+        set({
+          queue: [nextRadioTrack],
+          queueIndex: 0,
+          currentTrack: nextRadioTrack,
+          radioQueue: remainingRadio,
+          isPlaying: true,
+          progress: 0,
+          radioSeedTrackIds: updatedSeeds,
+          songsPlayedSinceRadioRefresh: get().songsPlayedSinceRadioRefresh + 1,
+        });
+        if (remainingRadio.length <= 2) {
+          get().refreshRadioQueue();
+        }
+        get().addToRecentlyPlayed(nextRadioTrack);
+        db.history.add({ trackId: nextRadioTrack.id, playedAt: Date.now(), durationPlayed: 0 }).catch(() => {});
+        db.tracks.put(nextRadioTrack).catch(() => {});
+        scheduleSaveSession(get());
+      }
+      return;
+    }
 
     if (repeatMode === 'one') {
       // Replay current — seekTarget triggers the player to restart
@@ -217,6 +300,31 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       if (repeatMode === 'all') {
         nextIdx = 0;
       } else {
+        // Auto-continuation from radio queue if available
+        const { radioQueue, radioSeedTrackIds } = get();
+        if (radioQueue.length > 0) {
+          const [nextRadioTrack, ...remainingRadio] = radioQueue;
+          const updatedSeeds = [nextRadioTrack.id, ...radioSeedTrackIds.filter((id) => id !== nextRadioTrack.id)].slice(0, 5);
+          const newQueue = [...queue, nextRadioTrack];
+          set({
+            queue: newQueue,
+            queueIndex: newQueue.length - 1,
+            currentTrack: nextRadioTrack,
+            radioQueue: remainingRadio,
+            isPlaying: true,
+            progress: 0,
+            radioSeedTrackIds: updatedSeeds,
+            songsPlayedSinceRadioRefresh: get().songsPlayedSinceRadioRefresh + 1,
+          });
+          if (remainingRadio.length <= 2) {
+            get().refreshRadioQueue();
+          }
+          get().addToRecentlyPlayed(nextRadioTrack);
+          db.history.add({ trackId: nextRadioTrack.id, playedAt: Date.now(), durationPlayed: 0 }).catch(() => {});
+          db.tracks.put(nextRadioTrack).catch(() => {});
+          scheduleSaveSession(get());
+          return;
+        }
         set({ isPlaying: false });
         scheduleSaveSession(get());
         return;
@@ -269,12 +377,43 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   // --- Queue Actions ---
 
   addToQueue: (track) => {
+    const lt = useListenTogetherStore.getState();
+    if (lt.isInRoom) {
+      const stamped: Track = {
+        ...track,
+        addedBy: { id: lt.userId, name: lt.userName },
+      };
+      const currentQueue = get().queue;
+      const last = currentQueue[currentQueue.length - 1];
+      if (last && last.id === stamped.id && last.addedBy?.id === lt.userId && Date.now() - (last.addedAt || 0) < 1200) {
+        return;
+      }
+      set((s) => ({ queue: [...s.queue, stamped] }));
+      lt.addTrackToSharedQueue(stamped);
+      get().showToast('Added to shared queue');
+      return;
+    }
     set((s) => ({ queue: [...s.queue, track] }));
     db.tracks.put(track).catch(() => {});
     scheduleSaveSession(get());
   },
 
   playNext: (track) => {
+    const lt = useListenTogetherStore.getState();
+    if (lt.isInRoom) {
+      const stamped: Track = {
+        ...track,
+        addedBy: { id: lt.userId, name: lt.userName },
+      };
+      const { queue, queueIndex } = get();
+      const newQueue = [...queue];
+      const insertIndex = queueIndex >= 0 ? queueIndex + 1 : 0;
+      newQueue.splice(insertIndex, 0, stamped);
+      set({ queue: newQueue });
+      lt.addTrackToSharedQueue(stamped, { playNext: true });
+      get().showToast('Added to shared queue');
+      return;
+    }
     const { queue, queueIndex } = get();
     const newQueue = [...queue];
     // Insert immediately after the active track; at front if queue is empty
@@ -287,6 +426,12 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   removeFromQueue: (index) => {
     const { queue, queueIndex } = get();
+    const trackToRemove = queue[index];
+    const lt = useListenTogetherStore.getState();
+    if (lt.isInRoom && trackToRemove) {
+      lt.removeTrackFromSharedQueue(trackToRemove.id);
+      return;
+    }
     const newQueue = queue.filter((_, i) => i !== index);
     let newIdx = queueIndex;
     if (index < queueIndex) newIdx = queueIndex - 1;
@@ -304,9 +449,18 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const newIdx = currentTrack ? newQueue.findIndex((t) => t.id === currentTrack.id) : -1;
     set({ queue: newQueue, queueIndex: newIdx });
     scheduleSaveSession(get());
+
+    const lt = useListenTogetherStore.getState();
+    if (lt.isInRoom && lt.isHost) {
+      lt.reorderSharedQueue(newQueue);
+    }
   },
 
   clearQueue: () => {
+    const lt = useListenTogetherStore.getState();
+    if (lt.isInRoom && lt.isHost) {
+      lt.clearSharedQueue();
+    }
     set({ queue: [], queueIndex: -1, currentTrack: null, isPlaying: false });
     db.preferences.delete('last_session').catch(() => {});
   },
@@ -455,6 +609,12 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   openSettings: () => set({ settingsOpen: true }),
   closeSettings: () => set({ settingsOpen: false }),
 
+  toggleShortcutsModal: (open) => {
+    set((s) => ({ shortcutsModalOpen: open !== undefined ? open : !s.shortcutsModalOpen }));
+  },
+  openShortcutsModal: () => set({ shortcutsModalOpen: true }),
+  closeShortcutsModal: () => set({ shortcutsModalOpen: false }),
+
   toggleBlurredHeroBackground: () => {
     set((s) => {
       const next = !s.blurredHeroBackground;
@@ -481,6 +641,69 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       _toastTimer = null;
     }
     set({ toastMessage: null });
+  },
+
+  toggleQueueDrawer: (open) => {
+    set((s) => ({ queueDrawerOpen: open !== undefined ? open : !s.queueDrawerOpen }));
+  },
+
+  setSidebarPlayerMode: (mode) => {
+    set({ sidebarPlayerMode: mode });
+    db.preferences.put({ key: 'sidebarPlayerMode', value: mode }).catch(() => {});
+  },
+
+  toggleSidebarPlayerMode: () => {
+    set((s) => {
+      const next = s.sidebarPlayerMode === 'docked' ? 'pill' : 'docked';
+      db.preferences.put({ key: 'sidebarPlayerMode', value: next }).catch(() => {});
+      return { sidebarPlayerMode: next };
+    });
+  },
+
+  refreshRadioQueue: async () => {
+    const { currentTrack, queue, radioSeedTrackIds, radioQueue } = get();
+    const seedId = currentTrack?.id || radioSeedTrackIds[0];
+    if (!seedId) return;
+
+    try {
+      const excludeIds = [
+        ...queue.map((t) => t.id),
+        ...radioQueue.map((t) => t.id),
+        ...(currentTrack ? [currentTrack.id] : []),
+      ];
+      const params = new URLSearchParams({
+        videoId: seedId,
+        exclude: excludeIds.slice(-40).join(','),
+      });
+      const res = await fetch(`/api/radio?${params}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (Array.isArray(data.suggestions) && data.suggestions.length > 0) {
+        const currentQueueIds = new Set(get().queue.map((t) => t.id));
+        const newSuggestions = data.suggestions.filter((t: Track) => !currentQueueIds.has(t.id));
+        set({
+          radioQueue: newSuggestions,
+          songsPlayedSinceRadioRefresh: 0,
+        });
+      }
+    } catch {
+      // Radio refresh silently failed in background
+    }
+  },
+
+  removeFromRadioQueue: (index) => {
+    set((s) => ({
+      radioQueue: s.radioQueue.filter((_, i) => i !== index),
+    }));
+  },
+
+  addRadioTrackToManualQueue: (track) => {
+    set((s) => ({
+      queue: [...s.queue, track],
+      radioQueue: s.radioQueue.filter((t) => t.id !== track.id),
+    }));
+    db.tracks.put(track).catch(() => {});
+    scheduleSaveSession(get());
   },
 
   // --- History & Persistence Actions ---
@@ -520,6 +743,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         vizPref,
         restorePref,
         crossfadePref,
+        sidebarModePref,
       ] = await Promise.all([
         db.preferences.get('volume'),
         db.preferences.get('repeatMode'),
@@ -530,6 +754,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         db.preferences.get('ambientVisualizerEnabled'),
         db.preferences.get('sessionRestoreEnabled'),
         db.preferences.get('crossfadeDuration'),
+        db.preferences.get('sidebarPlayerMode'),
       ]);
 
       set((s) => ({
@@ -542,6 +767,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         ambientVisualizerEnabled: typeof vizPref?.value === 'boolean' ? vizPref.value : s.ambientVisualizerEnabled,
         sessionRestoreEnabled: typeof restorePref?.value === 'boolean' ? restorePref.value : s.sessionRestoreEnabled,
         crossfadeDuration: typeof crossfadePref?.value === 'number' ? crossfadePref.value : s.crossfadeDuration,
+        sidebarPlayerMode: (sidebarModePref?.value === 'pill' || sidebarModePref?.value === 'docked') ? sidebarModePref.value : s.sidebarPlayerMode,
       }));
 
       await get().loadLikedTracks();

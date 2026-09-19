@@ -370,7 +370,7 @@ export function ImportPlaylistModal({ isOpen, onClose, onImported, initialTab = 
         {activeTab === 'youtube' && (
           <div className="flex flex-col gap-4">
             <div>
-              <label htmlFor="yt-url" className="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5 font-sans">
+              <label htmlFor="yt-url" className="block text-xs font-semibold text-zinc-300 mb-1.5 font-sans tracking-tight">
                 YouTube or YouTube Music Playlist URL
               </label>
               <div className="flex gap-2">
@@ -406,7 +406,7 @@ export function ImportPlaylistModal({ isOpen, onClose, onImported, initialTab = 
 
             {!ytPreview && (
               <div className="space-y-1.5">
-                <span className="text-[10px] font-mono uppercase text-zinc-500">Popular playlists:</span>
+                <span className="text-[11px] font-mono text-zinc-400">Popular playlists:</span>
                 <div className="flex flex-wrap gap-1.5">
                   {EXAMPLE_YT_PLAYLISTS.map((ex) => (
                     <button
@@ -436,13 +436,13 @@ export function ImportPlaylistModal({ isOpen, onClose, onImported, initialTab = 
               <div className="p-4 rounded-2xl bg-[#0c0c10] border border-white/[0.08] space-y-3 shadow-inner">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-emerald-400">
+                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-400">
                       <Check size={12} />
                       <span>YouTube Playlist Verified</span>
                     </div>
                     <h4 className="text-sm font-bold text-white truncate mt-0.5">{ytPreview.title}</h4>
                     {ytPreview.author && <p className="text-[11px] text-zinc-400">By {ytPreview.author}</p>}
-                    <p className="text-[10px] font-mono text-zinc-500 mt-1">
+                    <p className="text-[11px] font-mono text-zinc-400 mt-1">
                       {ytPreview.trackCount} tracks · ~{formatTime(ytTotalDuration)}
                     </p>
                   </div>
@@ -452,16 +452,16 @@ export function ImportPlaylistModal({ isOpen, onClose, onImported, initialTab = 
                   {ytPreview.tracks.slice(0, 5).map((t, i) => (
                     <div key={t.id} className="py-1.5 flex items-center justify-between text-xs text-zinc-300">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="font-mono text-[10px] text-zinc-600 w-4">{i + 1}</span>
+                        <span className="font-mono text-[11px] text-zinc-500 w-4">{i + 1}</span>
                         <span className="truncate text-[11px]">{t.title}</span>
                       </div>
-                      <span className="font-mono text-[10px] text-zinc-500 shrink-0 ml-2">
+                      <span className="font-mono text-[11px] text-zinc-400 shrink-0 ml-2">
                         {formatTime(t.duration)}
                       </span>
                     </div>
                   ))}
                   {ytPreview.trackCount > 5 && (
-                    <p className="text-[10px] text-zinc-500 text-center py-1">
+                    <p className="text-[11px] text-zinc-400 text-center py-1 font-mono">
                       + {ytPreview.trackCount - 5} more tracks
                     </p>
                   )}
@@ -495,7 +495,7 @@ export function ImportPlaylistModal({ isOpen, onClose, onImported, initialTab = 
         {activeTab === 'spotify' && (
           <div className="flex flex-col gap-4">
             <div>
-              <label htmlFor="spotify-url" className="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5 font-sans">
+              <label htmlFor="spotify-url" className="block text-xs font-semibold text-zinc-300 mb-1.5 font-sans tracking-tight">
                 Spotify Playlist or Album Link (No Login Required)
               </label>
               <div className="flex gap-2">
@@ -535,7 +535,7 @@ export function ImportPlaylistModal({ isOpen, onClose, onImported, initialTab = 
 
             {!spotifyPreview && (
               <div className="space-y-1.5">
-                <span className="text-[10px] font-mono uppercase text-zinc-500">Popular Spotify playlists:</span>
+                <span className="text-[11px] font-mono text-zinc-400">Popular Spotify playlists:</span>
                 <div className="flex flex-wrap gap-1.5">
                   {EXAMPLE_SPOTIFY_PLAYLISTS.map((ex) => (
                     <button
@@ -581,7 +581,7 @@ export function ImportPlaylistModal({ isOpen, onClose, onImported, initialTab = 
                     }}
                   />
                 </div>
-                <p className="text-[10px] text-zinc-400 truncate">
+                <p className="text-[11px] text-zinc-400 truncate">
                   Now matching: {spotifyMatchingProgress.currentTrackName}
                 </p>
               </div>
@@ -591,7 +591,7 @@ export function ImportPlaylistModal({ isOpen, onClose, onImported, initialTab = 
               <div className="p-4 rounded-2xl bg-[#0c0c10] border border-white/[0.08] space-y-3 shadow-inner">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-emerald-400">
+                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-400">
                       <Check size={12} />
                       <span>Spotify Playlist Found</span>
                     </div>
@@ -599,7 +599,7 @@ export function ImportPlaylistModal({ isOpen, onClose, onImported, initialTab = 
                     {spotifyPreview.author && (
                       <p className="text-[11px] text-zinc-400">By {spotifyPreview.author}</p>
                     )}
-                    <p className="text-[10px] font-mono text-zinc-500 mt-1">
+                    <p className="text-[11px] font-mono text-zinc-400 mt-1">
                       {spotifyPreview.trackCount} tracks extracted
                     </p>
                   </div>
@@ -609,18 +609,18 @@ export function ImportPlaylistModal({ isOpen, onClose, onImported, initialTab = 
                   {spotifyPreview.tracks.slice(0, 5).map((t, i) => (
                     <div key={t.id} className="py-1.5 flex items-center justify-between text-xs text-zinc-300">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="font-mono text-[10px] text-zinc-600 w-4">{i + 1}</span>
+                        <span className="font-mono text-[11px] text-zinc-500 w-4">{i + 1}</span>
                         <span className="truncate text-[11px]">
                           {t.title} <span className="text-zinc-500">— {t.artist}</span>
                         </span>
                       </div>
-                      <span className="font-mono text-[10px] text-zinc-500 shrink-0 ml-2">
+                      <span className="font-mono text-[11px] text-zinc-400 shrink-0 ml-2">
                         {formatTime(Math.round(t.durationMs / 1000))}
                       </span>
                     </div>
                   ))}
                   {spotifyPreview.trackCount > 5 && (
-                    <p className="text-[10px] text-zinc-500 text-center py-1">
+                    <p className="text-[11px] text-zinc-400 text-center py-1 font-mono">
                       + {spotifyPreview.trackCount - 5} more tracks
                     </p>
                   )}
@@ -669,7 +669,7 @@ export function ImportPlaylistModal({ isOpen, onClose, onImported, initialTab = 
                 <div className="w-10 h-10 rounded-2xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center text-zinc-300 shadow-sm">
                   <Upload size={18} />
                 </div>
-                <h4 className="text-xs font-bold text-white uppercase tracking-wider">Select or Drop .JSON Backup File</h4>
+                <h4 className="text-xs font-semibold text-zinc-200 tracking-tight">Select or Drop JSON Backup File</h4>
                 <p className="text-[11px] text-zinc-400 max-w-xs">
                   Restore previously exported full libraries or single playlists.
                 </p>
@@ -684,7 +684,7 @@ export function ImportPlaylistModal({ isOpen, onClose, onImported, initialTab = 
               <div className="p-4 rounded-2xl bg-[#0c0c10] border border-white/[0.08] space-y-3">
                 <div className="flex items-start justify-between">
                   <div>
-                    <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-emerald-400">
+                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-400">
                       <Check size={12} />
                       <span>Valid Backup File</span>
                     </div>
@@ -712,19 +712,19 @@ export function ImportPlaylistModal({ isOpen, onClose, onImported, initialTab = 
                     <span className="block text-sm font-mono font-bold text-white">
                       {fileValidation.summary?.playlistCount}
                     </span>
-                    <span className="text-[9px] text-zinc-500 uppercase tracking-wider">Playlists</span>
+                    <span className="text-[11px] text-zinc-400 font-mono">Playlists</span>
                   </div>
                   <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06]">
                     <span className="block text-sm font-mono font-bold text-white">
                       {fileValidation.summary?.trackCount}
                     </span>
-                    <span className="text-[9px] text-zinc-500 uppercase tracking-wider">Tracks</span>
+                    <span className="text-[11px] text-zinc-400 font-mono">Tracks</span>
                   </div>
                   <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06]">
                     <span className="block text-sm font-mono font-bold text-white">
                       {fileValidation.summary?.historyCount || 0}
                     </span>
-                    <span className="text-[9px] text-zinc-500 uppercase tracking-wider">History</span>
+                    <span className="text-[11px] text-zinc-400 font-mono">History</span>
                   </div>
                 </div>
 
@@ -747,7 +747,7 @@ export function ImportPlaylistModal({ isOpen, onClose, onImported, initialTab = 
                           <Layers size={13} />
                           <span>Merge Mode</span>
                         </div>
-                        <p className="text-[10px] text-zinc-500 mt-1">Keep existing data & add new</p>
+                        <p className="text-[11px] text-zinc-400 mt-1">Keep existing data & add new</p>
                       </button>
 
                       <button
@@ -764,7 +764,7 @@ export function ImportPlaylistModal({ isOpen, onClose, onImported, initialTab = 
                           <RefreshCw size={13} />
                           <span>Full Replace</span>
                         </div>
-                        <p className="text-[10px] text-zinc-500 mt-1">Wipe & replace entirely</p>
+                        <p className="text-[11px] text-zinc-400 mt-1">Wipe & replace entirely</p>
                       </button>
                     </div>
                   </div>

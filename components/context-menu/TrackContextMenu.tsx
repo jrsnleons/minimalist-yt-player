@@ -90,7 +90,7 @@ export function TrackContextMenu({
       {/* Header Info */}
       <div className="px-2.5 py-1.5 border-b border-white/[0.06] mb-1">
         <p className="font-semibold text-white truncate text-[11px]">{track.title}</p>
-        <p className="text-zinc-500 truncate text-[10px]">{track.artist}</p>
+        <p className="text-zinc-500 truncate text-[11px]">{track.artist}</p>
       </div>
 
       <button

@@ -40,8 +40,8 @@ export function VolumeSlider({
   );
 
   const widthClass = {
-    sm: 'w-16',
-    md: 'w-20',
+    sm: 'w-20',
+    md: 'w-24',
     lg: 'w-32 sm:w-36',
   }[size];
 
@@ -66,7 +66,7 @@ export function VolumeSlider({
         <button
           onClick={toggleMute}
           aria-label={isMuted ? 'Unmute' : `Mute (${displayVolume}%)`}
-          className="p-1.5 text-zinc-400 hover:text-white hover:bg-[#1e1e24] transition-colors rounded-md cursor-pointer shrink-0"
+          className="p-2 text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-colors rounded-xl cursor-pointer shrink-0 min-h-[36px] min-w-[36px] flex items-center justify-center"
         >
           <VolumeIcon size={iconSize} />
         </button>

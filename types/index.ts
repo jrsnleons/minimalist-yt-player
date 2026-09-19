@@ -7,6 +7,7 @@ export interface Track {
   duration: number; // seconds
   thumbnailUrl: string;
   addedAt: number; // Unix timestamp ms
+  addedBy?: { id: string; name: string };
 }
 
 export interface Playlist {

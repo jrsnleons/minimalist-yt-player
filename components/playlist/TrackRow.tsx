@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Volume2, GripVertical, Heart, MoreHorizontal } from 'lucide-react';
+import { Volume2, GripVertical, User, MoreHorizontal } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -186,41 +186,34 @@ export function TrackRow({
           </div>
         </td>
 
-        {/* Actions & Duration Cluster: Only Heart, More Options (...), and Duration */}
+        {/* Actions & Duration Cluster: Contributor Icon (if present), More Options (...), and Duration */}
         <td className="w-28 px-2 py-2 text-right shrink-0">
           <div className="flex items-center justify-end gap-1.5">
-            {/* 1. Like / Heart Button */}
-            <Tooltip content={isTrackLiked ? 'Unlike' : 'Like (Add to Liked Songs)'} side="top">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleLikeTrack(track);
-                }}
-                aria-label={isTrackLiked ? 'Unlike track' : 'Like track'}
-                className={cn(
-                  'p-1.5 rounded-lg transition-all cursor-pointer',
-                  isTrackLiked
-                    ? 'text-rose-500 hover:text-rose-400 hover:bg-rose-500/10'
-                    : 'text-zinc-500 opacity-0 group-hover:opacity-100 hover:text-rose-400 hover:bg-white/[0.08]'
-                )}
-              >
-                <Heart size={12} className={isTrackLiked ? 'fill-rose-500 text-rose-500' : ''} />
-              </button>
-            </Tooltip>
+            {/* 1. Contributor Icon (Replacing Heart) */}
+            {track.addedBy?.name ? (
+              <Tooltip content={`Added by ${track.addedBy.name}`} side="top">
+                <div
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-colors cursor-help"
+                  aria-label={`Added by ${track.addedBy.name}`}
+                >
+                  <User size={13} className="text-zinc-400" />
+                </div>
+              </Tooltip>
+            ) : null}
 
             {/* 2. More Options (...) Button */}
             <Tooltip content="More options" side="top">
               <button
                 onClick={handleMoreOptionsClick}
                 aria-label="More options"
-                className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-all cursor-pointer opacity-0 group-hover:opacity-100"
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-all cursor-pointer opacity-0 group-hover:opacity-100"
               >
-                <MoreHorizontal size={13} />
+                <MoreHorizontal size={14} />
               </button>
             </Tooltip>
 
             {/* 3. Duration */}
-            <span className="font-mono text-[10px] text-zinc-400 font-medium w-10 text-right ml-0.5 shrink-0">
+            <span className="font-mono text-[11px] text-zinc-400 font-medium w-10 text-right ml-0.5 shrink-0">
               {formatTime(track.duration)}
             </span>
           </div>

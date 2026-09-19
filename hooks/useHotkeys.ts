@@ -32,8 +32,11 @@ export function useHotkeys() {
   const toggleRightSidebar = usePlayerStore((s) => s.toggleRightSidebar);
   const toggleCommandPalette = usePlayerStore((s) => s.toggleCommandPalette);
   const toggleZenMode = usePlayerStore((s) => s.toggleZenMode);
+  const toggleSidebarPlayerMode = usePlayerStore((s) => s.toggleSidebarPlayerMode);
+  const toggleShortcutsModal = usePlayerStore((s) => s.toggleShortcutsModal);
   const seek = usePlayerStore((s) => s.seek);
   const commandPaletteOpen = usePlayerStore((s) => s.commandPaletteOpen);
+  const shortcutsModalOpen = usePlayerStore((s) => s.shortcutsModalOpen);
   const zenMode = usePlayerStore((s) => s.zenMode);
 
   // NOTE: `progress` is intentionally NOT subscribed here.
@@ -48,8 +51,12 @@ export function useHotkeys() {
         return;
       }
 
-      // Escape: close command palette, or exit Zen mode
+      // Escape: close shortcuts modal, close command palette, or exit Zen mode
       if (e.key === 'Escape') {
+        if (shortcutsModalOpen) {
+          toggleShortcutsModal(false);
+          return;
+        }
         if (commandPaletteOpen) {
           toggleCommandPalette();
           return;
@@ -126,6 +133,11 @@ export function useHotkeys() {
           e.preventDefault();
           cycleRepeat();
           break;
+        case 'q':
+        case 'Q':
+          e.preventDefault();
+          toggleSidebarPlayerMode();
+          break;
         case '[':
           e.preventDefault();
           toggleLeftSidebar();
@@ -133,6 +145,10 @@ export function useHotkeys() {
         case ']':
           e.preventDefault();
           toggleRightSidebar();
+          break;
+        case '?':
+          e.preventDefault();
+          toggleShortcutsModal();
           break;
         default:
           break;
@@ -150,8 +166,11 @@ export function useHotkeys() {
       toggleRightSidebar,
       toggleCommandPalette,
       toggleZenMode,
+      toggleSidebarPlayerMode,
+      toggleShortcutsModal,
       seek,
       commandPaletteOpen,
+      shortcutsModalOpen,
       zenMode,
     ]
   );

@@ -18,6 +18,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/schema';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { AddToPlaylistModal } from '@/components/playlist/AddToPlaylistModal';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { TrackArtwork } from '@/components/ui/TrackArtwork';
 import { CommandPaletteSkeletonItem } from '@/components/ui/Skeleton';
 import { debounce, formatTime, uuid, cn } from '@/lib/utils';
@@ -72,6 +73,7 @@ function detectOmniboxUrl(input: string) {
 export function CommandPalette() {
   const commandPaletteOpen = usePlayerStore((s) => s.commandPaletteOpen);
   const toggleCommandPalette = usePlayerStore((s) => s.toggleCommandPalette);
+  const closeCommandPalette = usePlayerStore((s) => s.closeCommandPalette);
   const play = usePlayerStore((s) => s.play);
   const addToQueue = usePlayerStore((s) => s.addToQueue);
   const playNext = usePlayerStore((s) => s.playNext);
@@ -97,6 +99,7 @@ export function CommandPalette() {
   const [isSmartProcessing, setIsSmartProcessing] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [playlistTrack, setPlaylistTrack] = useState<Track | null>(null);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   // Instant tactile button and banner feedback state
   const [buttonFeedback, setButtonFeedback] = useState<Record<string, 'next' | 'queue'>>({});
@@ -119,35 +122,35 @@ export function CommandPalette() {
     () => [
       {
         id: 'toggle-zen-mode',
-        label: `Toggle Zen Focus Mode (${zenMode ? 'Exit' : 'Enter'})`,
+        label: `Toggle Focus Mode (${zenMode ? 'Exit' : 'Enter'})`,
         shortcut: 'Z',
         action: () => {
           toggleZenMode();
-          triggerFeedback(`Zen Focus Mode ${!zenMode ? 'Enabled' : 'Disabled'}`);
+          triggerFeedback(`Focus Mode ${!zenMode ? 'Enabled' : 'Disabled'}`);
         },
       },
       {
         id: 'toggle-visualizer',
-        label: `Toggle Ambient Visualizer (${ambientVisualizerEnabled ? 'Turn Off' : 'Turn On'})`,
+        label: `Toggle Visualizer (${ambientVisualizerEnabled ? 'Turn Off' : 'Turn On'})`,
         action: () => {
           toggleAmbientVisualizer();
-          triggerFeedback(`Ambient Visualizer ${!ambientVisualizerEnabled ? 'Turned On' : 'Turned Off'}`);
+          triggerFeedback(`Visualizer ${!ambientVisualizerEnabled ? 'On' : 'Off'}`);
         },
       },
       {
         id: 'open-settings',
-        label: 'Open Settings & Data Safety',
+        label: 'Open Settings',
         action: () => {
           toggleSettings();
         },
       },
       {
         id: 'export-backup',
-        label: 'Export Full Library Backup (.json)',
+        label: 'Export Library Backup (.json)',
         action: async () => {
           try {
             const b = await exportFullLibrary();
-            const msg = `Exported ${b.summary.playlistCount} playlists & ${b.summary.trackCount} tracks!`;
+            const msg = `Exported ${b.summary.playlistCount} playlists & ${b.summary.trackCount} tracks`;
             triggerFeedback(msg);
             showToast(msg);
           } catch {
@@ -158,11 +161,11 @@ export function CommandPalette() {
       },
       {
         id: 'toggle-video',
-        label: `Toggle Video Mode (${isVideoEnabled ? 'Turn Off' : 'Turn On'})`,
+        label: `Toggle Video Overlay (${isVideoEnabled ? 'Turn Off' : 'Turn On'})`,
         shortcut: 'V',
         action: () => {
           toggleVideo();
-          triggerFeedback(`Video Mode ${!isVideoEnabled ? 'Turned On' : 'Turned Off'}`);
+          triggerFeedback(`Video Overlay ${!isVideoEnabled ? 'On' : 'Off'}`);
         },
       },
       {
@@ -171,12 +174,12 @@ export function CommandPalette() {
         shortcut: 'S',
         action: () => {
           toggleShuffle();
-          triggerFeedback(`Shuffle ${!shuffleMode ? 'Turned On' : 'Turned Off'}`);
+          triggerFeedback(`Shuffle ${!shuffleMode ? 'On' : 'Off'}`);
         },
       },
       {
         id: 'cycle-repeat',
-        label: `Cycle Repeat (${repeatMode.toUpperCase()})`,
+        label: `Cycle Repeat Mode (${repeatMode.toUpperCase()})`,
         shortcut: 'R',
         action: () => {
           cycleRepeat();
@@ -185,11 +188,9 @@ export function CommandPalette() {
       },
       {
         id: 'clear-queue',
-        label: 'Clear Up Next Queue',
+        label: 'Clear Queue',
         action: () => {
-          clearQueue();
-          triggerFeedback('Cleared Up Next queue');
-          showToast('Queue cleared');
+          setShowClearConfirm(true);
         },
       },
     ],
@@ -578,9 +579,9 @@ export function CommandPalette() {
               aria-label="Search query input"
               aria-autocomplete="list"
               aria-activedescendant={activeItemId}
-              className="flex-1 bg-transparent text-white placeholder-zinc-500 text-sm focus:outline-none"
+              className="flex-1 bg-transparent text-white placeholder-zinc-500 text-sm outline-none focus:outline-none focus:ring-0 border-0"
             />
-            <kbd className="px-2 py-0.5 text-[10px] rounded-lg bg-white/[0.06] border border-white/[0.08] text-zinc-400 font-mono shrink-0">
+            <kbd className="px-2 py-0.5 text-[11px] rounded-lg bg-white/[0.06] border border-white/[0.08] text-zinc-400 font-mono shrink-0">
               ESC
             </kbd>
           </div>
@@ -600,38 +601,40 @@ export function CommandPalette() {
                   <Check size={13} className="text-emerald-400 shrink-0" />
                   <span className="truncate">{inlineBanner.text}</span>
                 </div>
-                <span className="text-[10px] text-emerald-400/80 font-mono tracking-wider shrink-0 ml-2">✓ CONFIRMED</span>
+                <span className="text-[11px] text-emerald-400 font-mono tracking-wider shrink-0 ml-2">Done</span>
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Scope Filters (Only if no smart URL active) */}
+          {/* Scope Filters (Apple Segmented Glass Pills) */}
           {!smartUrl && (
-            <div className="flex items-center px-4 border-b border-white/[0.06] bg-[#09090d] text-xs" role="tablist">
-              {[
-                { key: 'all', label: 'All Results' },
-                { key: 'youtube', label: 'YouTube' },
-                { key: 'local', label: 'Library' },
-                { key: 'actions', label: 'Commands' },
-              ].map(({ key, label }) => (
-                <button
-                  key={key}
-                  onClick={() => {
-                    setScope(key as typeof scope);
-                    setActiveIndex(0);
-                  }}
-                  role="tab"
-                  aria-selected={scope === key}
-                  className={cn(
-                    'px-3 py-2.5 border-b-2 font-medium transition-colors cursor-pointer',
-                    scope === key
-                      ? 'border-white text-white'
-                      : 'border-transparent text-zinc-500 hover:text-zinc-300'
-                  )}
-                >
-                  {label}
-                </button>
-              ))}
+            <div className="flex items-center px-4 py-2 border-b border-white/[0.06] bg-[#0c0c10] text-xs" role="tablist">
+              <div className="flex items-center gap-1 p-0.5 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                {[
+                  { key: 'all', label: 'All Results' },
+                  { key: 'youtube', label: 'YouTube' },
+                  { key: 'local', label: 'Library' },
+                  { key: 'actions', label: 'Commands' },
+                ].map(({ key, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => {
+                      setScope(key as typeof scope);
+                      setActiveIndex(0);
+                    }}
+                    role="tab"
+                    aria-selected={scope === key}
+                    className={cn(
+                      'px-3 py-1 rounded-lg text-xs transition-all cursor-pointer select-none font-sans',
+                      scope === key
+                        ? 'bg-white/[0.14] text-white font-semibold shadow-sm'
+                        : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]'
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
@@ -644,7 +647,7 @@ export function CommandPalette() {
           >
             {isLoading && items.length === 0 ? (
               <div className="py-2 px-2 space-y-1">
-                <div className="px-2.5 py-1 text-[10px] font-bold text-zinc-500 uppercase tracking-wider font-sans flex items-center gap-1.5">
+                <div className="px-2.5 py-1 text-[11px] font-semibold text-zinc-500 uppercase tracking-wider font-sans flex items-center gap-1.5">
                   <Loader2 size={11} className="animate-spin text-zinc-400" />
                   <span>Searching YouTube catalog…</span>
                 </div>
@@ -664,7 +667,7 @@ export function CommandPalette() {
 
                   return (
                     <div key={sectionName} className="py-1.5 px-2">
-                      <div className="px-2.5 py-1 text-[10px] font-bold text-zinc-500 uppercase tracking-wider font-sans">
+                      <div className="px-2.5 py-1 text-[11px] font-semibold text-zinc-500 uppercase tracking-wider font-sans">
                         {sectionName}
                       </div>
                       <div className="space-y-1 mt-1">
@@ -713,7 +716,7 @@ export function CommandPalette() {
                                     </p>
                                   </div>
                                 </div>
-                                <kbd className="px-2 py-1 text-[10px] rounded-lg bg-white text-black font-semibold shadow-sm shrink-0 ml-3">
+                                <kbd className="px-2 py-1 text-[11px] rounded-lg bg-white text-black font-semibold shadow-sm shrink-0 ml-3">
                                   ENTER ↵
                                 </kbd>
                               </button>
@@ -747,7 +750,7 @@ export function CommandPalette() {
                                   <span className="font-medium">{item.action.label}</span>
                                 </div>
                                 {item.action.shortcut && (
-                                  <kbd className="px-1.5 py-0.5 text-[10px] rounded-md bg-white/[0.06] border border-white/[0.08] text-zinc-300 font-mono">
+                                  <kbd className="px-1.5 py-0.5 text-[11px] rounded-md bg-white/[0.06] border border-white/[0.08] text-zinc-300 font-mono">
                                     {item.action.shortcut}
                                   </kbd>
                                 )}
@@ -892,7 +895,7 @@ export function CommandPalette() {
                 <kbd className="font-mono text-zinc-400">ESC</kbd> Close
               </span>
             </div>
-            <span className="text-[10px] text-zinc-500">Paste YouTube / Spotify link for instant play</span>
+            <span className="text-[11px] text-zinc-500">Paste YouTube or Spotify link to play</span>
           </div>
         </div>
       </div>
@@ -905,6 +908,23 @@ export function CommandPalette() {
           onClose={() => setPlaylistTrack(null)}
         />
       )}
+
+      {/* Confirm Clear Queue Modal */}
+      <ConfirmModal
+        isOpen={showClearConfirm}
+        onClose={() => setShowClearConfirm(false)}
+        onConfirm={() => {
+          clearQueue();
+          setShowClearConfirm(false);
+          closeCommandPalette();
+          showToast('Queue cleared');
+        }}
+        title="Clear Queue"
+        description="This will remove all songs currently queued in the active session."
+        confirmText="Clear Queue"
+        cancelText="Cancel"
+        isDestructive={true}
+      />
     </>
   );
 }

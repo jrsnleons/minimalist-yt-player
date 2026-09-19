@@ -15,15 +15,9 @@ import {
   Plus,
   Download,
   Play,
-  Sparkles,
   Music,
   Clock,
-  Radio,
-  Moon,
-  Zap,
-  Coffee,
   Disc3,
-  Loader2,
   ChevronRight,
   ArrowRight,
   Heart,
@@ -31,7 +25,7 @@ import {
 import type { Playlist, Track } from '@/types';
 
 interface HomeViewProps {
-  onNavigateTab: (tab: 'queue' | 'search' | 'playlists' | 'recent' | 'vibe') => void;
+  onNavigateTab: (tab: 'search' | 'library') => void;
   onSelectPlaylist?: (playlist: Playlist) => void;
 }
 
@@ -79,9 +73,9 @@ function RecentSongCard({
         <p className="text-xs font-medium text-white truncate group-hover:text-white leading-snug">
           {track.title}
         </p>
-        <p className="text-[10px] text-zinc-400 truncate mt-0.5">{track.artist}</p>
+        <p className="text-[11px] text-zinc-400 truncate mt-0.5">{track.artist}</p>
       </div>
-      <span className="text-[10px] font-mono text-zinc-500 pr-1 shrink-0">
+      <span className="text-[11px] font-mono text-zinc-500 pr-1 shrink-0">
         {formatTime(track.duration || 0)}
       </span>
     </div>
@@ -144,7 +138,7 @@ function HomePlaylistCard({
           <h4 className="text-xs font-semibold text-zinc-200 group-hover:text-white truncate">
             {playlist.name}
           </h4>
-          <p className="text-[10px] text-zinc-500 font-mono">
+          <p className="text-[11px] text-zinc-500 font-mono">
             {playlist.trackIds.length} track{playlist.trackIds.length !== 1 ? 's' : ''}
           </p>
         </div>
@@ -163,79 +157,22 @@ function HomePlaylistCard({
   );
 }
 
-const CURATED_VIBES = [
-  {
-    id: 'lofi',
-    label: 'Deep Focus',
-    sublabel: 'Lofi beats & chill instrumental',
-    query: 'lofi chill beats focus study',
-    icon: Zap,
-    gradient: 'from-amber-500/10 to-orange-500/5 hover:border-amber-500/30',
-  },
-  {
-    id: 'noir',
-    label: 'Midnight Noir',
-    sublabel: 'Dark ambient & late-night jazz',
-    query: 'dark ambient jazz noir chillout',
-    icon: Moon,
-    gradient: 'from-indigo-500/10 to-purple-500/5 hover:border-indigo-500/30',
-  },
-  {
-    id: 'synthwave',
-    label: 'Cyber Synth',
-    sublabel: '80s retrowave & darksynth',
-    query: 'synthwave retrowave chillwave mix',
-    icon: Sparkles,
-    gradient: 'from-fuchsia-500/10 to-pink-500/5 hover:border-fuchsia-500/30',
-  },
-  {
-    id: 'acoustic',
-    label: 'Acoustic Calm',
-    sublabel: 'Warm guitar & relaxing folk',
-    query: 'acoustic guitar instrumental chill relaxing',
-    icon: Coffee,
-    gradient: 'from-emerald-500/10 to-teal-500/5 hover:border-emerald-500/30',
-  },
-];
-
 export function HomeView({ onNavigateTab, onSelectPlaylist }: HomeViewProps) {
   const play = usePlayerStore((s) => s.play);
   const currentTrack = usePlayerStore((s) => s.currentTrack);
   const recentlyPlayed = usePlayerStore((s) => s.recentlyPlayed);
-  const likedTrackIds = usePlayerStore((s) => s.likedTrackIds);
   const toggleCommandPalette = usePlayerStore((s) => s.toggleCommandPalette);
   const showToast = usePlayerStore((s) => s.showToast);
   const shortcutKey = usePlatformShortcut('⌘K');
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-  const [loadingVibeId, setLoadingVibeId] = useState<string | null>(null);
 
   const playlists = useLiveQuery(() => db.playlists.orderBy('updatedAt').reverse().toArray(), []);
 
   const hasPlaylists = playlists && playlists.length > 0;
   const hasHistory = recentlyPlayed && recentlyPlayed.length > 0;
   const isPopulated = hasPlaylists || hasHistory;
-
-  const handleStartVibe = async (vibe: typeof CURATED_VIBES[0]) => {
-    setLoadingVibeId(vibe.id);
-    try {
-      const res = await fetch(`/api/search?q=${encodeURIComponent(vibe.query)}&type=song`);
-      const data = await res.json();
-      const tracks: Track[] = data.tracks ?? data.results ?? [];
-
-      if (tracks.length > 0) {
-        play(tracks[0], tracks);
-        showToast(`Started "${vibe.label}" session (${tracks.length} tracks)`);
-      } else {
-        showToast('No tracks found for this vibe');
-      }
-    } catch {
-      showToast('Failed to start radio mix');
-    } finally {
-      setLoadingVibeId(null);
-    }
-  };
 
   const handlePlayPlaylist = async (playlist: Playlist, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -257,7 +194,7 @@ export function HomeView({ onNavigateTab, onSelectPlaylist }: HomeViewProps) {
     if (onSelectPlaylist) {
       onSelectPlaylist(playlist);
     } else {
-      onNavigateTab('playlists');
+      onNavigateTab('library');
     }
   };
 
@@ -269,22 +206,22 @@ export function HomeView({ onNavigateTab, onSelectPlaylist }: HomeViewProps) {
           {/* Quick Header Bar */}
           <div className="flex items-center justify-between px-1 shrink-0">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold tracking-wider uppercase text-zinc-300 font-sans">
-                Library Overview
+              <span className="text-sm font-semibold tracking-tight text-zinc-200 font-sans">
+                Overview
               </span>
             </div>
 
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setIsImportModalOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.08] hover:border-white/[0.16] text-zinc-300 hover:text-white text-xs font-medium transition-all cursor-pointer"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.08] hover:border-white/[0.16] text-zinc-300 hover:text-white text-xs font-medium transition-all cursor-pointer min-h-[36px]"
               >
                 <Download size={13} className="text-emerald-400" />
                 <span>Import</span>
               </button>
               <button
                 onClick={() => setIsCreateModalOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white text-black hover:bg-zinc-200 text-xs font-semibold shadow-sm transition-all cursor-pointer"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white text-black hover:bg-zinc-200 text-xs font-semibold shadow-sm transition-all cursor-pointer min-h-[36px]"
               >
                 <Plus size={13} />
                 <span>New Playlist</span>
@@ -292,22 +229,22 @@ export function HomeView({ onNavigateTab, onSelectPlaylist }: HomeViewProps) {
             </div>
           </div>
 
-          {/* Section 1: Your Playlists Shelf */}
+          {/* Section 1: Playlists Shelf */}
           {hasPlaylists && (
-            <section aria-label="Your Playlists" className="space-y-2">
+            <section aria-label="Playlists" className="space-y-2.5">
               <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-2">
                   <Music size={14} className="text-zinc-400" />
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-200">
-                    Your Playlists
+                  <h3 className="text-xs font-semibold tracking-tight text-zinc-200">
+                    Playlists
                   </h3>
-                  <span className="text-[10px] font-mono text-zinc-500">({playlists.length})</span>
+                  <span className="text-[11px] font-mono text-zinc-400">({playlists.length})</span>
                 </div>
                 <button
-                  onClick={() => onNavigateTab('playlists')}
+                  onClick={() => onNavigateTab('library')}
                   className="text-xs text-zinc-400 hover:text-white transition-colors flex items-center gap-0.5 cursor-pointer"
                 >
-                  <span>View All</span>
+                  <span>Show all</span>
                   <ChevronRight size={13} />
                 </button>
               </div>
@@ -325,21 +262,21 @@ export function HomeView({ onNavigateTab, onSelectPlaylist }: HomeViewProps) {
             </section>
           )}
 
-          {/* Section 2: Jump Back In (Recently Played Shelf) */}
+          {/* Section 2: Recent Listening Shelf */}
           {hasHistory && (
-            <section aria-label="Recently Played" className="space-y-2">
+            <section aria-label="Recent Listening" className="space-y-2.5">
               <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-2">
                   <Clock size={14} className="text-zinc-400" />
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-200">
-                    Jump Back In
+                  <h3 className="text-xs font-semibold tracking-tight text-zinc-200">
+                    Recent Listening
                   </h3>
-                  <span className="text-[10px] font-mono text-zinc-500">
+                  <span className="text-[11px] font-mono text-zinc-400">
                     ({recentlyPlayed.length})
                   </span>
                 </div>
                 <button
-                  onClick={() => onNavigateTab('recent')}
+                  onClick={() => onNavigateTab('library')}
                   className="text-xs text-zinc-400 hover:text-white transition-colors flex items-center gap-0.5 cursor-pointer"
                 >
                   <span>History</span>
@@ -359,60 +296,14 @@ export function HomeView({ onNavigateTab, onSelectPlaylist }: HomeViewProps) {
               </div>
             </section>
           )}
-
-          {/* Section 3: Curated Flows & Vibes */}
-          <section aria-label="Curated Ambient Vibes" className="space-y-2 pt-1">
-            <div className="flex items-center gap-2 px-1">
-              <Radio size={14} className="text-zinc-400" />
-              <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-200">
-                Instant Vibe Mixes
-              </h3>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
-              {CURATED_VIBES.map((vibe) => {
-                const Icon = vibe.icon;
-                const isLoading = loadingVibeId === vibe.id;
-                return (
-                  <button
-                    key={vibe.id}
-                    onClick={() => handleStartVibe(vibe)}
-                    disabled={isLoading}
-                    className={cn(
-                      'flex flex-col text-left p-3.5 rounded-2xl border bg-gradient-to-b border-white/[0.06] transition-all cursor-pointer group shadow-sm',
-                      vibe.gradient,
-                      isLoading ? 'opacity-60 cursor-wait' : 'hover:scale-[1.01]'
-                    )}
-                  >
-                    <div className="flex items-center justify-between w-full mb-2">
-                      <div className="w-7 h-7 rounded-lg bg-white/[0.06] border border-white/[0.08] flex items-center justify-center text-zinc-300 group-hover:text-white transition-colors">
-                        {isLoading ? <Loader2 size={13} className="animate-spin" /> : <Icon size={13} />}
-                      </div>
-                      <Play
-                        size={12}
-                        className="text-zinc-500 group-hover:text-white opacity-0 group-hover:opacity-100 transition-all"
-                        fill="currentColor"
-                      />
-                    </div>
-                    <span className="text-xs font-semibold text-white tracking-tight">
-                      {vibe.label}
-                    </span>
-                    <span className="text-[10px] text-zinc-400 mt-0.5 line-clamp-1">
-                      {vibe.sublabel}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
         </>
       ) : (
         /* ─── EMPTY STATE: SLEEK ONYX LAUNCHPAD ─────────────────────── */
         <div className="flex flex-col items-center justify-center py-6 px-2 space-y-5 text-center my-auto">
-          {/* Main Onyx Glass Hero Card */}
-          <div className="relative w-full max-w-2xl p-6 sm:p-8 rounded-3xl border border-white/[0.08] bg-[#09090d]/90 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] overflow-hidden">
-            {/* Subtle Ambient Glow */}
-            <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-80 h-32 bg-gradient-to-r from-zinc-700/20 via-white/10 to-zinc-700/20 blur-3xl pointer-events-none" />
+          {/* Main Hero Card (Apple Liquid Glass) */}
+          <div className="relative w-full max-w-2xl p-6 sm:p-8 rounded-3xl apple-liquid-glass overflow-hidden">
+            {/* Subtle Ambient Depth */}
+            <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-80 h-32 bg-gradient-to-r from-zinc-700/15 via-white/10 to-zinc-700/15 blur-3xl pointer-events-none" />
 
             <div className="relative z-10 flex flex-col items-center">
               {/* Onyx Emblem */}
@@ -420,26 +311,26 @@ export function HomeView({ onNavigateTab, onSelectPlaylist }: HomeViewProps) {
                 <Disc3 size={24} className="text-white" />
               </div>
 
-              <h2 className="text-xl font-bold tracking-tight text-white font-sans">
-                ONYX <span className="font-light text-zinc-400">AUDIO</span>
+              <h2 className="text-xl font-semibold tracking-tight text-white font-sans">
+                Onyx <span className="font-normal text-zinc-400">Audio</span>
               </h2>
               <p className="text-xs text-zinc-400 max-w-md mt-1 leading-relaxed">
-                Distraction-free, local-first audio player. Zero tracking, no ads, and pure listening.
+                A quiet, private player for music collections and online streams.
               </p>
 
               {/* Direct Quick Search / Omnibox Trigger */}
               <div className="w-full max-w-lg mt-5">
                 <button
                   onClick={toggleCommandPalette}
-                  className="w-full flex items-center justify-between px-4 py-3 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.1] hover:border-white/20 transition-all text-left group cursor-pointer shadow-inner"
+                  className="w-full flex items-center justify-between px-4 py-3 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.1] hover:border-white/20 transition-all text-left group cursor-pointer shadow-inner min-h-[44px]"
                 >
                   <div className="flex items-center gap-3">
-                    <Search size={15} className="text-zinc-400 group-hover:text-white transition-colors" />
+                    <Search size={15} className="text-zinc-400 group-hover:text-white transition-colors shrink-0" />
                     <span className="text-xs text-zinc-400 group-hover:text-zinc-200">
-                      Search music, artists, or paste Spotify / YouTube link…
+                      Search tracks, artists, or paste a Spotify or YouTube link…
                     </span>
                   </div>
-                  <kbd className="px-2 py-0.5 text-[10px] rounded-lg bg-white/[0.06] border border-white/[0.1] text-zinc-300 font-mono">
+                  <kbd className="px-2 py-0.5 text-[11px] rounded-lg bg-white/[0.06] border border-white/[0.1] text-zinc-300 font-mono shrink-0">
                     {shortcutKey}
                   </kbd>
                 </button>
@@ -449,89 +340,65 @@ export function HomeView({ onNavigateTab, onSelectPlaylist }: HomeViewProps) {
 
           {/* 3 Bento Launchpad Action Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-2xl">
-            {/* Card 1: Explore & Search */}
+            {/* Card 1: Search & Explore */}
             <div
               onClick={() => onNavigateTab('search')}
-              className="flex flex-col text-left p-4 rounded-2xl bg-[#09090d] hover:bg-[#111117] border border-white/[0.07] hover:border-white/[0.16] transition-all cursor-pointer group shadow-sm"
+              className="flex flex-col text-left p-4 rounded-2xl apple-card hover:bg-white/[0.04] transition-all cursor-pointer group"
             >
               <div className="w-8 h-8 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center text-zinc-300 group-hover:text-white mb-2.5 transition-colors">
                 <Search size={14} />
               </div>
               <h4 className="text-xs font-semibold text-white flex items-center justify-between">
-                <span>Explore Catalog</span>
+                <span>Search</span>
                 <ArrowRight size={12} className="text-zinc-500 group-hover:text-white opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-0.5" />
               </h4>
-              <p className="text-[11px] text-zinc-400 mt-1 leading-snug">
-                Search singles, live sets, full concert videos, and albums.
+              <p className="text-xs text-zinc-400 mt-1 leading-snug">
+                Find songs, full albums, and live recordings.
               </p>
             </div>
 
             {/* Card 2: Import Playlists */}
             <div
               onClick={() => setIsImportModalOpen(true)}
-              className="flex flex-col text-left p-4 rounded-2xl bg-[#09090d] hover:bg-[#111117] border border-white/[0.07] hover:border-white/[0.16] transition-all cursor-pointer group shadow-sm"
+              className="flex flex-col text-left p-4 rounded-2xl apple-card hover:bg-white/[0.04] transition-all cursor-pointer group"
             >
               <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-2.5 transition-colors">
                 <Download size={14} />
               </div>
               <h4 className="text-xs font-semibold text-white flex items-center justify-between">
-                <span>Import Music</span>
+                <span>Import Playlists</span>
                 <ArrowRight size={12} className="text-zinc-500 group-hover:text-white opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-0.5" />
               </h4>
-              <p className="text-[11px] text-zinc-400 mt-1 leading-snug">
-                Paste public Spotify & YouTube playlists with zero login.
+              <p className="text-xs text-zinc-400 mt-1 leading-snug">
+                Add public playlists from Spotify or YouTube links.
               </p>
             </div>
 
-            {/* Card 3: Instant Focus Flow */}
+            {/* Card 3: Library */}
             <div
-              onClick={() => handleStartVibe(CURATED_VIBES[0])}
-              className="flex flex-col text-left p-4 rounded-2xl bg-[#09090d] hover:bg-[#111117] border border-white/[0.07] hover:border-white/[0.16] transition-all cursor-pointer group shadow-sm"
+              onClick={() => onNavigateTab('library')}
+              className="flex flex-col text-left p-4 rounded-2xl apple-card hover:bg-white/[0.04] transition-all cursor-pointer group"
             >
-              <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 mb-2.5 transition-colors">
-                {loadingVibeId === 'lofi' ? (
-                  <Loader2 size={14} className="animate-spin" />
-                ) : (
-                  <Zap size={14} />
-                )}
+              <div className="w-8 h-8 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-2.5 transition-colors">
+                <Music size={14} />
               </div>
               <h4 className="text-xs font-semibold text-white flex items-center justify-between">
-                <span>Instant Chill Mix</span>
+                <span>Library</span>
                 <ArrowRight size={12} className="text-zinc-500 group-hover:text-white opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-0.5" />
               </h4>
-              <p className="text-[11px] text-zinc-400 mt-1 leading-snug">
-                One click to launch an ad-free lofi & ambient session.
+              <p className="text-xs text-zinc-400 mt-1 leading-snug">
+                Browse liked songs, playlists, and history.
               </p>
             </div>
-          </div>
-
-          {/* Curated Vibe Flow Pills */}
-          <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
-            <span className="text-[11px] font-mono text-zinc-500 uppercase tracking-wider mr-1">
-              Quick Vibes:
-            </span>
-            {CURATED_VIBES.map((vibe) => (
-              <button
-                key={vibe.id}
-                onClick={() => handleStartVibe(vibe)}
-                disabled={loadingVibeId === vibe.id}
-                className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/[0.16] text-zinc-300 hover:text-white text-xs font-medium transition-all cursor-pointer disabled:opacity-50"
-              >
-                {loadingVibeId === vibe.id ? (
-                  <Loader2 size={11} className="animate-spin text-amber-400" />
-                ) : null}
-                <span>{vibe.label}</span>
-              </button>
-            ))}
           </div>
 
           {/* Keyboard Shortcuts Reference */}
-          <div className="flex items-center justify-center gap-3 text-[10px] font-mono text-zinc-500 pt-2 border-t border-white/[0.04] w-full max-w-xl">
-            <span><kbd className="text-zinc-400 bg-white/[0.05] px-1 py-0.5 rounded">Space</kbd> Play/Pause</span>
-            <span><kbd className="text-zinc-400 bg-white/[0.05] px-1 py-0.5 rounded">{shortcutKey}</kbd> Omnibox</span>
-            <span><kbd className="text-zinc-400 bg-white/[0.05] px-1 py-0.5 rounded">V</kbd> Video</span>
-            <span><kbd className="text-zinc-400 bg-white/[0.05] px-1 py-0.5 rounded">Z</kbd> Zen</span>
-            <span><kbd className="text-zinc-400 bg-white/[0.05] px-1 py-0.5 rounded">J/L</kbd> Seek</span>
+          <div className="flex items-center justify-center gap-3 text-[11px] font-mono text-zinc-400 pt-2 border-t border-white/[0.06] w-full max-w-xl">
+            <span><kbd className="text-zinc-300 bg-white/[0.06] border border-white/10 px-1.5 py-0.5 rounded">Space</kbd> Play/Pause</span>
+            <span><kbd className="text-zinc-300 bg-white/[0.06] border border-white/10 px-1.5 py-0.5 rounded">{shortcutKey}</kbd> Omnibox</span>
+            <span><kbd className="text-zinc-300 bg-white/[0.06] border border-white/10 px-1.5 py-0.5 rounded">V</kbd> Video</span>
+            <span><kbd className="text-zinc-300 bg-white/[0.06] border border-white/10 px-1.5 py-0.5 rounded">Z</kbd> Focus</span>
+            <span><kbd className="text-zinc-300 bg-white/[0.06] border border-white/10 px-1.5 py-0.5 rounded">J/L</kbd> Seek</span>
           </div>
         </div>
       )}
@@ -545,7 +412,7 @@ export function HomeView({ onNavigateTab, onSelectPlaylist }: HomeViewProps) {
           if (onSelectPlaylist) {
             onSelectPlaylist(pl);
           } else {
-            onNavigateTab('playlists');
+            onNavigateTab('library');
           }
         }}
       />

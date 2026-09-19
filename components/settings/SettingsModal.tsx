@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Modal } from '@/components/ui/Modal';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { db } from '@/db/schema';
 import { estimateStorageMB, cn } from '@/lib/utils';
@@ -14,7 +15,6 @@ import {
 import {
   AlertTriangle,
   HardDrive,
-  Key,
   Radio,
   Trash2,
   Sparkles,
@@ -57,6 +57,7 @@ export function SettingsModal() {
   const [restoreMode, setRestoreMode] = useState<RestoreMode>('merge');
   const [isRestoring, setIsRestoring] = useState(false);
   const [restoreError, setRestoreError] = useState<string | null>(null);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const refreshStats = async () => {
@@ -144,13 +145,6 @@ export function SettingsModal() {
   };
 
   const handleClearDatabase = async () => {
-    if (
-      !confirm(
-        'Are you sure you want to delete all playlists, history, and cached tracks? This cannot be undone. Make sure to export a backup first!'
-      )
-    ) {
-      return;
-    }
     try {
       await Promise.all([
         db.tracks.clear(),
@@ -161,26 +155,27 @@ export function SettingsModal() {
       await refreshStats();
       showToast('All local data cleared successfully');
       usePlayerStore.getState().clearQueue();
+      setShowClearConfirm(false);
     } catch {
       showToast('Failed to clear database');
     }
   };
 
   return (
-    <Modal isOpen={settingsOpen} onClose={closeSettings} title="Onyx Settings & Preferences" className="max-w-xl">
+    <Modal isOpen={settingsOpen} onClose={closeSettings} title="Settings" className="max-w-xl">
       <div className="flex flex-col gap-5 max-h-[75vh] overflow-y-auto pr-1">
         {/* 1. Data Safety & Backup / Restore (Priority Section) */}
         <section className="space-y-3">
           <div className="flex items-center gap-2">
             <ShieldCheck size={16} className="text-emerald-400" />
-            <h3 className="text-xs font-bold uppercase tracking-wider text-white font-sans">
-              Data Safety & Library Backups
+            <h3 className="text-xs font-semibold text-zinc-200 tracking-tight font-sans">
+              Library & Backups
             </h3>
           </div>
 
           <div className="p-4 rounded-2xl border border-white/[0.08] bg-[#0c0c10] space-y-3 shadow-inner">
-            <p className="text-[11px] text-zinc-400 leading-relaxed">
-              Your entire library lives 100% locally in your browser. Export portable JSON backup files to safeguard your playlists or migrate to other computers.
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              Your entire library lives locally in your browser. Export JSON backup files to safeguard playlists or move to other devices.
             </p>
 
             <div className="flex items-center gap-2.5">
@@ -216,7 +211,7 @@ export function SettingsModal() {
             {fileValidation && fileValidation.isValid && (
               <div className="p-3.5 rounded-2xl bg-[#0e0e14] border border-emerald-500/30 space-y-3 mt-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-400">
                     <Check size={13} />
                     <span>Backup Verified Ready to Restore</span>
                   </div>
@@ -226,7 +221,7 @@ export function SettingsModal() {
                       setFileValidation(null);
                       if (fileInputRef.current) fileInputRef.current.value = '';
                     }}
-                    className="text-[11px] text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                    className="text-xs text-zinc-400 hover:text-white transition-colors cursor-pointer"
                   >
                     Cancel
                   </button>
@@ -237,24 +232,24 @@ export function SettingsModal() {
                     <span className="block font-mono font-bold text-white">
                       {fileValidation.summary?.playlistCount}
                     </span>
-                    <span className="text-[9px] text-zinc-500 uppercase tracking-wider">Playlists</span>
+                    <span className="text-[11px] text-zinc-500 uppercase tracking-wider font-mono">Playlists</span>
                   </div>
                   <div className="p-2 rounded-xl bg-white/[0.03] border border-white/[0.06]">
                     <span className="block font-mono font-bold text-white">
                       {fileValidation.summary?.trackCount}
                     </span>
-                    <span className="text-[9px] text-zinc-500 uppercase tracking-wider">Tracks</span>
+                    <span className="text-[11px] text-zinc-500 uppercase tracking-wider font-mono">Tracks</span>
                   </div>
                   <div className="p-2 rounded-xl bg-white/[0.03] border border-white/[0.06]">
                     <span className="block font-mono font-bold text-white">
                       {fileValidation.summary?.historyCount}
                     </span>
-                    <span className="text-[9px] text-zinc-500 uppercase tracking-wider">History</span>
+                    <span className="text-[11px] text-zinc-500 uppercase tracking-wider font-mono">History</span>
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
-                  <span className="text-[11px] font-semibold text-zinc-300">Restore Strategy:</span>
+                  <span className="text-xs font-semibold text-zinc-300">Restore Strategy:</span>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
@@ -270,7 +265,7 @@ export function SettingsModal() {
                         <Layers size={12} />
                         <span>Merge (Safe)</span>
                       </div>
-                      <p className="text-[10px] text-zinc-500 mt-0.5">Keep existing playlists</p>
+                      <p className="text-[11px] text-zinc-500 mt-0.5">Keep existing playlists</p>
                     </button>
 
                     <button
@@ -287,7 +282,7 @@ export function SettingsModal() {
                         <RefreshCw size={12} />
                         <span>Full Replace</span>
                       </div>
-                      <p className="text-[10px] text-zinc-500 mt-0.5">Wipe & replace</p>
+                      <p className="text-[11px] text-zinc-500 mt-0.5">Wipe and replace</p>
                     </button>
                   </div>
                 </div>
@@ -313,21 +308,21 @@ export function SettingsModal() {
           </div>
         </section>
 
-        {/* 2. Visuals & Ambient Glow */}
+        {/* 2. Visual Effects */}
         <section className="space-y-3 pt-2 border-t border-white/[0.06]">
           <div className="flex items-center gap-2">
             <Sparkles size={15} className="text-white" />
-            <h3 className="text-xs font-bold uppercase tracking-wider text-white font-sans">
-              Visual & Player Ambiance
+            <h3 className="text-xs font-semibold text-zinc-200 tracking-tight font-sans">
+              Visual Effects
             </h3>
           </div>
 
           <div className="space-y-2.5">
             <div className="p-3.5 rounded-2xl border border-white/[0.06] bg-[#0c0c10] flex items-center justify-between gap-4">
               <div>
-                <span className="text-xs font-semibold text-white">Dynamic Blurred Artwork Glow</span>
-                <p className="text-[11px] text-zinc-400 mt-0.5 leading-relaxed">
-                  Renders a dynamic, ultra-blurred ambient glow behind the music player matching the currently playing track.
+                <span className="text-xs font-semibold text-white">Dynamic Artwork Glow</span>
+                <p className="text-xs text-zinc-400 mt-0.5 leading-relaxed">
+                  Renders an ambient glow behind the player matching current album artwork.
                 </p>
               </div>
 
@@ -349,9 +344,9 @@ export function SettingsModal() {
 
             <div className="p-3.5 rounded-2xl border border-white/[0.06] bg-[#0c0c10] flex items-center justify-between gap-4">
               <div>
-                <span className="text-xs font-semibold text-white">Harmonic Audio Wave Visualizer</span>
-                <p className="text-[11px] text-zinc-400 mt-0.5 leading-relaxed">
-                  Subtle, GPU-accelerated harmonic waveform canvas that reacts to playback and pause states.
+                <span className="text-xs font-semibold text-white">Waveform Visualizer</span>
+                <p className="text-xs text-zinc-400 mt-0.5 leading-relaxed">
+                  Ambient canvas waveform that animates during active playback.
                 </p>
               </div>
 
@@ -373,9 +368,9 @@ export function SettingsModal() {
 
             <div className="p-3.5 rounded-2xl border border-white/[0.06] bg-[#0c0c10] flex items-center justify-between gap-4">
               <div>
-                <span className="text-xs font-semibold text-white">Remember Session on Restart</span>
-                <p className="text-[11px] text-zinc-400 mt-0.5 leading-relaxed">
-                  Automatically restores your active queue, track, and progress timestamp when reopening the app.
+                <span className="text-xs font-semibold text-white">Restore Session on Launch</span>
+                <p className="text-xs text-zinc-400 mt-0.5 leading-relaxed">
+                  Restores active queue, track, and playback position upon reopening.
                 </p>
               </div>
 
@@ -397,23 +392,23 @@ export function SettingsModal() {
           </div>
         </section>
 
-        {/* 3. Audio Crossfade & Transitions */}
+        {/* 3. Audio Crossfade */}
         <section className="space-y-3 pt-2 border-t border-white/[0.06]">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <SlidersHorizontal size={15} className="text-white" />
-              <h3 className="text-xs font-bold uppercase tracking-wider text-white font-sans">
-                Audio Crossfade & Transitions
+              <h3 className="text-xs font-semibold text-zinc-200 tracking-tight font-sans">
+                Audio Crossfade
               </h3>
             </div>
-            <span className="text-[10px] font-mono text-zinc-400">
+            <span className="text-[11px] font-mono text-zinc-400">
               {crossfadeDuration > 0 ? `${crossfadeDuration}s fade` : 'Disabled'}
             </span>
           </div>
 
           <div className="p-3.5 rounded-2xl border border-white/[0.06] bg-[#0c0c10] space-y-2.5">
-            <p className="text-[11px] text-zinc-400 leading-relaxed">
-              Smoothly blends consecutive songs by fading out the current track while fading in the next for uninterrupted flow.
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              Blends consecutive songs smoothly by fading the current track out while fading the next track in.
             </p>
             <div className="flex items-center gap-1.5 pt-1">
               {[
@@ -445,11 +440,11 @@ export function SettingsModal() {
           </div>
         </section>
 
-        {/* 4. Playback Engine Selection */}
+        {/* 4. Playback Engine */}
         <section className="space-y-3 pt-2 border-t border-white/[0.06]">
           <div className="flex items-center gap-2">
             <Radio size={15} className="text-zinc-400" />
-            <h3 className="text-xs font-bold uppercase tracking-wider text-white font-sans">
+            <h3 className="text-xs font-semibold text-zinc-200 tracking-tight font-sans">
               Playback Engine
             </h3>
           </div>
@@ -474,12 +469,12 @@ export function SettingsModal() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-semibold text-white">YouTube IFrame Engine</span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-white/[0.1] text-white uppercase font-mono">
-                    Recommended · Stable
+                  <span className="text-[11px] px-1.5 py-0.5 rounded-md bg-white/[0.1] text-white uppercase font-mono">
+                    Standard · Reliable
                   </span>
                 </div>
-                <p className="text-[11px] text-zinc-400 mt-1 leading-relaxed">
-                  Headless iframe with custom transport. 100% YouTube TOS compliant. Supports live video on album cover (<kbd className="font-mono text-zinc-300">V</kbd>).
+                <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
+                  Headless iframe with custom transport. Supports video canvas overlay (<kbd className="font-mono text-zinc-300">V</kbd>).
                 </p>
               </div>
             </label>
@@ -502,13 +497,13 @@ export function SettingsModal() {
               />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-white">Direct Audio Streaming</span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-amber-500/20 border border-amber-500/30 text-amber-300 uppercase font-mono">
+                  <span className="text-xs font-semibold text-white">Direct Audio Stream</span>
+                  <span className="text-[11px] px-1.5 py-0.5 rounded-md bg-amber-500/20 border border-amber-500/30 text-amber-300 uppercase font-mono">
                     Experimental
                   </span>
                 </div>
-                <p className="text-[11px] text-zinc-400 mt-1 leading-relaxed">
-                  Streams audio into a native HTML5 <code className="text-zinc-300">&lt;audio&gt;</code> element without iframe container overhead.
+                <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
+                  Streams audio directly into an HTML5 <code className="text-zinc-300">&lt;audio&gt;</code> element.
                 </p>
               </div>
             </label>
@@ -518,57 +513,67 @@ export function SettingsModal() {
             <div className="p-3.5 rounded-2xl border border-amber-900/60 bg-amber-950/20 text-amber-200/90 text-xs space-y-1.5">
               <div className="flex items-center gap-1.5 font-semibold text-amber-300">
                 <AlertTriangle size={13} className="shrink-0" />
-                <span>Direct Audio Mode Notes:</span>
+                <span>Direct Audio Details:</span>
               </div>
-              <ul className="list-disc list-inside space-y-1 text-[11px] text-amber-200/80">
-                <li>Stream URLs expire after ~6 hours (client auto-refetches).</li>
-                <li>Live video mode is unavailable in direct audio mode.</li>
-                <li>If stream extraction fails on specific tracks, IFrame fallback activates automatically.</li>
+              <ul className="list-disc list-inside space-y-1 text-xs text-amber-200/80">
+                <li>Stream URLs refresh automatically upon expiry.</li>
+                <li>Live video canvas is unavailable in direct audio mode.</li>
+                <li>IFrame engine activates as fallback if extraction fails.</li>
               </ul>
             </div>
           )}
         </section>
 
-        {/* 4. Local Storage Stats & Reset */}
+        {/* 5. Storage & Reset */}
         <section className="space-y-3 pt-2 border-t border-white/[0.06]">
           <div className="flex items-center gap-2">
             <HardDrive size={15} className="text-zinc-400" />
-            <h3 className="text-xs font-bold uppercase tracking-wider text-white font-sans">
-              Local Storage Metrics
+            <h3 className="text-xs font-semibold text-zinc-200 tracking-tight font-sans">
+              Storage & Data
             </h3>
           </div>
 
           <div className="grid grid-cols-3 gap-2 text-center">
             <div className="p-3 rounded-2xl border border-white/[0.06] bg-[#0c0c10]">
               <span className="block text-base font-semibold text-white font-mono">{trackCount}</span>
-              <span className="text-[10px] text-zinc-500 uppercase tracking-wider">Saved Tracks</span>
+              <span className="text-[11px] text-zinc-500 uppercase tracking-wider font-mono">Saved Tracks</span>
             </div>
             <div className="p-3 rounded-2xl border border-white/[0.06] bg-[#0c0c10]">
               <span className="block text-base font-semibold text-white font-mono">{playlistCount}</span>
-              <span className="text-[10px] text-zinc-500 uppercase tracking-wider">Playlists</span>
+              <span className="text-[11px] text-zinc-500 uppercase tracking-wider font-mono">Playlists</span>
             </div>
             <div className="p-3 rounded-2xl border border-white/[0.06] bg-[#0c0c10]">
               <span className="block text-base font-semibold text-white font-mono">{historyCount}</span>
-              <span className="text-[10px] text-zinc-500 uppercase tracking-wider">History Plays</span>
+              <span className="text-[11px] text-zinc-500 uppercase tracking-wider font-mono">Plays Logged</span>
             </div>
           </div>
 
           <div className="flex items-center justify-between p-3.5 rounded-2xl border border-white/[0.06] bg-[#0c0c10]">
             <div className="text-xs text-zinc-400">
-              <span>Estimated Size: </span>
-              <span className="text-white font-mono">{storageMB} MB</span>
+              <span>Local Storage: </span>
+              <span className="text-white font-mono font-medium">{storageMB} MB</span>
             </div>
             <button
-              onClick={handleClearDatabase}
-              aria-label="Clear all local data"
+              onClick={() => setShowClearConfirm(true)}
+              aria-label="Reset library data"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-red-400 hover:text-red-300 hover:bg-red-950/40 border border-red-900/50 transition-all cursor-pointer"
             >
               <Trash2 size={13} />
-              <span>Clear Local Data</span>
+              <span>Reset Library Data</span>
             </button>
           </div>
         </section>
       </div>
+
+      <ConfirmModal
+        isOpen={showClearConfirm}
+        onClose={() => setShowClearConfirm(false)}
+        onConfirm={handleClearDatabase}
+        title="Reset Library Data?"
+        description="This permanently removes all saved playlists, listening history, and cached tracks from this browser. This action cannot be undone."
+        confirmText="Delete All Data"
+        isDestructive={true}
+      />
     </Modal>
   );
 }
