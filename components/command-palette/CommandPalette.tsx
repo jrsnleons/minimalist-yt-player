@@ -23,6 +23,9 @@ import { CommandPaletteSkeletonItem } from '@/components/ui/Skeleton';
 import { debounce, formatTime, uuid, cn } from '@/lib/utils';
 import { exportFullLibrary } from '@/lib/backup';
 import { useRemoteHostStore } from '@/store/useRemoteHostStore';
+import { useTransferStore } from '@/store/useTransferStore';
+import { TransferLibraryButton } from '@/components/transfer/TransferLibraryButton';
+import { TransferLibraryDialog } from '@/components/transfer/TransferLibraryDialog';
 import type { Track, AppAction, Playlist } from '@/types';
 
 // Helper to detect and parse pasted URLs in search input
@@ -191,6 +194,13 @@ export function CommandPalette() {
         label: 'Connect Phone',
         action: () => {
           useRemoteHostStore.getState().openModal();
+        },
+      },
+      {
+        id: 'transfer-library',
+        label: 'Transfer Library',
+        action: () => {
+          useTransferStore.getState().open('send');
         },
       },
       {
@@ -548,7 +558,8 @@ export function CommandPalette() {
     }
   }, [activeIndex]);
 
-  if (!commandPaletteOpen) return null;
+  // The transfer dialog stays mounted while the palette is closed so it can open from a link.
+  if (!commandPaletteOpen) return <TransferLibraryDialog />;
 
   const activeItemId = items[activeIndex] ? `cmd-item-${items[activeIndex].id}` : undefined;
 
@@ -902,10 +913,12 @@ export function CommandPalette() {
                 <kbd className="font-mono text-zinc-400">ESC</kbd> Close
               </span>
             </div>
-            <span className="text-xs text-zinc-500">Paste YouTube or Spotify link to play</span>
+            <TransferLibraryButton onOpen={toggleCommandPalette} className="-my-1.5 text-xs" />
           </div>
         </div>
       </div>
+
+      <TransferLibraryDialog />
 
       {/* Add To Playlist Modal */}
       {playlistTrack && (

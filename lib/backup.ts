@@ -17,8 +17,8 @@ export function downloadJsonFile(filename: string, data: unknown): void {
   URL.revokeObjectURL(url);
 }
 
-/** Export entire local library into a JSON backup file */
-export async function exportFullLibrary(): Promise<LibraryBackup> {
+/** Reads the whole local library into a backup object without downloading anything. */
+export async function buildLibraryBackup(): Promise<LibraryBackup> {
   const [playlists, tracks, history, preferences] = await Promise.all([
     db.playlists.toArray(),
     db.tracks.toArray(),
@@ -26,7 +26,7 @@ export async function exportFullLibrary(): Promise<LibraryBackup> {
     db.preferences.toArray(),
   ]);
 
-  const backup: LibraryBackup = {
+  return {
     version: 1,
     appName: 'onyx',
     exportedAt: Date.now(),
@@ -42,7 +42,11 @@ export async function exportFullLibrary(): Promise<LibraryBackup> {
       preferences,
     },
   };
+}
 
+/** Export entire local library into a JSON backup file */
+export async function exportFullLibrary(): Promise<LibraryBackup> {
+  const backup = await buildLibraryBackup();
   const dateStr = new Date().toISOString().split('T')[0];
   downloadJsonFile(`onyx-backup-${dateStr}.json`, backup);
   return backup;
