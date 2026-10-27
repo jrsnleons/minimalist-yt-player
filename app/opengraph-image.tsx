@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og';
 
-export const alt = 'Onyx Audio — Pure Sound, Zero Noise';
+export const alt = 'Onyx — A local-first music player for YouTube';
 export const size = {
   width: 1200,
   height: 630,
@@ -124,7 +124,7 @@ export default async function Image() {
                 fontFamily: 'monospace',
               }}
             >
-              Distraction-Free Music Streaming
+              Local-First Music Player
             </span>
           </div>
 
@@ -138,7 +138,7 @@ export default async function Image() {
               color: '#ffffff',
             }}
           >
-            Pure Sound. Zero Noise.
+            Onyx
           </h1>
 
           <p
@@ -150,7 +150,7 @@ export default async function Image() {
               maxWidth: '750px',
             }}
           >
-            Local-first music player with auto crossfade, dynamic artwork palette theming, Spotify importer, and Zen focus mode.
+            A local-first music player for YouTube.
           </p>
         </div>
 

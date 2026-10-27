@@ -56,7 +56,7 @@ export function ListenTogetherModal() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nameInput.trim()) {
-      setErrorMessage('Please enter your name');
+      setErrorMessage('Enter a nickname');
       return;
     }
     setUserName(nameInput.trim());
@@ -78,7 +78,7 @@ export function ListenTogetherModal() {
     setIsSubmitting(false);
 
     if (success) {
-      showToast('Live session created! Share your code with friends.');
+      showToast('Live session created! Share the code with friends.');
     } else {
       setErrorMessage('Failed to create session. Please try again.');
     }
@@ -91,7 +91,7 @@ export function ListenTogetherModal() {
       return;
     }
     if (!nameInput.trim()) {
-      setErrorMessage('Please enter your name');
+      setErrorMessage('Enter a nickname');
       return;
     }
     setUserName(nameInput.trim());
@@ -130,7 +130,7 @@ export function ListenTogetherModal() {
               <h3 className="text-sm font-semibold text-white tracking-tight font-sans">
                 Listen Together
               </h3>
-              <p className="text-[11px] text-zinc-400 font-sans mt-0.5">
+              <p className="text-xs text-zinc-400 font-sans mt-0.5">
                 Listen to the same song at the same time
               </p>
             </div>
@@ -191,7 +191,7 @@ export function ListenTogetherModal() {
             <form onSubmit={handleCreate} className="space-y-4">
               <div>
                 <label className="block text-xs font-medium text-zinc-300 mb-1.5 font-sans">
-                  Your Nickname
+                  Nickname
                 </label>
                 <input
                   ref={inputRef}
@@ -259,7 +259,7 @@ export function ListenTogetherModal() {
 
               <div>
                 <label className="block text-xs font-medium text-zinc-300 mb-1.5 font-sans">
-                  Your Nickname
+                  Nickname
                 </label>
                 <input
                   type="text"

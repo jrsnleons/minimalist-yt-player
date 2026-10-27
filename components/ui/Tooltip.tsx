@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useId, isValidElement, cloneElement } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -29,6 +29,7 @@ export function Tooltip({
   const [isVisible, setIsVisible] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [coords, setCoords] = useState<TooltipCoords | null>(null);
+  const tooltipId = useId();
   const triggerRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -101,6 +102,15 @@ export function Tooltip({
   }, [isVisible, updatePosition]);
 
   useEffect(() => {
+    if (!isVisible) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsVisible(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isVisible]);
+
+  useEffect(() => {
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
@@ -113,6 +123,11 @@ export function Tooltip({
     right: { initial: { opacity: 0, x: -3 }, animate: { opacity: 1, x: 0 }, exit: { opacity: 0, x: -2 } },
   };
 
+  const describedChild =
+    isVisible && isValidElement<{ 'aria-describedby'?: string }>(children)
+      ? cloneElement(children, { 'aria-describedby': tooltipId })
+      : children;
+
   return (
     <div
       ref={triggerRef}
@@ -122,30 +137,37 @@ export function Tooltip({
       onBlur={handleMouseLeave}
       className={cn('inline-flex items-center justify-center', className)}
     >
-      {children}
+      {describedChild}
 
       {mounted &&
         typeof document !== 'undefined' &&
         createPortal(
           <AnimatePresence>
             {isVisible && content && coords && (
-              <motion.span
-                role="tooltip"
-                initial={sideVariants[side].initial}
-                animate={sideVariants[side].animate}
-                exit={sideVariants[side].exit}
-                transition={{ duration: 0.12, ease: 'easeOut' }}
+              // Positioned wrapper owns the translate; the inner element owns the motion.
+              <span
+                key="tooltip"
                 style={{
                   position: 'fixed',
                   top: `${coords.top}px`,
                   left: `${coords.left}px`,
                   transform: coords.transform,
                   zIndex: 99999,
+                  pointerEvents: 'none',
                 }}
-                className="px-2.5 py-1 text-[11px] font-medium rounded-lg bg-[#181820]/95 text-zinc-100 border border-white/15 shadow-[0_8px_20px_rgba(0,0,0,0.8)] backdrop-blur-md whitespace-nowrap pointer-events-none select-none tracking-normal"
               >
-                {content}
-              </motion.span>
+                <motion.span
+                  id={tooltipId}
+                  role="tooltip"
+                  initial={sideVariants[side].initial}
+                  animate={sideVariants[side].animate}
+                  exit={sideVariants[side].exit}
+                  transition={{ duration: 0.12, ease: 'easeOut' }}
+                  className="block px-2.5 py-1 text-xs font-medium rounded-lg bg-[#181820]/95 text-zinc-100 border border-white/15 shadow-[0_8px_20px_rgba(0,0,0,0.8)] backdrop-blur-md whitespace-nowrap select-none tracking-normal"
+                >
+                  {content}
+                </motion.span>
+              </span>
             )}
           </AnimatePresence>,
           document.body

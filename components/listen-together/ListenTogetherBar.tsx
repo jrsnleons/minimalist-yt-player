@@ -101,7 +101,7 @@ export function ListenTogetherBar() {
           {/* Left: Room Status & Identification */}
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
-              <Radio size={15} className="animate-pulse" />
+              <Radio size={15} />
             </div>
 
             <div className="min-w-0">
@@ -111,7 +111,7 @@ export function ListenTogetherBar() {
                 </span>
                 <span
                   className={cn(
-                    'text-[11px] font-mono font-medium px-2 py-0.5 rounded-full border',
+                    'text-xs font-mono font-medium px-2 py-0.5 rounded-full border',
                     isHost
                       ? 'bg-amber-500/10 border-amber-500/20 text-amber-300'
                       : 'bg-white/[0.06] border-white/[0.1] text-zinc-300'
@@ -128,7 +128,7 @@ export function ListenTogetherBar() {
               </div>
 
               <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-[11px] font-mono text-zinc-400">
+                <span className="text-xs font-mono text-zinc-400">
                   Room: <strong className="text-white tracking-wider">{roomCode}</strong>
                 </span>
 
@@ -136,7 +136,7 @@ export function ListenTogetherBar() {
                   <button
                     onClick={handleCopyLink}
                     aria-label="Copy room invite link"
-                    className="flex items-center gap-1 text-[11px] text-zinc-400 hover:text-white transition-colors cursor-pointer px-1 py-0.5 rounded-md hover:bg-white/[0.06]"
+                    className="flex items-center gap-1 text-xs text-zinc-400 hover:text-white transition-colors cursor-pointer px-1 py-0.5 rounded-md hover:bg-white/[0.06]"
                   >
                     {copied ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
                     <span>{copied ? 'Copied' : 'Share'}</span>
@@ -183,7 +183,7 @@ export function ListenTogetherBar() {
                   )}
                 >
                   {allowListenerControls ? <Unlock size={12} /> : <Lock size={12} />}
-                  <span className="hidden md:inline font-mono text-[11px]">
+                  <span className="hidden md:inline font-mono text-xs">
                     {allowListenerControls ? 'Controls Open' : 'DJ Only'}
                   </span>
                 </button>
@@ -210,7 +210,7 @@ export function ListenTogetherBar() {
                     'w-1.5 h-1.5 rounded-full ml-0.5',
                     syncStatus === 'synced'
                       ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]'
-                      : 'bg-amber-400 animate-pulse'
+                      : 'bg-amber-400'
                   )}
                   title={syncStatus === 'synced' ? 'Synchronized' : 'Syncing'}
                 />
@@ -234,7 +234,7 @@ export function ListenTogetherBar() {
                   <div className="flex items-center justify-between pb-2 border-b border-white/[0.08]">
                     <div>
                       <h4 className="text-xs font-semibold text-white">Listeners</h4>
-                      <p className="text-[11px] font-mono text-zinc-400">
+                      <p className="text-xs font-mono text-zinc-400">
                         {participants.length} connected
                       </p>
                     </div>
@@ -252,7 +252,7 @@ export function ListenTogetherBar() {
                     <div className="p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-between gap-2">
                       <div className="min-w-0 flex-1">
                         <span className="block text-xs font-medium text-white truncate">Playback Controls</span>
-                        <span className="block text-[11px] text-zinc-400 truncate font-mono">
+                        <span className="block text-xs text-zinc-400 truncate font-mono">
                           {allowListenerControls ? 'Anyone can play/pause' : 'DJ exclusive'}
                         </span>
                       </div>
@@ -280,7 +280,7 @@ export function ListenTogetherBar() {
                           className="flex items-center justify-between p-2 rounded-xl bg-white/[0.02] hover:bg-white/[0.04] transition-colors border border-transparent hover:border-white/[0.06]"
                         >
                           <div className="flex items-center gap-2 min-w-0">
-                            <div className="w-6 h-6 rounded-lg bg-white/[0.06] border border-white/[0.08] flex items-center justify-center text-[11px] font-mono font-semibold text-zinc-300 shrink-0">
+                            <div className="w-6 h-6 rounded-lg bg-white/[0.06] border border-white/[0.08] flex items-center justify-center text-xs font-mono font-semibold text-zinc-300 shrink-0">
                               {p.name.charAt(0).toUpperCase()}
                             </div>
                             <div className="min-w-0">
@@ -292,13 +292,13 @@ export function ListenTogetherBar() {
 
                           <div className="shrink-0 flex items-center gap-1.5">
                             {p.isHost ? (
-                              <span className="flex items-center gap-1 text-[11px] font-mono text-amber-300 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">
+                              <span className="flex items-center gap-1 text-xs font-mono text-amber-300 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">
                                 <Crown size={10} className="text-amber-400" /> DJ
                               </span>
                             ) : isHost ? (
                               <button
                                 onClick={() => handleTransferDj(p.id, p.name)}
-                                className="flex items-center gap-1 text-[11px] font-medium text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 px-2 py-1 rounded-lg transition-colors cursor-pointer min-h-[26px]"
+                                className="flex items-center gap-1 text-xs font-medium text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 px-2 py-1 rounded-lg transition-colors cursor-pointer min-h-[26px]"
                                 title="Transfer DJ crown to this listener"
                               >
                                 <Crown size={10} />

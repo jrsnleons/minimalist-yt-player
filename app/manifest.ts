@@ -2,10 +2,9 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Onyx Audio — Minimalist Player',
+    name: 'Onyx',
     short_name: 'Onyx',
-    description:
-      'A distraction-free, local-first music streaming player. Dark noir aesthetic, zero tracking, and complete data sovereignty.',
+    description: 'A local-first music player for YouTube.',
     start_url: '/',
     display: 'standalone',
     background_color: '#050507',

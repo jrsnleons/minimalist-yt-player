@@ -10,7 +10,6 @@ import {
   Loader2,
   Zap,
   Radio,
-  Sparkles,
   Check,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -581,7 +580,7 @@ export function CommandPalette() {
               aria-activedescendant={activeItemId}
               className="flex-1 bg-transparent text-white placeholder-zinc-500 text-sm outline-none focus:outline-none focus:ring-0 border-0"
             />
-            <kbd className="px-2 py-0.5 text-[11px] rounded-lg bg-white/[0.06] border border-white/[0.08] text-zinc-400 font-mono shrink-0">
+            <kbd className="px-2 py-0.5 text-xs rounded-lg bg-white/[0.06] border border-white/[0.08] text-zinc-400 font-mono shrink-0">
               ESC
             </kbd>
           </div>
@@ -601,7 +600,7 @@ export function CommandPalette() {
                   <Check size={13} className="text-emerald-400 shrink-0" />
                   <span className="truncate">{inlineBanner.text}</span>
                 </div>
-                <span className="text-[11px] text-emerald-400 font-mono tracking-wider shrink-0 ml-2">Done</span>
+                <span className="text-xs text-emerald-400 font-mono tracking-wider shrink-0 ml-2">Done</span>
               </motion.div>
             )}
           </AnimatePresence>
@@ -647,7 +646,7 @@ export function CommandPalette() {
           >
             {isLoading && items.length === 0 ? (
               <div className="py-2 px-2 space-y-1">
-                <div className="px-2.5 py-1 text-[11px] font-semibold text-zinc-500 uppercase tracking-wider font-sans flex items-center gap-1.5">
+                <div className="px-2.5 py-1 text-xs font-semibold text-zinc-500 uppercase tracking-wider font-sans flex items-center gap-1.5">
                   <Loader2 size={11} className="animate-spin text-zinc-400" />
                   <span>Searching YouTube catalog…</span>
                 </div>
@@ -667,7 +666,7 @@ export function CommandPalette() {
 
                   return (
                     <div key={sectionName} className="py-1.5 px-2">
-                      <div className="px-2.5 py-1 text-[11px] font-semibold text-zinc-500 uppercase tracking-wider font-sans">
+                      <div className="px-2.5 py-1 text-xs font-semibold text-zinc-500 uppercase tracking-wider font-sans">
                         {sectionName}
                       </div>
                       <div className="space-y-1 mt-1">
@@ -709,14 +708,14 @@ export function CommandPalette() {
                                   <div className="min-w-0 flex-1">
                                     <p className="text-xs font-semibold text-white truncate flex items-center gap-1.5">
                                       <span>{item.smartData.title}</span>
-                                      <Sparkles size={11} className="text-amber-400" />
+                                      <Radio size={11} className="text-amber-400" />
                                     </p>
-                                    <p className="text-[11px] text-zinc-400 truncate mt-0.5">
+                                    <p className="text-xs text-zinc-400 truncate mt-0.5">
                                       {item.smartData.subtitle}
                                     </p>
                                   </div>
                                 </div>
-                                <kbd className="px-2 py-1 text-[11px] rounded-lg bg-white text-black font-semibold shadow-sm shrink-0 ml-3">
+                                <kbd className="px-2 py-1 text-xs rounded-lg bg-white text-black font-semibold shadow-sm shrink-0 ml-3">
                                   ENTER ↵
                                 </kbd>
                               </button>
@@ -750,7 +749,7 @@ export function CommandPalette() {
                                   <span className="font-medium">{item.action.label}</span>
                                 </div>
                                 {item.action.shortcut && (
-                                  <kbd className="px-1.5 py-0.5 text-[11px] rounded-md bg-white/[0.06] border border-white/[0.08] text-zinc-300 font-mono">
+                                  <kbd className="px-1.5 py-0.5 text-xs rounded-md bg-white/[0.06] border border-white/[0.08] text-zinc-300 font-mono">
                                     {item.action.shortcut}
                                   </kbd>
                                 )}
@@ -790,13 +789,13 @@ export function CommandPalette() {
 
                                   <div className="min-w-0 flex-1">
                                     <p className="text-xs font-medium truncate">{t.title}</p>
-                                    <p className="text-[11px] text-zinc-400 truncate">{t.artist}</p>
+                                    <p className="text-xs text-zinc-400 truncate">{t.artist}</p>
                                   </div>
                                 </div>
 
                                 {/* Right Actions: Duration + Play Now + Add to Queue + Add to Playlist */}
                                 <div className="flex items-center gap-1.5 shrink-0 ml-3">
-                                  <span className="font-mono text-[11px] text-zinc-500 mr-1 hidden sm:inline">
+                                  <span className="font-mono text-xs text-zinc-500 mr-1 hidden sm:inline">
                                     {formatTime(t.duration)}
                                   </span>
 
@@ -808,7 +807,7 @@ export function CommandPalette() {
                                       toggleCommandPalette();
                                     }}
                                     aria-label={`Play ${t.title} now`}
-                                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white text-black text-[11px] font-semibold hover:bg-zinc-200 transition-all shadow-sm cursor-pointer active:scale-95"
+                                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white text-black text-xs font-semibold hover:bg-zinc-200 transition-all shadow-sm cursor-pointer active:scale-95"
                                     title="Play Now"
                                   >
                                     <Play size={11} fill="currentColor" />
@@ -820,7 +819,7 @@ export function CommandPalette() {
                                     onClick={(e) => handlePlayNextTrack(t, e)}
                                     aria-label={`Play ${t.title} next`}
                                     className={cn(
-                                      'flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all border cursor-pointer active:scale-95',
+                                      'flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-all border cursor-pointer active:scale-95',
                                       isNextDone
                                         ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.2)]'
                                         : 'bg-white/[0.04] hover:bg-white/[0.08] text-zinc-200 border-white/[0.08]'
@@ -840,7 +839,7 @@ export function CommandPalette() {
                                     onClick={(e) => handleAddToQueueTrack(t, e)}
                                     aria-label={`Add ${t.title} to Queue`}
                                     className={cn(
-                                      'flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all border cursor-pointer active:scale-95',
+                                      'flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-all border cursor-pointer active:scale-95',
                                       isQueueDone
                                         ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.2)]'
                                         : 'bg-white/[0.04] hover:bg-white/[0.08] text-zinc-200 border-white/[0.08]'
@@ -883,7 +882,7 @@ export function CommandPalette() {
           </div>
 
           {/* Footer Hints */}
-          <div className="flex items-center justify-between px-5 py-3 border-t border-white/[0.06] bg-[#060609]/90 text-[11px] text-zinc-500">
+          <div className="flex items-center justify-between px-5 py-3 border-t border-white/[0.06] bg-[#060609]/90 text-xs text-zinc-500">
             <div className="flex items-center gap-3">
               <span>
                 <kbd className="font-mono text-zinc-400">↑↓</kbd> Navigate
@@ -895,7 +894,7 @@ export function CommandPalette() {
                 <kbd className="font-mono text-zinc-400">ESC</kbd> Close
               </span>
             </div>
-            <span className="text-[11px] text-zinc-500">Paste YouTube or Spotify link to play</span>
+            <span className="text-xs text-zinc-500">Paste YouTube or Spotify link to play</span>
           </div>
         </div>
       </div>

@@ -1,27 +1,18 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/schema';
 import { usePlayerStore } from '@/store/usePlayerStore';
-import { TrackArtwork, getTrackPalette } from '@/components/ui/TrackArtwork';
-import { useDynamicTrackPalette } from '@/hooks/useDynamicTrackPalette';
+import { TrackArtwork } from '@/components/ui/TrackArtwork';
+import { PlaylistCover } from '@/components/ui/PlaylistCover';
+import { Equalizer } from '@/components/ui/Equalizer';
 import { CreatePlaylistModal } from '@/components/playlist/CreatePlaylistModal';
 import { ImportPlaylistModal } from '@/components/playlist/ImportPlaylistModal';
-import { formatTime, cn } from '@/lib/utils';
 import { usePlatformShortcut } from '@/hooks/usePlatformShortcut';
-import {
-  Search,
-  Plus,
-  Download,
-  Play,
-  Music,
-  Clock,
-  Disc3,
-  ChevronRight,
-  ArrowRight,
-  Heart,
-} from 'lucide-react';
+import { SHORTCUTS } from '@/lib/shortcuts';
+import { cn } from '@/lib/utils';
+import { Search, Plus, Download, Play, Library } from 'lucide-react';
 import type { Playlist, Track } from '@/types';
 
 interface HomeViewProps {
@@ -29,56 +20,76 @@ interface HomeViewProps {
   onSelectPlaylist?: (playlist: Playlist) => void;
 }
 
+const shelfGrid = 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6 gap-x-4 gap-y-6';
+
+function ShelfHeading({
+  id,
+  title,
+  actionLabel,
+  onAction,
+}: {
+  id: string;
+  title: string;
+  actionLabel: string;
+  onAction: () => void;
+}) {
+  return (
+    <div className="flex items-baseline justify-between mb-3.5">
+      <h2 id={id} className="text-xl font-semibold tracking-tight text-white">
+        {title}
+      </h2>
+      <button
+        onClick={onAction}
+        className="text-[13px] font-medium text-zinc-300 hover:text-white hover:underline px-1 min-h-[36px] cursor-pointer"
+      >
+        {actionLabel}
+      </button>
+    </div>
+  );
+}
+
 function RecentSongCard({
   track,
   isCurrent,
+  isPlaying,
   onPlay,
 }: {
   track: Track;
   isCurrent: boolean;
+  isPlaying: boolean;
   onPlay: () => void;
 }) {
-  const palette = useDynamicTrackPalette(track);
-  const [isHovered, setIsHovered] = useState(false);
-
   return (
-    <div
-      onClick={onPlay}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      className={cn(
-        'group flex items-center gap-3 p-2.5 rounded-2xl border transition-all duration-200 cursor-pointer select-none overflow-hidden relative',
-        isCurrent ? 'text-white' : 'text-zinc-300'
-      )}
-      style={{
-        background: isCurrent
-          ? `linear-gradient(135deg, ${palette.accent}40 0%, ${palette.bgFrom}85 50%, #09090d 100%)`
-          : isHovered
-          ? `linear-gradient(135deg, ${palette.accent}2a 0%, ${palette.bgFrom}55 55%, #0a0a0f 100%)`
-          : `linear-gradient(135deg, ${palette.accent}12 0%, ${palette.bgFrom}25 50%, #0b0b0f 100%)`,
-        borderColor: isCurrent
-          ? `${palette.accent}80`
-          : isHovered
-          ? `${palette.accent}55`
-          : `${palette.accent}20`,
-      }}
-    >
-      <div className="relative shrink-0">
-        <TrackArtwork track={track} size="sm" rounded="lg" />
-        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center rounded-lg transition-opacity">
-          <Play size={12} fill="white" className="text-white ml-0.5" />
-        </div>
+    <li className="group relative flex flex-col gap-2 min-w-0">
+      <div className="relative aspect-square w-full">
+        <TrackArtwork track={track} size="fill" rounded="md" className="w-full h-full" />
+        <span
+          className="absolute right-2 bottom-2 w-10 h-10 rounded-full bg-[#f4f4f6] text-[#0b0b0e] grid place-items-center shadow-lg opacity-0 translate-y-1 transition group-hover:opacity-100 group-hover:translate-y-0 group-focus-within:opacity-100 group-focus-within:translate-y-0"
+          aria-hidden="true"
+        >
+          <Play size={18} fill="currentColor" className="ml-0.5" />
+        </span>
       </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-xs font-medium text-white truncate group-hover:text-white leading-snug">
-          {track.title}
-        </p>
-        <p className="text-[11px] text-zinc-400 truncate mt-0.5">{track.artist}</p>
-      </div>
-      <span className="text-[11px] font-mono text-zinc-500 pr-1 shrink-0">
-        {formatTime(track.duration || 0)}
-      </span>
-    </div>
+      <button
+        type="button"
+        onClick={onPlay}
+        aria-label={`Play ${track.title} by ${track.artist}`}
+        className="flex flex-col min-w-0 text-left cursor-pointer after:content-[''] after:absolute after:inset-0 after:rounded-md"
+      >
+        <span className="flex items-center gap-2 min-w-0">
+          {isCurrent && <Equalizer playing={isPlaying} />}
+          <span
+            className={cn(
+              'truncate text-sm font-medium',
+              isCurrent ? 'text-[var(--track-accent,#e9b44c)]' : 'text-zinc-100'
+            )}
+          >
+            {track.title}
+          </span>
+        </span>
+        <span className="truncate text-[13px] text-zinc-400">{track.artist}</span>
+      </button>
+    </li>
   );
 }
 
@@ -91,75 +102,37 @@ function HomePlaylistCard({
   onOpen: () => void;
   onPlay: (e: React.MouseEvent) => void;
 }) {
-  const isLiked = playlist.id === 'liked-songs';
-  const palette = useMemo(() => {
-    return isLiked
-      ? { accent: '#f43f5e', glow: 'rgba(244, 63, 94, 0.45)', bgFrom: '#24141a' }
-      : getTrackPalette(playlist.name, playlist.description || '', playlist.id);
-  }, [playlist.id, playlist.name, playlist.description, isLiked]);
-
-  const [isHovered, setIsHovered] = useState(false);
-
   return (
-    <div
-      onClick={onOpen}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      className="group relative flex items-center justify-between p-3 rounded-2xl border transition-all duration-200 cursor-pointer overflow-hidden"
-      style={{
-        background: isLiked
-          ? isHovered
-            ? 'linear-gradient(135deg, rgba(244, 63, 94, 0.35) 0%, #200e1b 50%, #0b0b0f 100%)'
-            : 'linear-gradient(135deg, rgba(244, 63, 94, 0.18) 0%, #150d18 55%, #0b0b0f 100%)'
-          : isHovered
-          ? `linear-gradient(135deg, ${palette.accent}2c 0%, ${palette.bgFrom}65 55%, #0a0a0f 100%)`
-          : `linear-gradient(135deg, ${palette.accent}12 0%, ${palette.bgFrom}25 55%, #0b0b0f 100%)`,
-        borderColor: isLiked
-          ? isHovered ? 'rgba(244, 63, 94, 0.65)' : 'rgba(244, 63, 94, 0.3)'
-          : isHovered ? `${palette.accent}55` : `${palette.accent}20`,
-      }}
-    >
-      <div className="flex items-center gap-3 min-w-0 flex-1 mr-2">
-        <div
-          className={cn(
-            'w-10 h-10 rounded-xl border flex items-center justify-center transition-all shrink-0',
-            isLiked
-              ? 'bg-rose-500/20 border-rose-500/40 text-rose-500'
-              : 'text-zinc-400 group-hover:text-white'
-          )}
-          style={{
-            backgroundColor: isLiked ? undefined : isHovered ? `${palette.accent}25` : `${palette.accent}10`,
-            borderColor: isLiked ? undefined : isHovered ? `${palette.accent}50` : 'rgba(255, 255, 255, 0.08)',
-          }}
-        >
-          {isLiked ? <Heart size={16} className="fill-rose-500" /> : <Music size={16} />}
-        </div>
-        <div className="min-w-0 flex-1">
-          <h4 className="text-xs font-semibold text-zinc-200 group-hover:text-white truncate">
-            {playlist.name}
-          </h4>
-          <p className="text-[11px] text-zinc-500 font-mono">
-            {playlist.trackIds.length} track{playlist.trackIds.length !== 1 ? 's' : ''}
-          </p>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+    <li className="group relative flex flex-col gap-2 min-w-0">
+      <div className="relative aspect-square w-full">
+        <PlaylistCover playlist={playlist} className="w-full h-full rounded-md" iconSize={32} />
         <button
           onClick={onPlay}
           aria-label={`Play ${playlist.name}`}
-          className="w-8 h-8 rounded-xl bg-white text-black flex items-center justify-center transform scale-90 group-hover:scale-100 transition-all shadow-md cursor-pointer hover:bg-zinc-200"
+          className="absolute right-2 bottom-2 z-10 w-10 h-10 rounded-full bg-[#f4f4f6] text-[#0b0b0e] grid place-items-center shadow-lg cursor-pointer opacity-0 translate-y-1 transition hover:scale-105 group-hover:opacity-100 group-hover:translate-y-0 focus-visible:opacity-100 focus-visible:translate-y-0 group-focus-within:opacity-100 group-focus-within:translate-y-0 [@media(pointer:coarse)]:opacity-100 [@media(pointer:coarse)]:translate-y-0"
         >
-          <Play size={12} fill="currentColor" className="ml-0.5" />
+          <Play size={18} fill="currentColor" className="ml-0.5" />
         </button>
       </div>
-    </div>
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-label={`Open ${playlist.name}`}
+        className="flex flex-col min-w-0 text-left cursor-pointer after:content-[''] after:absolute after:inset-0 after:rounded-md"
+      >
+        <span className="truncate text-sm font-medium text-zinc-100">{playlist.name}</span>
+        <span className="text-[13px] text-zinc-400">
+          {playlist.trackIds.length} {playlist.trackIds.length === 1 ? 'song' : 'songs'}
+        </span>
+      </button>
+    </li>
   );
 }
 
 export function HomeView({ onNavigateTab, onSelectPlaylist }: HomeViewProps) {
   const play = usePlayerStore((s) => s.play);
   const currentTrack = usePlayerStore((s) => s.currentTrack);
+  const isPlaying = usePlayerStore((s) => s.isPlaying);
   const recentlyPlayed = usePlayerStore((s) => s.recentlyPlayed);
   const toggleCommandPalette = usePlayerStore((s) => s.toggleCommandPalette);
   const showToast = usePlayerStore((s) => s.showToast);
@@ -198,58 +171,48 @@ export function HomeView({ onNavigateTab, onSelectPlaylist }: HomeViewProps) {
     }
   };
 
+  const keyHints: { key: string; label: string }[] = [
+    { key: 'Space', label: 'Play / Pause' },
+    { key: shortcutKey, label: 'Search' },
+    ...['video', 'focus', 'seekBack10'].map((id) => {
+      const def = SHORTCUTS.find((s) => s.id === id)!;
+      return { key: id === 'seekBack10' ? 'J / L' : def.display[0], label: id === 'seekBack10' ? 'Seek' : def.label };
+    }),
+  ];
+
   return (
-    <div className="h-full flex flex-col min-h-0 overflow-y-auto pr-0.5 space-y-4">
-      {/* ─── POPULATED HOME DASHBOARD ────────────────────────────── */}
+    <div className="h-full flex flex-col min-h-0 overflow-y-auto pb-8 gap-9">
+      <div className="flex flex-wrap items-center justify-between gap-3 shrink-0">
+        <h1 className="text-[32px] leading-tight font-bold tracking-tight text-white">Home</h1>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsImportModalOpen(true)}
+            className="flex items-center gap-2 px-3.5 rounded-lg border border-white/[0.12] hover:bg-white/[0.08] text-zinc-100 text-sm font-medium transition-colors cursor-pointer min-h-[40px]"
+          >
+            <Download size={16} aria-hidden="true" />
+            <span>Import</span>
+          </button>
+          <button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="flex items-center gap-2 px-3.5 rounded-lg bg-[#f4f4f6] text-[#0b0b0e] hover:bg-white text-sm font-semibold transition-colors cursor-pointer min-h-[40px]"
+          >
+            <Plus size={16} aria-hidden="true" />
+            <span>New Playlist</span>
+          </button>
+        </div>
+      </div>
+
       {isPopulated ? (
         <>
-          {/* Quick Header Bar */}
-          <div className="flex items-center justify-between px-1 shrink-0">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold tracking-tight text-zinc-200 font-sans">
-                Overview
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setIsImportModalOpen(true)}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.08] hover:border-white/[0.16] text-zinc-300 hover:text-white text-xs font-medium transition-all cursor-pointer min-h-[36px]"
-              >
-                <Download size={13} className="text-emerald-400" />
-                <span>Import</span>
-              </button>
-              <button
-                onClick={() => setIsCreateModalOpen(true)}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white text-black hover:bg-zinc-200 text-xs font-semibold shadow-sm transition-all cursor-pointer min-h-[36px]"
-              >
-                <Plus size={13} />
-                <span>New Playlist</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Section 1: Playlists Shelf */}
           {hasPlaylists && (
-            <section aria-label="Playlists" className="space-y-2.5">
-              <div className="flex items-center justify-between px-1">
-                <div className="flex items-center gap-2">
-                  <Music size={14} className="text-zinc-400" />
-                  <h3 className="text-xs font-semibold tracking-tight text-zinc-200">
-                    Playlists
-                  </h3>
-                  <span className="text-[11px] font-mono text-zinc-400">({playlists.length})</span>
-                </div>
-                <button
-                  onClick={() => onNavigateTab('library')}
-                  className="text-xs text-zinc-400 hover:text-white transition-colors flex items-center gap-0.5 cursor-pointer"
-                >
-                  <span>Show all</span>
-                  <ChevronRight size={13} />
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+            <section aria-labelledby="home-playlists">
+              <ShelfHeading
+                id="home-playlists"
+                title="Playlists"
+                actionLabel="Show All"
+                onAction={() => onNavigateTab('library')}
+              />
+              <ul className={shelfGrid}>
                 {playlists.slice(0, 6).map((pl) => (
                   <HomePlaylistCard
                     key={pl.id}
@@ -258,149 +221,84 @@ export function HomeView({ onNavigateTab, onSelectPlaylist }: HomeViewProps) {
                     onPlay={(e) => handlePlayPlaylist(pl, e)}
                   />
                 ))}
-              </div>
+              </ul>
             </section>
           )}
 
-          {/* Section 2: Recent Listening Shelf */}
           {hasHistory && (
-            <section aria-label="Recent Listening" className="space-y-2.5">
-              <div className="flex items-center justify-between px-1">
-                <div className="flex items-center gap-2">
-                  <Clock size={14} className="text-zinc-400" />
-                  <h3 className="text-xs font-semibold tracking-tight text-zinc-200">
-                    Recent Listening
-                  </h3>
-                  <span className="text-[11px] font-mono text-zinc-400">
-                    ({recentlyPlayed.length})
-                  </span>
-                </div>
-                <button
-                  onClick={() => onNavigateTab('library')}
-                  className="text-xs text-zinc-400 hover:text-white transition-colors flex items-center gap-0.5 cursor-pointer"
-                >
-                  <span>History</span>
-                  <ChevronRight size={13} />
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+            <section aria-labelledby="home-recent">
+              <ShelfHeading
+                id="home-recent"
+                title="Recent Listening"
+                actionLabel="History"
+                onAction={() => onNavigateTab('library')}
+              />
+              <ul className={shelfGrid}>
                 {recentlyPlayed.slice(0, 6).map((track, i) => (
                   <RecentSongCard
                     key={`${track.id}-${i}`}
                     track={track}
                     isCurrent={currentTrack?.id === track.id}
+                    isPlaying={isPlaying}
                     onPlay={() => play(track, recentlyPlayed)}
                   />
                 ))}
-              </div>
+              </ul>
             </section>
           )}
         </>
       ) : (
-        /* ─── EMPTY STATE: SLEEK ONYX LAUNCHPAD ─────────────────────── */
-        <div className="flex flex-col items-center justify-center py-6 px-2 space-y-5 text-center my-auto">
-          {/* Main Hero Card (Apple Liquid Glass) */}
-          <div className="relative w-full max-w-2xl p-6 sm:p-8 rounded-3xl apple-liquid-glass overflow-hidden">
-            {/* Subtle Ambient Depth */}
-            <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-80 h-32 bg-gradient-to-r from-zinc-700/15 via-white/10 to-zinc-700/15 blur-3xl pointer-events-none" />
+        <section aria-labelledby="home-start" className="flex flex-col gap-6 max-w-2xl">
+          <div>
+            <h2 id="home-start" className="text-xl font-semibold tracking-tight text-white">
+              Get Started
+            </h2>
+            <p className="text-sm text-zinc-400 mt-1">
+              Search for songs, paste a Spotify or YouTube link, or import a playlist.
+            </p>
+          </div>
 
-            <div className="relative z-10 flex flex-col items-center">
-              {/* Onyx Emblem */}
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-zinc-800 to-black border border-white/20 flex items-center justify-center text-white mb-3 shadow-[0_4px_20px_rgba(0,0,0,0.6)]">
-                <Disc3 size={24} className="text-white" />
-              </div>
+          <button
+            onClick={toggleCommandPalette}
+            className="w-full flex items-center justify-between px-4 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.1] transition-colors text-left cursor-pointer min-h-[48px]"
+          >
+            <span className="flex items-center gap-3">
+              <Search size={16} className="text-zinc-400" aria-hidden="true" />
+              <span className="text-sm text-zinc-300">Search songs, artists, or paste a link</span>
+            </span>
+            <kbd className="font-mono text-xs text-zinc-400 shrink-0">{shortcutKey}</kbd>
+          </button>
 
-              <h2 className="text-xl font-semibold tracking-tight text-white font-sans">
-                Onyx <span className="font-normal text-zinc-400">Audio</span>
-              </h2>
-              <p className="text-xs text-zinc-400 max-w-md mt-1 leading-relaxed">
-                A quiet, private player for music collections and online streams.
-              </p>
-
-              {/* Direct Quick Search / Omnibox Trigger */}
-              <div className="w-full max-w-lg mt-5">
+          <ul className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {[
+              { icon: Search, title: 'Search', text: 'Find songs, albums, and live recordings.', go: () => onNavigateTab('search') },
+              { icon: Download, title: 'Import', text: 'Add public playlists from Spotify or YouTube.', go: () => setIsImportModalOpen(true) },
+              { icon: Library, title: 'Library', text: 'Browse liked songs, playlists, and history.', go: () => onNavigateTab('library') },
+            ].map(({ icon: Icon, title, text, go }) => (
+              <li key={title}>
                 <button
-                  onClick={toggleCommandPalette}
-                  className="w-full flex items-center justify-between px-4 py-3 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.1] hover:border-white/20 transition-all text-left group cursor-pointer shadow-inner min-h-[44px]"
+                  onClick={go}
+                  className="w-full h-full flex flex-col text-left p-4 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] transition-colors cursor-pointer gap-1.5"
                 >
-                  <div className="flex items-center gap-3">
-                    <Search size={15} className="text-zinc-400 group-hover:text-white transition-colors shrink-0" />
-                    <span className="text-xs text-zinc-400 group-hover:text-zinc-200">
-                      Search tracks, artists, or paste a Spotify or YouTube link…
-                    </span>
-                  </div>
-                  <kbd className="px-2 py-0.5 text-[11px] rounded-lg bg-white/[0.06] border border-white/[0.1] text-zinc-300 font-mono shrink-0">
-                    {shortcutKey}
-                  </kbd>
+                  <Icon size={18} className="text-zinc-300" aria-hidden="true" />
+                  <span className="text-sm font-semibold text-white">{title}</span>
+                  <span className="text-[13px] text-zinc-400 leading-snug">{text}</span>
                 </button>
-              </div>
-            </div>
-          </div>
+              </li>
+            ))}
+          </ul>
 
-          {/* 3 Bento Launchpad Action Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-2xl">
-            {/* Card 1: Search & Explore */}
-            <div
-              onClick={() => onNavigateTab('search')}
-              className="flex flex-col text-left p-4 rounded-2xl apple-card hover:bg-white/[0.04] transition-all cursor-pointer group"
-            >
-              <div className="w-8 h-8 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center text-zinc-300 group-hover:text-white mb-2.5 transition-colors">
-                <Search size={14} />
-              </div>
-              <h4 className="text-xs font-semibold text-white flex items-center justify-between">
-                <span>Search</span>
-                <ArrowRight size={12} className="text-zinc-500 group-hover:text-white opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-0.5" />
-              </h4>
-              <p className="text-xs text-zinc-400 mt-1 leading-snug">
-                Find songs, full albums, and live recordings.
-              </p>
-            </div>
-
-            {/* Card 2: Import Playlists */}
-            <div
-              onClick={() => setIsImportModalOpen(true)}
-              className="flex flex-col text-left p-4 rounded-2xl apple-card hover:bg-white/[0.04] transition-all cursor-pointer group"
-            >
-              <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-2.5 transition-colors">
-                <Download size={14} />
-              </div>
-              <h4 className="text-xs font-semibold text-white flex items-center justify-between">
-                <span>Import Playlists</span>
-                <ArrowRight size={12} className="text-zinc-500 group-hover:text-white opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-0.5" />
-              </h4>
-              <p className="text-xs text-zinc-400 mt-1 leading-snug">
-                Add public playlists from Spotify or YouTube links.
-              </p>
-            </div>
-
-            {/* Card 3: Library */}
-            <div
-              onClick={() => onNavigateTab('library')}
-              className="flex flex-col text-left p-4 rounded-2xl apple-card hover:bg-white/[0.04] transition-all cursor-pointer group"
-            >
-              <div className="w-8 h-8 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-2.5 transition-colors">
-                <Music size={14} />
-              </div>
-              <h4 className="text-xs font-semibold text-white flex items-center justify-between">
-                <span>Library</span>
-                <ArrowRight size={12} className="text-zinc-500 group-hover:text-white opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-0.5" />
-              </h4>
-              <p className="text-xs text-zinc-400 mt-1 leading-snug">
-                Browse liked songs, playlists, and history.
-              </p>
-            </div>
-          </div>
-
-          {/* Keyboard Shortcuts Reference */}
-          <div className="flex items-center justify-center gap-3 text-[11px] font-mono text-zinc-400 pt-2 border-t border-white/[0.06] w-full max-w-xl">
-            <span><kbd className="text-zinc-300 bg-white/[0.06] border border-white/10 px-1.5 py-0.5 rounded">Space</kbd> Play/Pause</span>
-            <span><kbd className="text-zinc-300 bg-white/[0.06] border border-white/10 px-1.5 py-0.5 rounded">{shortcutKey}</kbd> Omnibox</span>
-            <span><kbd className="text-zinc-300 bg-white/[0.06] border border-white/10 px-1.5 py-0.5 rounded">V</kbd> Video</span>
-            <span><kbd className="text-zinc-300 bg-white/[0.06] border border-white/10 px-1.5 py-0.5 rounded">Z</kbd> Focus</span>
-            <span><kbd className="text-zinc-300 bg-white/[0.06] border border-white/10 px-1.5 py-0.5 rounded">J/L</kbd> Seek</span>
-          </div>
-        </div>
+          <ul className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-4 border-t border-white/[0.08] text-[13px] text-zinc-400">
+            {keyHints.map((h) => (
+              <li key={h.label}>
+                <kbd className="font-mono text-xs text-zinc-200 bg-white/[0.06] border border-white/10 px-1.5 py-0.5 rounded mr-1.5">
+                  {h.key}
+                </kbd>
+                {h.label}
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {/* Global Modals */}

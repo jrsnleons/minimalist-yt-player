@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { cn } from '@/lib/utils';
-import { X, CheckCircle2, Sparkles } from 'lucide-react';
+import { X, CheckCircle2, Info } from 'lucide-react';
 
 export function Toast() {
   const toastMessage = usePlayerStore((s) => s.toastMessage);
@@ -32,7 +32,7 @@ export function Toast() {
       aria-atomic="true"
       style={{ zIndex: 99999 }}
       className={cn(
-        'fixed bottom-24 right-6',
+        'fixed top-[calc(env(safe-area-inset-top,0px)+12px)] left-4 right-4 md:top-auto md:left-auto md:bottom-24 md:right-6',
         'flex items-center gap-3 px-4 py-3 rounded-2xl',
         'bg-[#101016]/95 backdrop-blur-2xl border border-white/20 text-white',
         'shadow-[0_20px_50px_rgba(0,0,0,0.9)] max-w-sm pointer-events-auto',
@@ -43,7 +43,7 @@ export function Toast() {
         {isPositive ? (
           <CheckCircle2 size={15} className="text-emerald-400" />
         ) : (
-          <Sparkles size={14} className="text-white" />
+          <Info size={14} className="text-white" />
         )}
       </div>
 

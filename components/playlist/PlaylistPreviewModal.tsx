@@ -121,7 +121,7 @@ export function PlaylistPreviewModal({
                 {playlist.title}
               </h3>
             </div>
-            <p className="text-[11px] text-zinc-400 font-mono mt-0.5 truncate">
+            <p className="text-xs text-zinc-400 font-mono mt-0.5 truncate">
               {playlist.author || 'YouTube'} · {isLoading ? 'Loading songs…' : `${tracks.length} tracks · ${formatTime(totalDuration)}`}
             </p>
           </div>
@@ -186,7 +186,7 @@ export function PlaylistPreviewModal({
           ) : (
             <table className="w-full text-left border-collapse table-fixed text-xs" role="grid">
               <thead className="sticky top-0 bg-[#0c0c12] z-10">
-                <tr className="border-b border-white/[0.06] text-[11px] font-mono text-zinc-400">
+                <tr className="border-b border-white/[0.06] text-xs font-mono text-zinc-400">
                   <th className="w-12 px-3 py-2 text-center">#</th>
                   <th className="px-3 py-2">Title</th>
                   <th className="w-36 px-3 py-2 hidden sm:table-cell">Artist</th>
@@ -205,21 +205,21 @@ export function PlaylistPreviewModal({
                         isCurrent ? 'bg-white/[0.08] text-white font-semibold' : 'text-zinc-300'
                       )}
                     >
-                      <td className="w-12 px-3 py-2.5 text-center font-mono text-[11px] text-zinc-500 group-hover:text-zinc-300">
+                      <td className="w-12 px-3 py-2.5 text-center font-mono text-xs text-zinc-500 group-hover:text-zinc-300">
                         {i + 1}
                       </td>
                       <td className="px-3 py-2.5 min-w-0">
                         <div className="truncate font-medium text-white group-hover:text-white">
                           {track.title}
                         </div>
-                        <div className="text-[11px] text-zinc-400 truncate sm:hidden mt-0.5">
+                        <div className="text-xs text-zinc-400 truncate sm:hidden mt-0.5">
                           {track.artist}
                         </div>
                       </td>
-                      <td className="w-36 px-3 py-2.5 hidden sm:table-cell text-[11px] text-zinc-400 truncate">
+                      <td className="w-36 px-3 py-2.5 hidden sm:table-cell text-xs text-zinc-400 truncate">
                         {track.artist}
                       </td>
-                      <td className="w-20 px-3 py-2.5 text-right font-mono text-[11px] text-zinc-400">
+                      <td className="w-20 px-3 py-2.5 text-right font-mono text-xs text-zinc-400">
                         {formatTime(track.duration || 0)}
                       </td>
                     </tr>

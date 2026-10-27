@@ -1,6 +1,6 @@
-# Onyx Audio 🎵
+# Onyx
 
-> A distraction-free, local-first music streaming player built with **Next.js 16 (App Router, Turbopack, React 19)**, **Tailwind CSS**, and **Dexie.js (IndexedDB)**. Pure dark noir aesthetic, dynamic artwork color theming, auto crossfade, zero algorithmic bloat, zero tracking, and complete data sovereignty.
+> A distraction-free, local-first music streaming player built with **Next.js 16 (App Router, Turbopack, React 19)**, **Tailwind CSS**, and **Dexie.js (IndexedDB)**. Dark theme, artwork-based accent colors, auto crossfade, and no tracking. Data stays in the browser.
 
 ---
 
@@ -43,18 +43,18 @@
 | :--- | :--- |
 | <kbd>⌘</kbd> + <kbd>K</kbd> / <kbd>Ctrl</kbd> + <kbd>K</kbd> | Open Command Palette |
 | <kbd>Space</kbd> / <kbd>K</kbd> | Play / Pause |
-| <kbd>J</kbd> / <kbd>←</kbd> | Seek Backward 5s |
-| <kbd>L</kbd> / <kbd>→</kbd> | Seek Forward 5s |
-| <kbd>Shift</kbd> + <kbd>N</kbd> | Next Track |
-| <kbd>Shift</kbd> + <kbd>P</kbd> | Previous Track |
-| <kbd>S</kbd> | Toggle Shuffle Mode |
-| <kbd>R</kbd> | Cycle Repeat Mode (Off / One / All) |
+| <kbd>J</kbd> / <kbd>L</kbd> | Seek Back / Forward 10s |
+| <kbd>←</kbd> / <kbd>→</kbd> | Seek Back / Forward 5s |
+| <kbd>N</kbd> | Next Track |
+| <kbd>P</kbd> | Previous Track |
+| <kbd>S</kbd> | Toggle Shuffle |
+| <kbd>R</kbd> | Cycle Repeat (Off / All / One) |
 | <kbd>M</kbd> | Toggle Mute |
-| <kbd>V</kbd> | Toggle Live Video on Album Art |
-| <kbd>Z</kbd> | Toggle Zen Focus Mode |
-| <kbd>[</kbd> | Toggle Left Sidebar (Playlists & History) |
-| <kbd>]</kbd> | Toggle Right Sidebar (Queue & Suggestions) |
-| <kbd>?</kbd> | Open Keyboard Shortcuts Help |
+| <kbd>V</kbd> | Toggle Video on Artwork |
+| <kbd>Z</kbd> / <kbd>F</kbd> | Toggle Focus Mode |
+| <kbd>Q</kbd> | Toggle Now Playing Panel |
+| <kbd>?</kbd> | Open Keyboard Shortcuts |
+| <kbd>Esc</kbd> | Close Overlay or Exit Focus Mode |
 
 ---
 

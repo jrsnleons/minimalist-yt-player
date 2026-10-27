@@ -15,18 +15,15 @@ export const viewport: Viewport = {
   themeColor: '#050507',
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
 };
 
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
   title: {
-    default: 'Onyx — Pure Sound, Zero Noise',
-    template: '%s · Onyx Audio',
+    default: 'Onyx',
+    template: '%s · Onyx',
   },
-  description:
-    'A distraction-free, local-first music streaming player. Dark noir aesthetic, zero tracking, dynamic artwork colors, auto crossfade, and complete data sovereignty.',
+  description: 'A local-first music player for YouTube.',
   keywords: [
     'music player',
     'onyx audio',
@@ -39,9 +36,9 @@ export const metadata: Metadata = {
     'crossfade player',
     'pwa',
   ],
-  authors: [{ name: 'Onyx Audio', url: 'https://onyx-player.vercel.app' }],
+  authors: [{ name: 'Onyx', url: 'https://onyx-player.vercel.app' }],
   creator: 'Onyx',
-  applicationName: 'Onyx Audio',
+  applicationName: 'Onyx',
   generator: 'Next.js',
   alternates: {
     canonical: 'https://onyx-player.vercel.app',
@@ -61,16 +58,14 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_US',
     url: 'https://onyx-player.vercel.app',
-    siteName: 'Onyx Audio',
-    title: 'Onyx — Pure Sound, Zero Noise',
-    description:
-      'A distraction-free, local-first music streaming player with pure dark noir aesthetic, dynamic artwork colors, auto crossfade, and zero tracking.',
+    siteName: 'Onyx',
+    title: 'Onyx',
+    description: 'A local-first music player for YouTube.',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Onyx — Pure Sound, Zero Noise',
-    description:
-      'A distraction-free, local-first music streaming player with pure dark noir aesthetic, auto crossfade, and zero tracking.',
+    title: 'Onyx',
+    description: 'A local-first music player for YouTube.',
   },
   icons: {
     icon: '/favicon.ico',

@@ -41,7 +41,7 @@ export function FloatingReactions() {
               <span className="text-3xl filter drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)]">
                 {r.emoji}
               </span>
-              <span className="px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-md text-[11px] font-mono text-zinc-300 border border-white/10 shadow-sm whitespace-nowrap">
+              <span className="px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-md text-xs font-mono text-zinc-300 border border-white/10 shadow-sm whitespace-nowrap">
                 {r.userName}
               </span>
             </motion.div>

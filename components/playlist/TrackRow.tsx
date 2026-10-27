@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Volume2, GripVertical, User, MoreHorizontal } from 'lucide-react';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { GripVertical, User, MoreHorizontal, Play } from 'lucide-react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { db } from '@/db/schema';
@@ -10,9 +9,8 @@ import { usePlayerStore } from '@/store/usePlayerStore';
 import { TrackContextMenu } from '@/components/context-menu/TrackContextMenu';
 import { AddToPlaylistModal } from './AddToPlaylistModal';
 import { Tooltip } from '@/components/ui/Tooltip';
-import { MarqueeText } from '@/components/ui/MarqueeText';
+import { Equalizer } from '@/components/ui/Equalizer';
 import { TrackArtwork } from '@/components/ui/TrackArtwork';
-import { useDynamicTrackPalette } from '@/hooks/useDynamicTrackPalette';
 import { formatTime, cn } from '@/lib/utils';
 import type { Track, Playlist } from '@/types';
 
@@ -24,6 +22,8 @@ interface TrackRowProps {
   isSortable?: boolean;
   sortableId?: string;
   onRemoveFromQueue?: () => void;
+  /** queue: compact row for the Up Next list (no duration column). */
+  variant?: 'list' | 'queue';
 }
 
 export function TrackRow({
@@ -34,6 +34,7 @@ export function TrackRow({
   isSortable = false,
   sortableId,
   onRemoveFromQueue,
+  variant = 'list',
 }: TrackRowProps) {
   const play = usePlayerStore((s) => s.play);
   const playNext = usePlayerStore((s) => s.playNext);
@@ -44,13 +45,8 @@ export function TrackRow({
   const toggleLikeTrack = usePlayerStore((s) => s.toggleLikeTrack);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState(false);
-  const [isRowHovered, setIsRowHovered] = useState(false);
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const rowRef = useRef<HTMLTableRowElement>(null);
-
-  // Extract real dominant color palette from track artwork
-  const palette = useDynamicTrackPalette(track);
-
-  const playlists = useLiveQuery(() => db.playlists.toArray(), []);
 
   // Sortable hook setup if enabled
   const sortable = useSortable({
@@ -66,32 +62,22 @@ export function TrackRow({
       }
     : undefined;
 
-  // Rich internal color wash with clean solid left indicator (no external blurry shadows)
-  const rowStyle: React.CSSProperties = {
-    ...(sortableStyle || {}),
-    background: isActive
-      ? `linear-gradient(90deg, ${palette.accent}33 0%, ${palette.bgFrom}75 35%, rgba(255,255,255,0.03) 100%)`
-      : isRowHovered
-      ? `linear-gradient(90deg, ${palette.accent}20 0%, ${palette.bgFrom}40 30%, rgba(255,255,255,0.015) 100%)`
-      : `linear-gradient(90deg, ${palette.accent}0a 0%, transparent 22%)`,
-    borderLeft: isActive
-      ? `3px solid ${palette.accent}`
-      : isRowHovered
-      ? `3px solid ${palette.accent}90`
-      : '3px solid transparent',
-    transition: 'background 0.15s ease-out, border-left 0.15s ease-out',
+  const openMenu = (pos: { x: number; y: number }) => {
+    setContextMenu(pos);
+    // Playlists load only when a menu opens, not once per row.
+    db.playlists.toArray().then(setPlaylists).catch(() => {});
   };
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setContextMenu({ x: e.clientX, y: e.clientY });
+    openMenu({ x: e.clientX, y: e.clientY });
   };
 
   const handleMoreOptionsClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     const rect = e.currentTarget.getBoundingClientRect();
-    setContextMenu({ x: rect.right - 210, y: rect.bottom + 6 });
+    openMenu({ x: rect.right - 210, y: rect.bottom + 6 });
   };
 
   const handleAddToPlaylist = async (targetPlaylist: Playlist) => {
@@ -121,101 +107,114 @@ export function TrackRow({
     showToast(`"${track.title}" will play next`);
   };
 
+  const isQueue = variant === 'queue';
+
   return (
     <>
       <tr
         ref={isSortable ? sortable.setNodeRef : rowRef}
-        style={rowStyle}
-        onClick={() => play(track)}
+        style={sortableStyle}
         onContextMenu={handleContextMenu}
-        onMouseEnter={() => setIsRowHovered(true)}
-        onMouseLeave={() => setIsRowHovered(false)}
+        data-active={isActive ? 'true' : undefined}
         className={cn(
-          'group cursor-pointer select-none transition-colors border-b border-white/[0.03] text-xs w-full',
-          isActive ? 'text-white font-medium' : 'text-zinc-300'
+          'group relative border-b border-white/[0.04] text-sm w-full transition-colors hover:bg-white/[0.04] focus-within:bg-white/[0.04]',
+          isActive && 'bg-white/[0.05]'
         )}
-        aria-label={`${track.title} by ${track.artist}`}
       >
-        {/* Grip Handle / Index / Playing indicator */}
-        <td className="w-10 px-2 py-2 text-center shrink-0">
+        {/* Grip / index / equalizer */}
+        <td className={cn('px-2 py-1.5 text-center shrink-0', isQueue ? 'w-12' : 'w-14')}>
           <div className="flex items-center justify-center gap-1">
             {isSortable ? (
               <button
                 {...sortable.attributes}
                 {...sortable.listeners}
-                onClick={(e) => e.stopPropagation()}
-                aria-label="Drag to reorder"
-                className="cursor-grab active:cursor-grabbing text-zinc-600 hover:text-zinc-300 p-0.5"
+                aria-label={`Reorder ${track.title}`}
+                className="relative z-10 cursor-grab active:cursor-grabbing text-zinc-500 hover:text-zinc-200 p-1 rounded"
                 title="Drag to reorder"
               >
-                <GripVertical size={13} />
+                <GripVertical size={14} />
               </button>
             ) : null}
 
-            {isActive ? (
-              <span className="flex items-center justify-center">
-                <Volume2
-                  size={13}
-                  className={isPlaying ? 'animate-pulse' : ''}
-                  style={{ color: palette.accent }}
-                />
-              </span>
-            ) : (
-              <span className="font-mono text-zinc-500 text-[11px]">
-                {index + 1}
+            {!(isQueue && isSortable && !isActive) && (
+              <span className="relative inline-grid place-items-center w-5 h-5 text-zinc-500">
+                {isActive ? (
+                  <Equalizer playing={isPlaying} />
+                ) : (
+                  <>
+                    <span className="font-mono text-[13px] tabular-nums group-hover:hidden group-focus-within:hidden">
+                      {index + 1}
+                    </span>
+                    <Play
+                      size={14}
+                      fill="currentColor"
+                      className="hidden group-hover:block group-focus-within:block text-white"
+                      aria-hidden="true"
+                    />
+                  </>
+                )}
               </span>
             )}
           </div>
         </td>
 
-        {/* Title & Artist with On-Hover Smooth Gliding Marquee */}
-        <td className="px-2 py-2 min-w-0 max-w-0 w-auto">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="shrink-0">
-              <TrackArtwork track={track} size="sm" rounded="lg" />
-            </div>
-            <div className="min-w-0 flex-1 overflow-hidden">
-              <MarqueeText
-                text={track.title}
-                subText={track.artist}
-                isParentHovered={isRowHovered}
-                className={cn('text-xs font-medium leading-snug', isActive ? 'text-white font-semibold' : 'text-zinc-200')}
-                subClassName="text-zinc-400"
-              />
-            </div>
-          </div>
+        {/* Primary action: a real button stretched over the whole row */}
+        <td className="px-2 py-1.5 min-w-0 max-w-0 w-auto">
+          <button
+            type="button"
+            onClick={() => play(track)}
+            aria-label={`Play ${track.title} by ${track.artist}`}
+            aria-current={isActive ? 'true' : undefined}
+            className="flex items-center gap-3 min-w-0 w-full text-left cursor-pointer after:content-[''] after:absolute after:inset-0 focus-visible:after:rounded-md focus-visible:outline-2 focus-visible:outline-white"
+          >
+            <span className="shrink-0">
+              <TrackArtwork track={track} size="md" rounded="md" />
+            </span>
+            <span className="min-w-0 flex-1 flex flex-col">
+              <span
+                className={cn(
+                  'truncate text-sm font-medium leading-snug',
+                  isActive ? 'text-[var(--track-accent,#e9b44c)]' : 'text-zinc-100'
+                )}
+              >
+                {track.title}
+              </span>
+              <span className="truncate text-[13px] text-zinc-400">{track.artist}</span>
+            </span>
+          </button>
         </td>
 
-        {/* Actions & Duration Cluster: Contributor Icon (if present), More Options (...), and Duration */}
-        <td className="w-28 px-2 py-2 text-right shrink-0">
-          <div className="flex items-center justify-end gap-1.5">
-            {/* 1. Contributor Icon (Replacing Heart) */}
+        {/* Secondary actions sit above the stretched button */}
+        <td className={cn('px-2 py-1.5 text-right shrink-0', isQueue ? 'w-24' : 'w-36')}>
+          <div className="flex items-center justify-end gap-1">
             {track.addedBy?.name ? (
               <Tooltip content={`Added by ${track.addedBy.name}`} side="top">
-                <div
-                  className="w-7 h-7 rounded-lg flex items-center justify-center text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-colors cursor-help"
+                <span
+                  className="relative z-10 w-9 h-9 rounded-full flex items-center justify-center text-zinc-400"
+                  role="img"
                   aria-label={`Added by ${track.addedBy.name}`}
                 >
-                  <User size={13} className="text-zinc-400" />
-                </div>
+                  <User size={14} />
+                </span>
               </Tooltip>
             ) : null}
 
-            {/* 2. More Options (...) Button */}
             <Tooltip content="More options" side="top">
               <button
                 onClick={handleMoreOptionsClick}
-                aria-label="More options"
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-all cursor-pointer opacity-0 group-hover:opacity-100"
+                aria-label={`More options for ${track.title}`}
+                aria-haspopup="menu"
+                className="relative z-10 w-9 h-9 rounded-full flex items-center justify-center text-zinc-300 hover:text-white hover:bg-white/[0.1] transition-colors cursor-pointer opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 [@media(pointer:coarse)]:opacity-100"
               >
-                <MoreHorizontal size={14} />
+                <MoreHorizontal size={16} />
               </button>
             </Tooltip>
 
-            {/* 3. Duration */}
-            <span className="font-mono text-[11px] text-zinc-400 font-medium w-10 text-right ml-0.5 shrink-0">
-              {formatTime(track.duration)}
-            </span>
+            {!isQueue && (
+              <span className="font-mono text-[13px] text-zinc-400 w-11 text-right shrink-0 tabular-nums">
+                {formatTime(track.duration)}
+              </span>
+            )}
           </div>
         </td>
       </tr>
@@ -225,7 +224,7 @@ export function TrackRow({
         <TrackContextMenu
           track={track}
           position={contextMenu}
-          playlists={playlists ?? []}
+          playlists={playlists}
           showRemoveFromPlaylist={!!playlist}
           showRemoveFromQueue={!!onRemoveFromQueue}
           isLiked={isTrackLiked}

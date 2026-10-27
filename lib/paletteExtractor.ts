@@ -69,6 +69,54 @@ function hslToRgb(h: number, s: number, l: number): [number, number, number] {
   return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
 }
 
+const APP_BACKGROUND: [number, number, number] = [11, 11, 14];
+
+function relativeLuminance([r, g, b]: [number, number, number]): number {
+  const lin = (v: number) => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+}
+
+export function contrastRatio(a: [number, number, number], b: [number, number, number]): number {
+  const la = relativeLuminance(a);
+  const lb = relativeLuminance(b);
+  const [hi, lo] = la > lb ? [la, lb] : [lb, la];
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+function parseColor(color: string): [number, number, number] | null {
+  const c = color.trim();
+  const hex = c.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (hex) {
+    const h = hex[1].length === 3 ? hex[1].split('').map((x) => x + x).join('') : hex[1];
+    return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+  }
+  const rgb = c.match(/^rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/i);
+  if (rgb) return [Number(rgb[1]), Number(rgb[2]), Number(rgb[3])];
+  const hsl = c.match(/^hsla?\(\s*([\d.]+)[,\s]+([\d.]+)%[,\s]+([\d.]+)%/i);
+  if (hsl) return hslToRgb(Number(hsl[1]), Number(hsl[2]), Number(hsl[3]));
+  return null;
+}
+
+/**
+ * Lightens an accent color until it reaches `minRatio` contrast (default 3:1, the
+ * WCAG minimum for UI components) against the app background. Unparseable input is returned as-is.
+ */
+export function clampAccent(color: string, minRatio = 3): string {
+  const rgb = parseColor(color);
+  if (!rgb) return color;
+  if (contrastRatio(rgb, APP_BACKGROUND) >= minRatio) return color;
+  const [h, s, l] = rgbToHsl(rgb[0], rgb[1], rgb[2]);
+  for (let nl = l + 2; nl <= 95; nl += 2) {
+    if (contrastRatio(hslToRgb(h, s, nl), APP_BACKGROUND) >= minRatio) {
+      return `hsl(${h}, ${s}%, ${nl}%)`;
+    }
+  }
+  return `hsl(${h}, ${s}%, 95%)`;
+}
+
 export function getCachedPalette(imageUrl?: string | null): DynamicPalette | null {
   if (!imageUrl) return null;
   return paletteCache.get(imageUrl) || null;
@@ -192,7 +240,7 @@ export async function extractPaletteFromImageUrl(imageUrl: string): Promise<Dyna
           }
           const [h, s] = rgbToHsl(avgR, avgG, avgB);
           const primary = `rgb(${avgR}, ${avgG}, ${avgB})`;
-          const accent = `hsl(${h}, ${Math.max(s, 50)}%, 65%)`;
+          const accent = clampAccent(`hsl(${h}, ${Math.max(s, 50)}%, 65%)`);
           const secondary = `hsl(${h}, ${Math.max(s, 40)}%, 75%)`;
           const bgFrom = `hsl(${h}, ${Math.min(s, 40)}%, 10%)`;
           const glow = `rgba(${avgR}, ${avgG}, ${avgB}, 0.45)`;
@@ -219,7 +267,9 @@ export async function extractPaletteFromImageUrl(imageUrl: string): Promise<Dyna
 
         const [r, g, b] = hslToRgb(topH, topS, topL);
         const primary = `rgb(${r}, ${g}, ${b})`;
-        const accent = `hsl(${topH}, ${Math.min(100, topS + 15)}%, ${Math.min(80, Math.max(55, topL + 5))}%)`;
+        const accent = clampAccent(
+          `hsl(${topH}, ${Math.min(100, topS + 15)}%, ${Math.min(80, Math.max(55, topL + 5))}%)`
+        );
 
         // Find secondary hue from second highest bin or complement
         let secondH = (topH + 30) % 360;

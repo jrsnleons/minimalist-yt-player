@@ -78,7 +78,7 @@ export function AddToPlaylistModal({ track, isOpen, onClose }: AddToPlaylistModa
           <TrackArtwork track={track} size="md" rounded="lg" />
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold text-white truncate">{track.title}</p>
-            <p className="text-[11px] text-zinc-400 truncate">{track.artist}</p>
+            <p className="text-xs text-zinc-400 truncate">{track.artist}</p>
           </div>
         </div>
 
@@ -119,11 +119,11 @@ export function AddToPlaylistModal({ track, isOpen, onClose }: AddToPlaylistModa
                     <span className="text-xs font-medium text-zinc-200 truncate">{pl.name}</span>
                   </div>
                   {alreadyIn ? (
-                    <span className="flex items-center gap-1 text-[11px] text-emerald-400 font-mono font-medium">
+                    <span className="flex items-center gap-1 text-xs text-emerald-400 font-mono font-medium">
                       <Check size={12} className="text-emerald-400" /> Added
                     </span>
                   ) : (
-                    <span className="text-[11px] text-zinc-400 font-mono">{pl.trackIds.length} tracks</span>
+                    <span className="text-xs text-zinc-400 font-mono">{pl.trackIds.length} tracks</span>
                   )}
                 </button>
               );

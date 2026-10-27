@@ -89,8 +89,8 @@ export function TrackContextMenu({
     >
       {/* Header Info */}
       <div className="px-2.5 py-1.5 border-b border-white/[0.06] mb-1">
-        <p className="font-semibold text-white truncate text-[11px]">{track.title}</p>
-        <p className="text-zinc-500 truncate text-[11px]">{track.artist}</p>
+        <p className="font-semibold text-white truncate text-xs">{track.title}</p>
+        <p className="text-zinc-500 truncate text-xs">{track.artist}</p>
       </div>
 
       <button
@@ -175,7 +175,7 @@ export function TrackContextMenu({
             style={{ marginLeft: 4 }}
           >
             {playlists.length === 0 ? (
-              <p className="px-3 py-2 text-zinc-500 text-[11px]">No playlists yet</p>
+              <p className="px-3 py-2 text-zinc-500 text-xs">No playlists yet</p>
             ) : (
               playlists.map((pl) => (
                 <button
