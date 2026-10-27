@@ -43,6 +43,7 @@ export function usePlayTracker() {
       if (id === prevId) return;
       flush(session);
       session = null;
+      if (state.playbackError && state.playbackError.trackId !== id) state.clearPlaybackError();
       if (prev.currentTrack) state.pushSessionHistory(prev.currentTrack);
       if (id) startSession(id);
     });

@@ -40,6 +40,7 @@ export function Toast() {
       role="status"
       aria-live="polite"
       aria-atomic="true"
+      data-focus-trap-ignore=""
       style={{ zIndex: 99999 }}
       className="fixed top-[calc(env(safe-area-inset-top,0px)+12px)] left-4 right-4 md:top-auto md:left-auto md:bottom-24 md:right-6 flex items-center gap-1 pl-4 pr-1.5 min-h-[48px] rounded-[10px] bg-[#1d1d23] border border-white/[0.14] text-white shadow-[0_12px_32px_rgba(0,0,0,0.6)] max-w-sm pointer-events-auto select-none animate-toast-in"
     >

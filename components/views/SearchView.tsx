@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { TrackRow } from '@/components/playlist/TrackRow';
 import { TrackArtwork } from '@/components/ui/TrackArtwork';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { PlaylistPreviewModal } from '@/components/playlist/PlaylistPreviewModal';
 import {
   Skeleton,
@@ -14,6 +15,7 @@ import { db } from '@/db/schema';
 import { uuid, cn } from '@/lib/utils';
 import {
   Search,
+  AlertCircle,
   Loader2,
   Download,
   Play,
@@ -101,6 +103,8 @@ export function SearchView() {
   const [videos, setVideos] = useState<Track[]>([]);
   const [playlists, setPlaylists] = useState<SearchPlaylist[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [searchError, setSearchError] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const [loadingPlaylistId, setLoadingPlaylistId] = useState<string | null>(null);
   const [previewPlaylist, setPreviewPlaylist] = useState<SearchPlaylist | null>(null);
 
@@ -116,6 +120,7 @@ export function SearchView() {
   // Search execution with caching & debouncing
   useEffect(() => {
     const trimmed = query.trim().toLowerCase();
+    setSearchError(false);
     if (trimmed.length < 2) {
       setTracks([]);
       setVideos([]);
@@ -152,6 +157,7 @@ export function SearchView() {
           `/api/search?q=${encodeURIComponent(trimmed)}&type=all`,
           { signal: controller.signal }
         );
+        if (!res.ok) throw new Error(`Search failed: ${res.status}`);
         const data = await res.json();
         const newTracks: Track[] = data.tracks ?? [];
         const newVideos: Track[] = data.videos ?? [];
@@ -174,13 +180,14 @@ export function SearchView() {
         setTracks([]);
         setVideos([]);
         setPlaylists([]);
+        setSearchError(true);
       } finally {
         setIsLoading(false);
       }
     }, 280);
 
     return () => clearTimeout(timer);
-  }, [query]);
+  }, [query, retryCount]);
 
   const handlePlayPlaylist = async (pl: SearchPlaylist) => {
     setLoadingPlaylistId(pl.id);
@@ -373,30 +380,35 @@ export function SearchView() {
               </section>
             )}
           </div>
+        ) : searchError ? (
+          <EmptyState
+            tone="error"
+            icon={<AlertCircle size={28} />}
+            title="Search failed"
+            description="The request did not go through. Check the connection and try again."
+          >
+            <button
+              type="button"
+              onClick={() => setRetryCount((n) => n + 1)}
+              className="px-4 min-h-[40px] rounded-lg bg-[#f4f4f6] text-[#0b0b0e] text-sm font-semibold hover:bg-white transition-colors cursor-pointer"
+            >
+              Try Again
+            </button>
+          </EmptyState>
         ) : !hasResults ? (
-          /* ─── MINIMALIST EMPTY OR NO RESULTS STATE ───────────────────── */
-          <div className="py-20 px-4 text-center flex flex-col items-center justify-center my-auto">
-            <Search size={28} className="text-zinc-500 mb-3" aria-hidden="true" />
-            {query.trim() ? (
-              <div className="max-w-sm mx-auto space-y-1">
-                <p className="font-semibold text-zinc-200 text-sm">
-                  No Results Found
-                </p>
-                <p className="text-zinc-400 text-sm leading-relaxed">
-                  Nothing matches &quot;{query}&quot;.
-                </p>
-              </div>
-            ) : (
-              <div className="max-w-sm mx-auto space-y-1">
-                <p className="font-semibold text-zinc-200 text-sm">
-                  Search Music
-                </p>
-                <p className="text-zinc-400 text-sm leading-relaxed">
-                  Find songs, YouTube videos, and playlists.
-                </p>
-              </div>
-            )}
-          </div>
+          query.trim() ? (
+            <EmptyState
+              icon={<Search size={28} />}
+              title="No results"
+              description={`Nothing matches "${query.trim()}". Check the spelling or try fewer words.`}
+            />
+          ) : (
+            <EmptyState
+              icon={<Search size={28} />}
+              title="Search Music"
+              description="Find songs, YouTube videos, and playlists."
+            />
+          )
         ) : (
           /* ─── POPULATED RESULTS ────────────────────────────────────── */
           <div className="space-y-8">
