@@ -5,6 +5,7 @@ import { usePlayerStore } from '@/store/usePlayerStore';
 import { TrackArtwork } from '@/components/ui/TrackArtwork';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { TransportControls } from './TransportControls';
+import { PlaybackErrorNotice } from './PlaybackErrorNotice';
 import { CustomScrubber } from './CustomScrubber';
 import { VolumeSlider } from './VolumeSlider';
 import { useDynamicTrackPalette } from '@/hooks/useDynamicTrackPalette';
@@ -38,9 +39,11 @@ export function PlaybackBar() {
 
   return (
     <footer
-      className="hidden md:grid grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)_minmax(0,1fr)] items-center gap-4 h-[84px] shrink-0 px-4 border-t border-white/[0.08] bg-[#0b0b0e]"
+      className="relative hidden md:grid grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)_minmax(0,1fr)] items-center gap-4 h-[84px] shrink-0 px-4 border-t border-white/[0.08] bg-[#0b0b0e]"
       aria-label="Playback"
     >
+      <PlaybackErrorNotice variant="bar" />
+
       {/* Left: track */}
       <div className="flex items-center gap-3 min-w-0">
         {currentTrack ? (

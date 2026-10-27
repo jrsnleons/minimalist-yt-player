@@ -1,13 +1,14 @@
 import Dexie, { type Table } from 'dexie';
-import type { Track, Playlist, HistoryEntry, UserPreferences } from '@/types';
+import type { Track, Playlist, HistoryEntry, PlayRecord, UserPreferences } from '@/types';
 
-export type { Track, Playlist, HistoryEntry, UserPreferences };
+export type { Track, Playlist, HistoryEntry, PlayRecord, UserPreferences };
 
 export class AppDatabase extends Dexie {
   playlists!: Table<Playlist, string>;
   tracks!: Table<Track, string>;
   history!: Table<HistoryEntry, number>;
   preferences!: Table<UserPreferences, string>;
+  plays!: Table<PlayRecord, number>;
 
   constructor() {
     super('MinimalistYTPlayerDB');
@@ -16,6 +17,10 @@ export class AppDatabase extends Dexie {
       tracks: 'id, title, artist, addedAt',
       history: '++id, trackId, playedAt',
       preferences: 'key',
+    });
+    // v2: per-play records for the Stats view.
+    this.version(2).stores({
+      plays: '++id, trackId, playedAt',
     });
   }
 }

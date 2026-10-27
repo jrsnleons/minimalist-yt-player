@@ -95,11 +95,30 @@ export function TrackRow({
 
   const handleRemoveFromPlaylist = async () => {
     if (!playlist) return;
+    const previousIds = playlist.trackIds;
+    const previousUpdatedAt = playlist.updatedAt;
+    const position = previousIds.indexOf(track.id);
     await db.playlists.update(playlist.id, {
-      trackIds: playlist.trackIds.filter((id) => id !== track.id),
+      trackIds: previousIds.filter((id) => id !== track.id),
       updatedAt: Date.now(),
     });
-    showToast(`Removed from "${playlist.name}"`);
+    showToast(`Removed from "${playlist.name}"`, {
+      action: {
+        label: 'Undo',
+        onAction: async () => {
+          const current = await db.playlists.get(playlist.id);
+          if (!current) return;
+          // Put the song back in its original spot, leaving any later edits alone.
+          const ids = current.trackIds.filter((id) => id !== track.id);
+          ids.splice(Math.min(Math.max(position, 0), ids.length), 0, track.id);
+          const unchanged = current.trackIds.length === previousIds.length - 1;
+          await db.playlists.update(playlist.id, {
+            trackIds: unchanged ? previousIds : ids,
+            updatedAt: unchanged ? previousUpdatedAt : Date.now(),
+          });
+        },
+      },
+    });
   };
 
   const handlePlayNext = () => {

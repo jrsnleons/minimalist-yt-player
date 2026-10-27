@@ -2,7 +2,6 @@
 
 import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ConfirmModalProps {
@@ -66,32 +65,26 @@ export function ConfirmModal({
       aria-labelledby="confirm-modal-title"
       aria-describedby="confirm-modal-desc"
       className={cn(
-        'fixed inset-0 m-auto p-0 rounded-3xl border border-white/10 bg-[#121217]/95',
-        'text-white shadow-[0_25px_60px_rgba(0,0,0,0.85)] backdrop:bg-black/75 backdrop:backdrop-blur-xl',
-        'max-w-sm w-full focus:outline-none z-[110] overflow-hidden'
+        'fixed inset-0 m-auto p-0 rounded-[14px] border border-white/[0.08] bg-[#141418]',
+        'text-white shadow-[0_24px_64px_rgba(0,0,0,0.6)] backdrop:bg-black/70',
+        'max-w-sm w-[calc(100%-2rem)] focus:outline-none z-[110] overflow-hidden'
       )}
       style={{ colorScheme: 'dark' }}
     >
-      <div className="p-6 flex flex-col items-center text-center">
-        {isDestructive && (
-          <div className="w-11 h-11 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center mb-3 shadow-inner">
-            <AlertCircle size={22} />
-          </div>
-        )}
-
-        <h3 id="confirm-modal-title" className="text-base font-semibold text-white tracking-tight">
+      <div className="p-6 flex flex-col">
+        <h3 id="confirm-modal-title" className="text-xl font-semibold text-white tracking-tight">
           {title}
         </h3>
-        <p id="confirm-modal-desc" className="text-xs text-zinc-400 mt-2 leading-relaxed">
+        <p id="confirm-modal-desc" className="text-sm text-zinc-300 mt-2 leading-relaxed">
           {description}
         </p>
 
-        <div className="grid grid-cols-2 gap-2.5 w-full mt-6">
+        <div className="flex items-center justify-end gap-2 w-full mt-6">
           <button
             ref={cancelBtnRef}
             type="button"
             onClick={onClose}
-            className="w-full py-2.5 px-4 rounded-xl border border-white/10 bg-white/[0.05] hover:bg-white/[0.09] text-zinc-200 text-xs font-medium transition-all cursor-pointer active:scale-98"
+            className="px-4 min-h-[40px] rounded-lg border border-white/[0.14] hover:bg-white/[0.08] text-zinc-100 text-sm font-medium transition-colors cursor-pointer"
           >
             {cancelText}
           </button>
@@ -102,10 +95,10 @@ export function ConfirmModal({
               onClose();
             }}
             className={cn(
-              'w-full py-2.5 px-4 rounded-xl text-xs font-semibold transition-all cursor-pointer active:scale-98 shadow-sm',
+              'px-4 min-h-[40px] rounded-lg text-sm font-semibold transition-colors cursor-pointer',
               isDestructive
-                ? 'bg-rose-600 hover:bg-rose-500 text-white'
-                : 'bg-white hover:bg-zinc-200 text-black'
+                ? 'bg-rose-500 hover:bg-rose-400 text-white'
+                : 'bg-[#f4f4f6] hover:bg-white text-[#0b0b0e]'
             )}
           >
             {confirmText}

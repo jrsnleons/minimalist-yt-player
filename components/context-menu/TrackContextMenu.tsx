@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Play,
@@ -32,6 +32,18 @@ interface TrackContextMenuProps {
   onToggleLike?: () => void;
 }
 
+const itemClass =
+  'w-full flex items-center gap-2.5 px-3 min-h-[36px] text-sm text-zinc-100 hover:bg-white/[0.08] focus-visible:bg-white/[0.1] rounded-lg transition-colors cursor-pointer text-left font-medium outline-none focus-visible:outline-2 focus-visible:outline-white focus-visible:-outline-offset-2';
+const dangerItemClass =
+  'w-full flex items-center gap-2.5 px-3 min-h-[36px] text-sm text-rose-300 hover:bg-rose-500/10 focus-visible:bg-rose-500/10 rounded-lg transition-colors cursor-pointer text-left font-medium outline-none focus-visible:outline-2 focus-visible:outline-white focus-visible:-outline-offset-2';
+
+/** Menu items that belong directly to `menu` (not to a nested submenu). */
+function itemsOf(menu: HTMLElement): HTMLElement[] {
+  return Array.from(menu.querySelectorAll<HTMLElement>('[role="menuitem"]')).filter(
+    (el) => el.closest('[role="menu"]') === menu
+  );
+}
+
 export function TrackContextMenu({
   track,
   position,
@@ -49,106 +61,179 @@ export function TrackContextMenu({
   onToggleLike,
 }: TrackContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLElement | null>(null);
   const [showPlaylistSubmenu, setShowPlaylistSubmenu] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    triggerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setMounted(true);
   }, []);
 
-  // Close on outside click or Esc
+  // Close on outside click; return focus to whatever opened the menu.
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (!menuRef.current?.contains(e.target as Node)) onClose();
     };
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
     document.addEventListener('mousedown', handleClick);
-    document.addEventListener('keydown', handleEsc);
     return () => {
       document.removeEventListener('mousedown', handleClick);
-      document.removeEventListener('keydown', handleEsc);
     };
   }, [onClose]);
+
+  useEffect(() => {
+    if (!mounted) return;
+    const menu = menuRef.current;
+    const first = menu ? itemsOf(menu)[0] : null;
+    first?.focus({ preventScroll: true });
+    const trigger = triggerRef.current;
+    return () => {
+      if (trigger && trigger.isConnected) trigger.focus({ preventScroll: true });
+    };
+  }, [mounted]);
+
+  const closeSubmenu = useCallback(() => {
+    setShowPlaylistSubmenu(false);
+    const menu = menuRef.current;
+    const parentItem = menu?.querySelector<HTMLElement>('[aria-haspopup="menu"]');
+    parentItem?.focus();
+  }, []);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    const currentMenu = target.closest<HTMLElement>('[role="menu"]');
+    if (!currentMenu) return;
+    const items = itemsOf(currentMenu);
+    const idx = items.indexOf(target);
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        items[(idx + 1) % items.length]?.focus();
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        items[(idx - 1 + items.length) % items.length]?.focus();
+        break;
+      case 'Home':
+        e.preventDefault();
+        items[0]?.focus();
+        break;
+      case 'End':
+        e.preventDefault();
+        items[items.length - 1]?.focus();
+        break;
+      case 'ArrowRight':
+        if (target.getAttribute('aria-haspopup') === 'menu') {
+          e.preventDefault();
+          setShowPlaylistSubmenu(true);
+          requestAnimationFrame(() => {
+            const sub = menuRef.current?.querySelector<HTMLElement>('[aria-label="Playlists"]');
+            (sub ? itemsOf(sub)[0] : null)?.focus();
+          });
+        }
+        break;
+      case 'ArrowLeft':
+        if (currentMenu !== menuRef.current) {
+          e.preventDefault();
+          closeSubmenu();
+        }
+        break;
+      case 'Escape':
+        e.preventDefault();
+        e.stopPropagation();
+        if (currentMenu !== menuRef.current) closeSubmenu();
+        else onClose();
+        break;
+      case 'Tab':
+        onClose();
+        break;
+    }
+  };
 
   if (!mounted || typeof document === 'undefined') return null;
 
   // Adjust position to stay in viewport
-  const adjustedX = Math.max(10, Math.min(position.x, window.innerWidth - 230));
-  const adjustedY = Math.max(10, Math.min(position.y, window.innerHeight - 300));
+  const adjustedX = Math.max(10, Math.min(position.x, window.innerWidth - 240));
+  const adjustedY = Math.max(10, Math.min(position.y, window.innerHeight - 320));
 
   const menuContent = (
     <div
       ref={menuRef}
       role="menu"
       aria-label={`Actions for ${track.title}`}
-      className="fixed z-[100] min-w-[210px] p-1.5 rounded-2xl border border-white/10 bg-[#0d0d12]/95 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.85)] text-xs select-none animate-in fade-in zoom-in-95 duration-100"
+      aria-orientation="vertical"
+      data-focus-trap-ignore=""
+      className="fixed z-[100] w-[224px] p-1.5 rounded-[10px] border border-white/[0.14] bg-[#1d1d23] shadow-[0_12px_32px_rgba(0,0,0,0.6)] select-none"
       style={{ left: adjustedX, top: adjustedY }}
       onClick={(e) => e.stopPropagation()}
+      onKeyDown={handleKeyDown}
     >
-      {/* Header Info */}
-      <div className="px-2.5 py-1.5 border-b border-white/[0.06] mb-1">
-        <p className="font-semibold text-white truncate text-xs">{track.title}</p>
-        <p className="text-zinc-500 truncate text-xs">{track.artist}</p>
+      <div className="px-3 pt-1 pb-2 border-b border-white/[0.08] mb-1.5" role="presentation">
+        <p className="font-semibold text-white truncate text-sm">{track.title}</p>
+        <p className="text-zinc-400 truncate text-[13px]">{track.artist}</p>
       </div>
 
       <button
         role="menuitem"
+        tabIndex={-1}
         onClick={() => {
           onPlayNow();
           onClose();
         }}
-        className="w-full flex items-center gap-2.5 px-2.5 py-2 text-zinc-200 hover:text-white hover:bg-white/[0.08] rounded-xl transition-colors cursor-pointer text-left font-medium"
+        className={itemClass}
       >
-        <Play size={13} className="text-white fill-current shrink-0" />
+        <Play size={14} className="fill-current shrink-0" aria-hidden="true" />
         <span>Play Now</span>
       </button>
 
       <button
         role="menuitem"
+        tabIndex={-1}
         onClick={() => {
           onPlayNext();
           onClose();
         }}
-        className="w-full flex items-center gap-2.5 px-2.5 py-2 text-zinc-200 hover:text-white hover:bg-white/[0.08] rounded-xl transition-colors cursor-pointer text-left font-medium"
+        className={itemClass}
       >
-        <ListStart size={13} className="text-zinc-400 shrink-0" />
+        <ListStart size={14} className="text-zinc-400 shrink-0" aria-hidden="true" />
         <span>Play Next</span>
       </button>
 
       <button
         role="menuitem"
+        tabIndex={-1}
         onClick={() => {
           onAddToQueue();
           onClose();
         }}
-        className="w-full flex items-center gap-2.5 px-2.5 py-2 text-zinc-200 hover:text-white hover:bg-white/[0.08] rounded-xl transition-colors cursor-pointer text-left font-medium"
+        className={itemClass}
       >
-        <Plus size={13} className="text-zinc-400 shrink-0" />
+        <Plus size={14} className="text-zinc-400 shrink-0" aria-hidden="true" />
         <span>Add to Queue</span>
       </button>
 
       {onToggleLike && (
         <button
           role="menuitem"
+          tabIndex={-1}
           onClick={() => {
             onToggleLike();
             onClose();
           }}
-          className="w-full flex items-center gap-2.5 px-2.5 py-2 text-zinc-200 hover:text-white hover:bg-white/[0.08] rounded-xl transition-colors cursor-pointer text-left font-medium"
+          className={itemClass}
         >
           <Heart
-            size={13}
-            className={cn('shrink-0', isLiked ? 'text-rose-500 fill-rose-500' : 'text-zinc-400')}
+            size={14}
+            className={cn('shrink-0', isLiked ? 'text-rose-400 fill-rose-400' : 'text-zinc-400')}
+            aria-hidden="true"
           />
-          <span>{isLiked ? 'Unlike (Remove from Liked)' : 'Like (Add to Liked)'}</span>
+          <span>{isLiked ? 'Remove from Liked' : 'Add to Liked'}</span>
         </button>
       )}
 
-      <div className="my-1 border-t border-white/[0.06]" role="separator" />
+      <div className="my-1.5 border-t border-white/[0.08]" role="separator" />
 
-      {/* Add to Playlist submenu */}
       <div
         className="relative"
         onMouseEnter={() => setShowPlaylistSubmenu(true)}
@@ -156,38 +241,40 @@ export function TrackContextMenu({
       >
         <button
           role="menuitem"
-          className="w-full flex items-center justify-between px-2.5 py-2 text-zinc-200 hover:text-white hover:bg-white/[0.08] rounded-xl transition-colors cursor-pointer text-left font-medium"
-          aria-haspopup="true"
+          tabIndex={-1}
+          onClick={() => setShowPlaylistSubmenu((v) => !v)}
+          className={cn(itemClass, 'justify-between')}
+          aria-haspopup="menu"
           aria-expanded={showPlaylistSubmenu}
         >
-          <div className="flex items-center gap-2.5">
-            <ListPlus size={13} className="text-zinc-400 shrink-0" />
+          <span className="flex items-center gap-2.5">
+            <ListPlus size={14} className="text-zinc-400 shrink-0" aria-hidden="true" />
             <span>Add to Playlist</span>
-          </div>
-          <ChevronRight size={13} className="text-zinc-500" />
+          </span>
+          <ChevronRight size={14} className="text-zinc-400" aria-hidden="true" />
         </button>
 
         {showPlaylistSubmenu && (
           <div
             role="menu"
-            aria-label="Playlists submenu"
-            className="absolute left-full top-0 min-w-[190px] p-1.5 rounded-2xl border border-white/10 bg-[#0d0d12]/95 backdrop-blur-2xl shadow-2xl text-xs"
-            style={{ marginLeft: 4 }}
+            aria-label="Playlists"
+            className="absolute left-full top-0 ml-1 w-[200px] max-h-[260px] overflow-y-auto p-1.5 rounded-[10px] border border-white/[0.14] bg-[#1d1d23] shadow-[0_12px_32px_rgba(0,0,0,0.6)]"
           >
             {playlists.length === 0 ? (
-              <p className="px-3 py-2 text-zinc-500 text-xs">No playlists yet</p>
+              <p className="px-3 py-2 text-zinc-400 text-sm">No playlists yet</p>
             ) : (
               playlists.map((pl) => (
                 <button
                   key={pl.id}
                   role="menuitem"
+                  tabIndex={-1}
                   onClick={() => {
                     onAddToPlaylist(pl);
                     onClose();
                   }}
-                  className="w-full flex items-center gap-2 px-2.5 py-1.5 text-zinc-200 hover:text-white hover:bg-white/[0.08] rounded-xl transition-colors truncate cursor-pointer text-left"
+                  className={itemClass}
                 >
-                  <Music size={11} className="text-zinc-500 shrink-0" />
+                  <Music size={14} className="text-zinc-400 shrink-0" aria-hidden="true" />
                   <span className="truncate">{pl.name}</span>
                 </button>
               ))
@@ -198,16 +285,17 @@ export function TrackContextMenu({
 
       {showRemoveFromPlaylist && onRemoveFromPlaylist && (
         <>
-          <div className="my-1 border-t border-white/[0.06]" role="separator" />
+          <div className="my-1.5 border-t border-white/[0.08]" role="separator" />
           <button
             role="menuitem"
+            tabIndex={-1}
             onClick={() => {
               onRemoveFromPlaylist();
               onClose();
             }}
-            className="w-full flex items-center gap-2.5 px-2.5 py-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer text-left font-medium"
+            className={dangerItemClass}
           >
-            <Trash2 size={13} className="shrink-0" />
+            <Trash2 size={14} className="shrink-0" aria-hidden="true" />
             <span>Remove from Playlist</span>
           </button>
         </>
@@ -215,16 +303,17 @@ export function TrackContextMenu({
 
       {showRemoveFromQueue && onRemoveFromQueue && (
         <>
-          <div className="my-1 border-t border-white/[0.06]" role="separator" />
+          <div className="my-1.5 border-t border-white/[0.08]" role="separator" />
           <button
             role="menuitem"
+            tabIndex={-1}
             onClick={() => {
               onRemoveFromQueue();
               onClose();
             }}
-            className="w-full flex items-center gap-2.5 px-2.5 py-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer text-left font-medium"
+            className={dangerItemClass}
           >
-            <Trash2 size={13} className="shrink-0" />
+            <Trash2 size={14} className="shrink-0" aria-hidden="true" />
             <span>Remove from Queue</span>
           </button>
         </>

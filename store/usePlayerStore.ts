@@ -3,6 +3,18 @@ import type { Track, RepeatMode, PlaybackMode } from '@/types';
 import { db } from '@/db/schema';
 import { useListenTogetherStore } from '@/store/useListenTogetherStore';
 
+export interface ToastAction {
+  label: string;
+  onAction: () => void;
+}
+
+export interface ToastOptions {
+  /** Shows a button in the toast (used for Undo). Keeps the toast up for 6s. */
+  action?: ToastAction;
+  /** Override the auto-dismiss time in ms. */
+  duration?: number;
+}
+
 interface PlayerState {
   // Playback
   currentTrack: Track | null;
@@ -36,7 +48,12 @@ interface PlayerState {
   settingsOpen: boolean;
   blurredHeroBackground: boolean;
   toastMessage: string | null;
+  toastAction: ToastAction | null;
   shortcutsModalOpen: boolean;
+
+  // Session history (songs played since launch, newest first) and playback errors
+  sessionHistory: Track[];
+  playbackError: { trackId: string; message: string } | null;
 
   // Radio Auto-Continuation
   radioQueue: Track[];
@@ -48,6 +65,8 @@ interface PlayerState {
   pause: () => void;
   togglePlay: () => void;
   next: () => void;
+  /** Track that next() will play, without advancing. Stable for shuffle. Null if none / repeat-one. */
+  peekNextTrack: () => Track | null;
   previous: () => void;
   seek: (seconds: number) => void;
   setProgress: (seconds: number) => void;
@@ -63,6 +82,7 @@ interface PlayerState {
   clearQueue: () => void;
 
   crossfadeDuration: number; // seconds (0 = off, 1-12)
+  normalizeVolume: boolean; // per-track loudness normalization (direct audio mode)
   likedTrackIds: string[];
 
   // Actions — Modes
@@ -71,6 +91,7 @@ interface PlayerState {
   toggleVideo: () => void;
   setPlaybackMode: (mode: PlaybackMode) => void;
   setCrossfadeDuration: (seconds: number) => void;
+  setNormalizeVolume: (enabled: boolean) => void;
   toggleZenMode: (enabled?: boolean) => void;
   toggleAmbientVisualizer: () => void;
   toggleSessionRestore: () => void;
@@ -96,7 +117,11 @@ interface PlayerState {
   openShortcutsModal: () => void;
   closeShortcutsModal: () => void;
   toggleBlurredHeroBackground: () => void;
-  showToast: (message: string) => void;
+  showToast: (message: string, options?: ToastOptions) => void;
+  pushSessionHistory: (track: Track) => void;
+  setPlaybackError: (trackId: string, message: string) => void;
+  clearPlaybackError: () => void;
+  retryCurrentTrack: () => void;
   dismissToast: () => void;
 
   // Actions — Radio Auto-Continuation
@@ -111,7 +136,29 @@ interface PlayerState {
   restorePreviousSession: () => Promise<boolean>;
 }
 
+// Toast messages emitted by the playback engines when a track fails to load or play.
+const PLAYBACK_ERROR_PATTERN =
+  /auto-skipping|Embedding restricted|Video deleted or private|Invalid video ID|Playback error|Direct stream unavailable|Direct audio extraction/;
+
+// Shuffle choice made ahead of time so the audio engine can preload the exact
+// track next() will play. Cleared when next() consumes it; ignored when stale.
+let pendingShuffle: { idx: number; trackId: string; fromIndex: number } | null = null;
+
+function pickShuffleIndex(queue: Track[], queueIndex: number): number {
+  const p = pendingShuffle;
+  if (p && p.fromIndex === queueIndex && p.idx !== queueIndex && queue[p.idx]?.id === p.trackId) {
+    return p.idx;
+  }
+  let idx: number;
+  do {
+    idx = Math.floor(Math.random() * queue.length);
+  } while (idx === queueIndex);
+  pendingShuffle = { idx, trackId: queue[idx].id, fromIndex: queueIndex };
+  return idx;
+}
+
 // Kept outside of Zustand state so timer management doesn't cause extra re-renders
+
 let _toastTimer: ReturnType<typeof setTimeout> | null = null;
 let _sessionSaveTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -166,6 +213,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   ambientVisualizerEnabled: true,
   sessionRestoreEnabled: true,
   crossfadeDuration: 3,
+  normalizeVolume: true,
   likedTrackIds: [],
 
   leftSidebarOpen: true,
@@ -176,7 +224,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   settingsOpen: false,
   blurredHeroBackground: true,
   toastMessage: null,
+  toastAction: null,
   shortcutsModalOpen: false,
+
+  sessionHistory: [],
+  playbackError: null,
 
   radioQueue: [],
   radioSeedTrackIds: [],
@@ -250,6 +302,23 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     scheduleSaveSession(get());
   },
 
+  peekNextTrack: () => {
+    const { queue, queueIndex, shuffleMode, repeatMode, radioQueue } = get();
+    if (queue.length === 0) return radioQueue[0] ?? null;
+    if (repeatMode === 'one') return null;
+    let nextIdx: number;
+    if (shuffleMode && queue.length > 1) {
+      nextIdx = pickShuffleIndex(queue, queueIndex);
+    } else {
+      nextIdx = queueIndex + 1;
+    }
+    if (nextIdx >= queue.length) {
+      if (repeatMode === 'all') return queue[0] ?? null;
+      return radioQueue[0] ?? null;
+    }
+    return queue[nextIdx] ?? null;
+  },
+
   next: () => {
     const { queue, queueIndex, shuffleMode, repeatMode } = get();
     if (queue.length === 0) {
@@ -289,9 +358,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     let nextIdx: number;
     if (shuffleMode && queue.length > 1) {
       // Exclude current index so shuffle never plays the same track twice in a row
-      do {
-        nextIdx = Math.floor(Math.random() * queue.length);
-      } while (nextIdx === queueIndex);
+      nextIdx = pickShuffleIndex(queue, queueIndex);
+      pendingShuffle = null;
     } else {
       nextIdx = queueIndex + 1;
     }
@@ -432,12 +500,23 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       lt.removeTrackFromSharedQueue(trackToRemove.id);
       return;
     }
+    if (!trackToRemove) return;
     const newQueue = queue.filter((_, i) => i !== index);
     let newIdx = queueIndex;
     if (index < queueIndex) newIdx = queueIndex - 1;
     if (index === queueIndex) newIdx = Math.min(queueIndex, newQueue.length - 1);
     set({ queue: newQueue, queueIndex: newIdx });
     scheduleSaveSession(get());
+    // Undo restores the exact previous queue and position.
+    get().showToast(`Removed "${trackToRemove.title}" from queue`, {
+      action: {
+        label: 'Undo',
+        onAction: () => {
+          set({ queue, queueIndex });
+          scheduleSaveSession(get());
+        },
+      },
+    });
   },
 
   reorderQueue: (fromIndex, toIndex) => {
@@ -461,8 +540,33 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (lt.isInRoom && lt.isHost) {
       lt.clearSharedQueue();
     }
+    const prev = {
+      queue: get().queue,
+      queueIndex: get().queueIndex,
+      currentTrack: get().currentTrack,
+      isPlaying: get().isPlaying,
+      progress: get().progress,
+    };
     set({ queue: [], queueIndex: -1, currentTrack: null, isPlaying: false });
     db.preferences.delete('last_session').catch(() => {});
+    if (prev.queue.length === 0 && !prev.currentTrack) return;
+    if (lt.isInRoom) return; // shared queues cannot be restored locally
+    get().showToast('Queue cleared', {
+      action: {
+        label: 'Undo',
+        onAction: () => {
+          set({
+            queue: prev.queue,
+            queueIndex: prev.queueIndex,
+            currentTrack: prev.currentTrack,
+            isPlaying: prev.isPlaying,
+            progress: prev.progress,
+            seekTarget: prev.progress > 0 ? { time: prev.progress, id: Date.now() } : null,
+          });
+          scheduleSaveSession(get());
+        },
+      },
+    });
   },
 
   // --- Mode Actions ---
@@ -513,6 +617,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     });
   },
 
+  setNormalizeVolume: (enabled) => {
+    set({ normalizeVolume: enabled });
+    db.preferences.put({ key: 'normalizeVolume', value: enabled }).catch(() => {});
+  },
+
   setCrossfadeDuration: (seconds) => {
     const val = Math.max(0, Math.min(12, seconds));
     set({ crossfadeDuration: val });
@@ -557,14 +666,14 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
           await db.playlists.add({
             id: 'liked-songs',
             name: 'Liked Songs',
-            description: 'Your favorite tracks in one collection ❤️',
+            description: 'Songs marked with a heart',
             trackIds: [track.id],
             createdAt: Date.now(),
             updatedAt: Date.now(),
           });
         }
       } catch {}
-      showToast(`Added "${track.title}" to Liked Songs ❤️`);
+      showToast(`Added "${track.title}" to Liked Songs`);
     }
   },
 
@@ -623,16 +732,51 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     });
   },
 
-  showToast: (message) => {
+  showToast: (message, options) => {
     // Cancel any pending dismiss timer before showing a new toast.
     if (_toastTimer !== null) {
       clearTimeout(_toastTimer);
     }
-    set({ toastMessage: message });
+    const action = options?.action ?? null;
+    set({ toastMessage: message, toastAction: action });
     _toastTimer = setTimeout(() => {
       _toastTimer = null;
-      set({ toastMessage: null });
-    }, 3000);
+      set({ toastMessage: null, toastAction: null });
+    }, options?.duration ?? (action ? 6000 : 3000));
+
+    // The playback engines report failures through toasts; mirror them so the
+    // player UI can show an inline message with Skip / Try Again.
+    if (PLAYBACK_ERROR_PATTERN.test(message)) {
+      const current = get().currentTrack;
+      if (current) {
+        const friendly = /Direct audio extraction/.test(message)
+          ? 'Direct stream could not be loaded'
+          : message.replace(/\s*—\s*auto-skipping….*$/, '');
+        set({ playbackError: { trackId: current.id, message: friendly } });
+      }
+    }
+  },
+
+  pushSessionHistory: (track) => {
+    set((s) => {
+      if (s.sessionHistory[0]?.id === track.id) return {};
+      return { sessionHistory: [track, ...s.sessionHistory].slice(0, 50) };
+    });
+  },
+
+  setPlaybackError: (trackId, message) => set({ playbackError: { trackId, message } }),
+  clearPlaybackError: () => set({ playbackError: null }),
+
+  retryCurrentTrack: () => {
+    const track = get().currentTrack;
+    if (!track) return;
+    // Unload and reload the track so the active engine starts it again from the beginning.
+    set({ playbackError: null, currentTrack: null, isPlaying: false, progress: 0 });
+    setTimeout(() => {
+      if (get().currentTrack === null) {
+        set({ currentTrack: track, isPlaying: true, progress: 0 });
+      }
+    }, 80);
   },
 
   dismissToast: () => {
@@ -640,7 +784,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       clearTimeout(_toastTimer);
       _toastTimer = null;
     }
-    set({ toastMessage: null });
+    set({ toastMessage: null, toastAction: null });
   },
 
   toggleQueueDrawer: (open) => {
@@ -744,6 +888,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         restorePref,
         crossfadePref,
         sidebarModePref,
+        normalizePref,
       ] = await Promise.all([
         db.preferences.get('volume'),
         db.preferences.get('repeatMode'),
@@ -755,6 +900,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         db.preferences.get('sessionRestoreEnabled'),
         db.preferences.get('crossfadeDuration'),
         db.preferences.get('sidebarPlayerMode'),
+        db.preferences.get('normalizeVolume'),
       ]);
 
       set((s) => ({
@@ -767,6 +913,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         ambientVisualizerEnabled: typeof vizPref?.value === 'boolean' ? vizPref.value : s.ambientVisualizerEnabled,
         sessionRestoreEnabled: typeof restorePref?.value === 'boolean' ? restorePref.value : s.sessionRestoreEnabled,
         crossfadeDuration: typeof crossfadePref?.value === 'number' ? crossfadePref.value : s.crossfadeDuration,
+        normalizeVolume: typeof normalizePref?.value === 'boolean' ? normalizePref.value : s.normalizeVolume,
         sidebarPlayerMode: (sidebarModePref?.value === 'pill' || sidebarModePref?.value === 'docked') ? sidebarModePref.value : s.sidebarPlayerMode,
       }));
 

@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { SwitchRow } from '@/components/ui/Switch';
+import { primaryBtn, ghostBtn, quietBtn, dangerBtn } from '@/lib/ui';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { db } from '@/db/schema';
 import { estimateStorageMB, cn } from '@/lib/utils';
@@ -14,10 +16,7 @@ import {
 } from '@/lib/backup';
 import {
   AlertTriangle,
-  HardDrive,
-  Radio,
   Trash2,
-  ShieldCheck,
   FileDown,
   Upload,
   Layers,
@@ -25,8 +24,8 @@ import {
   Check,
   Loader2,
   AlertCircle,
-  SlidersHorizontal,
 } from 'lucide-react';
+import { TransferLibraryButton } from '@/components/transfer/TransferLibraryButton';
 import type { PlaybackMode, RestoreMode } from '@/types';
 
 export function SettingsModal() {
@@ -36,6 +35,8 @@ export function SettingsModal() {
   const setPlaybackMode = usePlayerStore((s) => s.setPlaybackMode);
   const crossfadeDuration = usePlayerStore((s) => s.crossfadeDuration);
   const setCrossfadeDuration = usePlayerStore((s) => s.setCrossfadeDuration);
+  const normalizeVolume = usePlayerStore((s) => s.normalizeVolume);
+  const setNormalizeVolume = usePlayerStore((s) => s.setNormalizeVolume);
   const blurredHeroBackground = usePlayerStore((s) => s.blurredHeroBackground);
   const toggleBlurredHeroBackground = usePlayerStore((s) => s.toggleBlurredHeroBackground);
   const ambientVisualizerEnabled = usePlayerStore((s) => s.ambientVisualizerEnabled);
@@ -77,7 +78,7 @@ export function SettingsModal() {
   const handleModeChange = (mode: PlaybackMode) => {
     setPlaybackMode(mode);
     showToast(
-      `Playback mode switched to ${mode === 'iframe' ? 'YouTube IFrame (Stable)' : 'Direct Audio (Experimental)'}`
+      `Playback switched to ${mode === 'iframe' ? 'YouTube Player' : 'Direct Audio'}`
     );
   };
 
@@ -86,7 +87,7 @@ export function SettingsModal() {
     try {
       const backup = await exportFullLibrary();
       showToast(
-        `Exported backup with ${backup.summary.playlistCount} playlists & ${backup.summary.trackCount} tracks!`
+        `Exported ${backup.summary.playlistCount} playlists and ${backup.summary.trackCount} songs`
       );
     } catch (err: any) {
       console.error('Export error:', err);
@@ -115,7 +116,7 @@ export function SettingsModal() {
           setFileValidation(validation);
         }
       } catch {
-        setRestoreError('Invalid JSON format. Please select a valid .json file.');
+        setRestoreError('Not a valid JSON file. Select a backup exported from Onyx.');
       }
     };
     reader.readAsText(file);
@@ -131,7 +132,7 @@ export function SettingsModal() {
       await refreshStats();
       await loadRecentlyPlayed();
       showToast(
-        `Successfully restored ${res.restoredPlaylists} playlists & ${res.restoredTracks} tracks!`
+        `Restored ${res.restoredPlaylists} playlists and ${res.restoredTracks} songs`
       );
       setFileValidation(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -149,10 +150,11 @@ export function SettingsModal() {
         db.tracks.clear(),
         db.playlists.clear(),
         db.history.clear(),
+        db.plays.clear(),
         db.preferences.clear(),
       ]);
       await refreshStats();
-      showToast('All local data cleared successfully');
+      showToast('All local data deleted');
       usePlayerStore.getState().clearQueue();
       setShowClearConfirm(false);
     } catch {
@@ -160,408 +162,278 @@ export function SettingsModal() {
     }
   };
 
+  const crossfadeOptions = [
+    { label: 'Off', val: 0 },
+    { label: '2s', val: 2 },
+    { label: '3s', val: 3 },
+    { label: '5s', val: 5 },
+    { label: '8s', val: 8 },
+    { label: '12s', val: 12 },
+  ];
+
   return (
     <Modal isOpen={settingsOpen} onClose={closeSettings} title="Settings" className="max-w-xl">
-      <div className="flex flex-col gap-5 max-h-[75vh] overflow-y-auto pr-1">
-        {/* 1. Data Safety & Backup / Restore (Priority Section) */}
-        <section className="space-y-3">
-          <div className="flex items-center gap-2">
-            <ShieldCheck size={16} className="text-emerald-400" />
-            <h3 className="text-xs font-semibold text-zinc-200 tracking-tight font-sans">
-              Library & Backups
-            </h3>
-          </div>
-
-          <div className="p-4 rounded-2xl border border-white/[0.08] bg-[#0c0c10] space-y-3 shadow-inner">
-            <p className="text-xs text-zinc-400 leading-relaxed">
-              The library is stored in this browser. Export a JSON backup to keep playlists or move to another device.
-            </p>
-
-            <div className="flex items-center gap-2.5">
-              <button
-                type="button"
-                onClick={handleExportBackup}
-                disabled={isExporting}
-                className="flex-1 flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl bg-white hover:bg-zinc-200 text-black text-xs font-semibold transition-all shadow-sm cursor-pointer disabled:opacity-40"
-              >
-                {isExporting ? <Loader2 size={14} className="animate-spin" /> : <FileDown size={14} />}
-                <span>Export Library (.json)</span>
-              </button>
-
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".json,application/json"
-                onChange={handleFileSelect}
-                className="hidden"
+      <div className="flex flex-col gap-8">
+        {/* Playback */}
+        <SettingsSection
+          id="settings-playback"
+          title="Playback"
+          description="How songs are played and blended."
+        >
+          <div role="radiogroup" aria-labelledby="engine-label" className="py-3">
+            <p id="engine-label" className="text-sm font-medium text-zinc-100">Playback Engine</p>
+            <p className="text-[13px] text-zinc-400 mt-0.5 mb-3">Choose how audio is loaded.</p>
+            <div className="flex flex-col gap-2">
+              <EngineOption
+                checked={playbackMode === 'iframe'}
+                onSelect={() => handleModeChange('iframe')}
+                title="YouTube Player"
+                badge="Standard"
+                description="Reliable. Supports the video view."
               />
-
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="flex-1 flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/[0.16] text-zinc-200 text-xs font-medium transition-all cursor-pointer"
-              >
-                <Upload size={14} className="text-emerald-400" />
-                <span>Restore Backup File</span>
-              </button>
+              <EngineOption
+                checked={playbackMode === 'direct-audio'}
+                onSelect={() => handleModeChange('direct-audio')}
+                title="Direct Audio"
+                badge="Experimental"
+                description="Streams audio only. The video view is unavailable."
+              />
             </div>
-
-            {/* Pending Restore Preview */}
-            {fileValidation && fileValidation.isValid && (
-              <div className="p-3.5 rounded-2xl bg-[#0e0e14] border border-emerald-500/30 space-y-3 mt-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-400">
-                    <Check size={13} />
-                    <span>Backup Verified Ready to Restore</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setFileValidation(null);
-                      if (fileInputRef.current) fileInputRef.current.value = '';
-                    }}
-                    className="text-xs text-zinc-400 hover:text-white transition-colors cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                  <div className="p-2 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-                    <span className="block font-mono font-bold text-white">
-                      {fileValidation.summary?.playlistCount}
-                    </span>
-                    <span className="text-xs text-zinc-500 uppercase tracking-wider font-mono">Playlists</span>
-                  </div>
-                  <div className="p-2 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-                    <span className="block font-mono font-bold text-white">
-                      {fileValidation.summary?.trackCount}
-                    </span>
-                    <span className="text-xs text-zinc-500 uppercase tracking-wider font-mono">Tracks</span>
-                  </div>
-                  <div className="p-2 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-                    <span className="block font-mono font-bold text-white">
-                      {fileValidation.summary?.historyCount}
-                    </span>
-                    <span className="text-xs text-zinc-500 uppercase tracking-wider font-mono">History</span>
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <span className="text-xs font-semibold text-zinc-300">Restore Strategy:</span>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setRestoreMode('merge')}
-                      className={cn(
-                        'p-2.5 rounded-xl border text-left text-xs transition-all cursor-pointer',
-                        restoreMode === 'merge'
-                          ? 'border-white/40 bg-white/[0.08] text-white'
-                          : 'border-white/[0.06] bg-white/[0.02] text-zinc-400 hover:border-white/[0.12]'
-                      )}
-                    >
-                      <div className="flex items-center gap-1.5 font-semibold">
-                        <Layers size={12} />
-                        <span>Merge (Safe)</span>
-                      </div>
-                      <p className="text-xs text-zinc-500 mt-0.5">Keep existing playlists</p>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setRestoreMode('replace')}
-                      className={cn(
-                        'p-2.5 rounded-xl border text-left text-xs transition-all cursor-pointer',
-                        restoreMode === 'replace'
-                          ? 'border-red-500/60 bg-red-950/40 text-white'
-                          : 'border-white/[0.06] bg-white/[0.02] text-zinc-400 hover:border-white/[0.12]'
-                      )}
-                    >
-                      <div className="flex items-center gap-1.5 font-semibold text-red-400">
-                        <RefreshCw size={12} />
-                        <span>Full Replace</span>
-                      </div>
-                      <p className="text-xs text-zinc-500 mt-0.5">Wipe and replace</p>
-                    </button>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleExecuteRestore}
-                  disabled={isRestoring}
-                  className="w-full py-2.5 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-black text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-40"
-                >
-                  {isRestoring ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
-                  <span>Confirm & Restore Library</span>
-                </button>
-              </div>
-            )}
-
-            {restoreError && (
-              <div className="p-3 rounded-2xl bg-red-950/40 border border-red-900/60 text-xs text-red-300 flex items-center gap-2">
-                <AlertCircle size={14} className="shrink-0 text-red-400" />
-                <span>{restoreError}</span>
-              </div>
+            {playbackMode === 'direct-audio' && (
+              <p className="flex items-start gap-2 mt-3 text-[13px] text-amber-200">
+                <AlertTriangle size={14} className="shrink-0 mt-0.5 text-amber-300" aria-hidden="true" />
+                <span>Stream links refresh automatically. The YouTube player is used if a stream fails.</span>
+              </p>
             )}
           </div>
-        </section>
 
-        {/* 2. Visual Effects */}
-        <section className="space-y-3 pt-2 border-t border-white/[0.06]">
-          <div className="flex items-center gap-2">
-            <Radio size={15} className="text-white" />
-            <h3 className="text-xs font-semibold text-zinc-200 tracking-tight font-sans">
-              Visual Effects
-            </h3>
-          </div>
-
-          <div className="space-y-2.5">
-            <div className="p-3.5 rounded-2xl border border-white/[0.06] bg-[#0c0c10] flex items-center justify-between gap-4">
-              <div>
-                <span className="text-xs font-semibold text-white">Dynamic Artwork Glow</span>
-                <p className="text-xs text-zinc-400 mt-0.5 leading-relaxed">
-                  Renders an ambient glow behind the player matching current album artwork.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={toggleBlurredHeroBackground}
-                aria-pressed={blurredHeroBackground}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                  blurredHeroBackground ? 'bg-white' : 'bg-zinc-700'
-                }`}
-              >
-                <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-black shadow-lg ring-0 transition duration-200 ease-in-out ${
-                    blurredHeroBackground ? 'translate-x-5' : 'translate-x-0'
-                  }`}
-                />
-              </button>
-            </div>
-
-            <div className="p-3.5 rounded-2xl border border-white/[0.06] bg-[#0c0c10] flex items-center justify-between gap-4">
-              <div>
-                <span className="text-xs font-semibold text-white">Waveform Visualizer</span>
-                <p className="text-xs text-zinc-400 mt-0.5 leading-relaxed">
-                  Ambient canvas waveform that animates during active playback.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={toggleAmbientVisualizer}
-                aria-pressed={ambientVisualizerEnabled}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                  ambientVisualizerEnabled ? 'bg-white' : 'bg-zinc-700'
-                }`}
-              >
-                <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-black shadow-lg ring-0 transition duration-200 ease-in-out ${
-                    ambientVisualizerEnabled ? 'translate-x-5' : 'translate-x-0'
-                  }`}
-                />
-              </button>
-            </div>
-
-            <div className="p-3.5 rounded-2xl border border-white/[0.06] bg-[#0c0c10] flex items-center justify-between gap-4">
-              <div>
-                <span className="text-xs font-semibold text-white">Restore Session on Launch</span>
-                <p className="text-xs text-zinc-400 mt-0.5 leading-relaxed">
-                  Restores active queue, track, and playback position upon reopening.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={toggleSessionRestore}
-                aria-pressed={sessionRestoreEnabled}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                  sessionRestoreEnabled ? 'bg-white' : 'bg-zinc-700'
-                }`}
-              >
-                <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-black shadow-lg ring-0 transition duration-200 ease-in-out ${
-                    sessionRestoreEnabled ? 'translate-x-5' : 'translate-x-0'
-                  }`}
-                />
-              </button>
-            </div>
-          </div>
-        </section>
-
-        {/* 3. Audio Crossfade */}
-        <section className="space-y-3 pt-2 border-t border-white/[0.06]">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <SlidersHorizontal size={15} className="text-white" />
-              <h3 className="text-xs font-semibold text-zinc-200 tracking-tight font-sans">
-                Audio Crossfade
-              </h3>
-            </div>
-            <span className="text-xs font-mono text-zinc-400">
-              {crossfadeDuration > 0 ? `${crossfadeDuration}s fade` : 'Disabled'}
-            </span>
-          </div>
-
-          <div className="p-3.5 rounded-2xl border border-white/[0.06] bg-[#0c0c10] space-y-2.5">
-            <p className="text-xs text-zinc-400 leading-relaxed">
-              Blends consecutive songs smoothly by fading the current track out while fading the next track in.
+          <div role="radiogroup" aria-labelledby="crossfade-label" className="py-3">
+            <p id="crossfade-label" className="text-sm font-medium text-zinc-100">Crossfade</p>
+            <p className="text-[13px] text-zinc-400 mt-0.5 mb-3">
+              Fade between songs. Off plays songs back to back with no gap.{' '}
+              <span className="text-zinc-200">{crossfadeDuration > 0 ? `${crossfadeDuration}s fade` : 'Off'}</span>
             </p>
-            <div className="flex items-center gap-1.5 pt-1">
-              {[
-                { label: 'Off', val: 0 },
-                { label: '2s', val: 2 },
-                { label: '3s', val: 3 },
-                { label: '5s', val: 5 },
-                { label: '8s', val: 8 },
-                { label: '12s', val: 12 },
-              ].map(({ label, val }) => (
-                <button
-                  key={val}
-                  type="button"
-                  onClick={() => {
-                    setCrossfadeDuration(val);
-                    showToast(val > 0 ? `Crossfade set to ${val}s` : 'Crossfade disabled');
-                  }}
-                  className={cn(
-                    'flex-1 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer text-center',
-                    crossfadeDuration === val
-                      ? 'bg-white text-black font-semibold shadow-sm'
-                      : 'bg-white/[0.03] text-zinc-400 hover:text-white hover:bg-white/[0.08] border border-white/[0.06]'
-                  )}
-                >
-                  {label}
-                </button>
+            <div className="flex flex-wrap gap-1 p-1 rounded-[10px] bg-[#1d1d23] w-fit max-w-full">
+              {crossfadeOptions.map(({ label, val }) => (
+                <label key={val} className="relative cursor-pointer">
+                  <input
+                    type="radio"
+                    name="crossfade"
+                    value={val}
+                    checked={crossfadeDuration === val}
+                    onChange={() => {
+                      setCrossfadeDuration(val);
+                      showToast(val > 0 ? `Crossfade set to ${val}s` : 'Crossfade off');
+                    }}
+                    className="peer sr-only"
+                  />
+                  <span
+                    className={cn(
+                      'flex items-center justify-center min-w-[48px] min-h-[36px] px-3 rounded-lg text-sm font-medium transition-colors',
+                      'peer-focus-visible:outline-2 peer-focus-visible:outline-white peer-focus-visible:outline-offset-1',
+                      crossfadeDuration === val
+                        ? 'bg-[#f4f4f6] text-[#0b0b0e] font-semibold'
+                        : 'text-zinc-300 hover:text-white hover:bg-white/[0.08]'
+                    )}
+                  >
+                    {label}
+                  </span>
+                </label>
               ))}
             </div>
           </div>
-        </section>
+          <SwitchRow
+            label="Normalize Volume"
+            description="Evens out loudness between songs. Applies to Direct Audio mode."
+            checked={normalizeVolume}
+            onChange={() => setNormalizeVolume(!normalizeVolume)}
+          />
+        </SettingsSection>
 
-        {/* 4. Playback Engine */}
-        <section className="space-y-3 pt-2 border-t border-white/[0.06]">
-          <div className="flex items-center gap-2">
-            <Radio size={15} className="text-zinc-400" />
-            <h3 className="text-xs font-semibold text-zinc-200 tracking-tight font-sans">
-              Playback Engine
-            </h3>
+        {/* Appearance */}
+        <SettingsSection id="settings-appearance" title="Appearance" description="Visual effects in the player.">
+          <SwitchRow
+            label="Artwork Glow"
+            description="Tint the player background with colors from the current cover."
+            checked={blurredHeroBackground}
+            onChange={toggleBlurredHeroBackground}
+          />
+          <SwitchRow
+            label="Waveform Visualizer"
+            description="Show an animated waveform in Focus Mode while playing."
+            checked={ambientVisualizerEnabled}
+            onChange={toggleAmbientVisualizer}
+          />
+        </SettingsSection>
+
+        {/* Session */}
+        <SettingsSection id="settings-session" title="Session" description="What happens when the app opens.">
+          <SwitchRow
+            label="Restore Last Session"
+            description="Bring back the queue, current song, and position on launch."
+            checked={sessionRestoreEnabled}
+            onChange={toggleSessionRestore}
+          />
+        </SettingsSection>
+
+        {/* Data */}
+        <SettingsSection
+          id="settings-data"
+          title="Data"
+          description="Everything is stored in this browser. Export a backup to keep a copy or move to another device."
+        >
+          <dl className="grid grid-cols-3 gap-2 py-3">
+            {[
+              { label: 'Saved Songs', value: trackCount },
+              { label: 'Playlists', value: playlistCount },
+              { label: 'Plays Logged', value: historyCount },
+            ].map((stat) => (
+              <div key={stat.label} className="rounded-[10px] bg-[#1d1d23] px-3 py-2.5">
+                <dd className="text-lg font-semibold text-white tabular-nums">{stat.value}</dd>
+                <dt className="text-[13px] text-zinc-400">{stat.label}</dt>
+              </div>
+            ))}
+          </dl>
+          <p className="text-[13px] text-zinc-400 pb-3">
+            Storage used: <span className="text-zinc-100 font-mono">{storageMB} MB</span>
+          </p>
+
+          <div className="flex flex-wrap items-center gap-2 pb-3">
+            <button type="button" onClick={handleExportBackup} disabled={isExporting} className={primaryBtn}>
+              {isExporting ? (
+                <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+              ) : (
+                <FileDown size={16} aria-hidden="true" />
+              )}
+              <span>Export Library</span>
+            </button>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json,application/json"
+              onChange={handleFileSelect}
+              className="hidden"
+              aria-label="Backup file"
+              tabIndex={-1}
+            />
+
+            <button type="button" onClick={() => fileInputRef.current?.click()} className={ghostBtn}>
+              <Upload size={16} aria-hidden="true" />
+              <span>Restore from File</span>
+            </button>
+
+            <TransferLibraryButton onOpen={closeSettings} />
           </div>
 
-          <div className="grid grid-cols-1 gap-2.5">
-            {/* Mode 1 */}
-            <label
-              className={`flex items-start gap-3 p-3.5 rounded-2xl border transition-all cursor-pointer ${
-                playbackMode === 'iframe'
-                  ? 'border-white/30 bg-white/[0.06] text-white shadow-sm'
-                  : 'border-white/[0.06] bg-[#0c0c10] text-zinc-400 hover:border-white/[0.12] hover:text-zinc-300'
-              }`}
-            >
-              <input
-                type="radio"
-                name="playbackMode"
-                value="iframe"
-                checked={playbackMode === 'iframe'}
-                onChange={() => handleModeChange('iframe')}
-                className="mt-1"
-              />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-white">YouTube IFrame Engine</span>
-                  <span className="text-xs px-1.5 py-0.5 rounded-md bg-white/[0.1] text-white uppercase font-mono">
-                    Standard · Reliable
-                  </span>
-                </div>
-                <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                  Headless iframe with custom transport. Supports video canvas overlay (<kbd className="font-mono text-zinc-300">V</kbd>).
+          {fileValidation && fileValidation.isValid && (
+            <div className="rounded-[10px] bg-[#1d1d23] p-4 space-y-3 mb-3" role="region" aria-label="Restore backup">
+              <div className="flex items-center justify-between gap-3">
+                <p className="flex items-center gap-1.5 text-sm font-semibold text-zinc-100">
+                  <Check size={14} className="text-emerald-400" aria-hidden="true" />
+                  <span>Backup Ready to Restore</span>
                 </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFileValidation(null);
+                    if (fileInputRef.current) fileInputRef.current.value = '';
+                  }}
+                  className={quietBtn}
+                >
+                  Cancel
+                </button>
               </div>
-            </label>
 
-            {/* Mode 2 */}
-            <label
-              className={`flex items-start gap-3 p-3.5 rounded-2xl border transition-all cursor-pointer ${
-                playbackMode === 'direct-audio'
-                  ? 'border-white/30 bg-white/[0.06] text-white shadow-sm'
-                  : 'border-white/[0.06] bg-[#0c0c10] text-zinc-400 hover:border-white/[0.12] hover:text-zinc-300'
-              }`}
-            >
-              <input
-                type="radio"
-                name="playbackMode"
-                value="direct-audio"
-                checked={playbackMode === 'direct-audio'}
-                onChange={() => handleModeChange('direct-audio')}
-                className="mt-1"
-              />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-white">Direct Audio Stream</span>
-                  <span className="text-xs px-1.5 py-0.5 rounded-md bg-amber-500/20 border border-amber-500/30 text-amber-300 uppercase font-mono">
-                    Experimental
-                  </span>
+              <dl className="grid grid-cols-3 gap-2 text-center">
+                {[
+                  { label: 'Playlists', value: fileValidation.summary?.playlistCount },
+                  { label: 'Songs', value: fileValidation.summary?.trackCount },
+                  { label: 'History', value: fileValidation.summary?.historyCount },
+                ].map((stat) => (
+                  <div key={stat.label} className="rounded-lg bg-[#141418] px-2 py-2">
+                    <dd className="font-mono font-semibold text-white">{stat.value}</dd>
+                    <dt className="text-xs text-zinc-400">{stat.label}</dt>
+                  </div>
+                ))}
+              </dl>
+
+              <div role="radiogroup" aria-labelledby="restore-mode-label">
+                <p id="restore-mode-label" className="text-[13px] font-medium text-zinc-300 mb-1.5">Restore Mode</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {[
+                    { mode: 'merge' as const, icon: Layers, title: 'Merge', text: 'Keep existing playlists' },
+                    { mode: 'replace' as const, icon: RefreshCw, title: 'Replace', text: 'Erase current data first' },
+                  ].map(({ mode, icon: Icon, title, text }) => (
+                    <label key={mode} className="relative cursor-pointer">
+                      <input
+                        type="radio"
+                        name="restoreMode"
+                        checked={restoreMode === mode}
+                        onChange={() => setRestoreMode(mode)}
+                        className="peer sr-only"
+                      />
+                      <span
+                        className={cn(
+                          'block p-3 rounded-lg border text-left transition-colors min-h-[56px]',
+                          'peer-focus-visible:outline-2 peer-focus-visible:outline-white peer-focus-visible:outline-offset-1',
+                          restoreMode === mode
+                            ? mode === 'replace'
+                              ? 'border-rose-400/60 bg-rose-500/10'
+                              : 'border-white/40 bg-white/[0.08]'
+                            : 'border-white/[0.08] hover:border-white/[0.16]'
+                        )}
+                      >
+                        <span className="flex items-center gap-1.5 text-sm font-semibold text-zinc-100">
+                          <Icon size={14} aria-hidden="true" />
+                          {title}
+                        </span>
+                        <span className="block text-[13px] text-zinc-400 mt-0.5">{text}</span>
+                      </span>
+                    </label>
+                  ))}
                 </div>
-                <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                  Streams audio directly into an HTML5 <code className="text-zinc-300">&lt;audio&gt;</code> element.
-                </p>
               </div>
-            </label>
-          </div>
 
-          {playbackMode === 'direct-audio' && (
-            <div className="p-3.5 rounded-2xl border border-amber-900/60 bg-amber-950/20 text-amber-200/90 text-xs space-y-1.5">
-              <div className="flex items-center gap-1.5 font-semibold text-amber-300">
-                <AlertTriangle size={13} className="shrink-0" />
-                <span>Direct Audio Details:</span>
-              </div>
-              <ul className="list-disc list-inside space-y-1 text-xs text-amber-200/80">
-                <li>Stream URLs refresh automatically upon expiry.</li>
-                <li>Live video canvas is unavailable in direct audio mode.</li>
-                <li>IFrame engine activates as fallback if extraction fails.</li>
-              </ul>
+              <button
+                type="button"
+                onClick={handleExecuteRestore}
+                disabled={isRestoring}
+                className={cn(primaryBtn, 'w-full')}
+              >
+                {isRestoring ? (
+                  <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+                ) : (
+                  <Check size={16} aria-hidden="true" />
+                )}
+                <span>Restore Library</span>
+              </button>
             </div>
           )}
-        </section>
 
-        {/* 5. Storage & Reset */}
-        <section className="space-y-3 pt-2 border-t border-white/[0.06]">
-          <div className="flex items-center gap-2">
-            <HardDrive size={15} className="text-zinc-400" />
-            <h3 className="text-xs font-semibold text-zinc-200 tracking-tight font-sans">
-              Storage & Data
-            </h3>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="p-3 rounded-2xl border border-white/[0.06] bg-[#0c0c10]">
-              <span className="block text-base font-semibold text-white font-mono">{trackCount}</span>
-              <span className="text-xs text-zinc-500 uppercase tracking-wider font-mono">Saved Tracks</span>
-            </div>
-            <div className="p-3 rounded-2xl border border-white/[0.06] bg-[#0c0c10]">
-              <span className="block text-base font-semibold text-white font-mono">{playlistCount}</span>
-              <span className="text-xs text-zinc-500 uppercase tracking-wider font-mono">Playlists</span>
-            </div>
-            <div className="p-3 rounded-2xl border border-white/[0.06] bg-[#0c0c10]">
-              <span className="block text-base font-semibold text-white font-mono">{historyCount}</span>
-              <span className="text-xs text-zinc-500 uppercase tracking-wider font-mono">Plays Logged</span>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between p-3.5 rounded-2xl border border-white/[0.06] bg-[#0c0c10]">
-            <div className="text-xs text-zinc-400">
-              <span>Local Storage: </span>
-              <span className="text-white font-mono font-medium">{storageMB} MB</span>
-            </div>
-            <button
-              onClick={() => setShowClearConfirm(true)}
-              aria-label="Reset library data"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-red-400 hover:text-red-300 hover:bg-red-950/40 border border-red-900/50 transition-all cursor-pointer"
+          {restoreError && (
+            <p
+              role="alert"
+              className="flex items-start gap-2 rounded-[10px] bg-rose-500/10 border border-rose-500/30 p-3 text-sm text-rose-200 mb-3"
             >
-              <Trash2 size={13} />
-              <span>Reset Library Data</span>
+              <AlertCircle size={16} className="shrink-0 mt-0.5 text-rose-300" aria-hidden="true" />
+              <span>{restoreError}</span>
+            </p>
+          )}
+
+          <div className="flex items-center justify-between gap-4 py-3 border-t border-white/[0.06]">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-zinc-100">Reset Library Data</p>
+              <p className="text-[13px] text-zinc-400 mt-0.5">
+                Delete playlists, history, stats, and saved songs from this browser.
+              </p>
+            </div>
+            <button type="button" onClick={() => setShowClearConfirm(true)} className={cn(dangerBtn, 'shrink-0')}>
+              <Trash2 size={16} aria-hidden="true" />
+              <span>Reset</span>
             </button>
           </div>
-        </section>
+        </SettingsSection>
       </div>
 
       <ConfirmModal
@@ -569,10 +441,76 @@ export function SettingsModal() {
         onClose={() => setShowClearConfirm(false)}
         onConfirm={handleClearDatabase}
         title="Reset Library Data?"
-        description="This permanently removes all saved playlists, listening history, and cached tracks from this browser. This action cannot be undone."
+        description="This permanently deletes all playlists, listening history, stats, and saved songs from this browser. It cannot be undone."
         confirmText="Delete All Data"
         isDestructive={true}
       />
     </Modal>
+  );
+}
+
+function SettingsSection({
+  id,
+  title,
+  description,
+  children,
+}: {
+  id: string;
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section aria-labelledby={id}>
+      <h3 id={id} className="text-base font-semibold text-white">
+        {title}
+      </h3>
+      {description && <p className="text-[13px] text-zinc-400 mt-0.5">{description}</p>}
+      <div className="mt-2 border-t border-white/[0.08] divide-y divide-white/[0.06]">{children}</div>
+    </section>
+  );
+}
+
+function EngineOption({
+  checked,
+  onSelect,
+  title,
+  badge,
+  description,
+}: {
+  checked: boolean;
+  onSelect: () => void;
+  title: string;
+  badge: string;
+  description: string;
+}) {
+  return (
+    <label className="relative block cursor-pointer">
+      <input type="radio" name="playbackMode" checked={checked} onChange={onSelect} className="peer sr-only" />
+      <span
+        className={cn(
+          'flex items-start gap-3 p-3 min-h-[56px] rounded-lg border transition-colors',
+          'peer-focus-visible:outline-2 peer-focus-visible:outline-white peer-focus-visible:outline-offset-1',
+          checked ? 'border-white/40 bg-white/[0.06]' : 'border-white/[0.08] hover:border-white/[0.16]'
+        )}
+      >
+        <span
+          aria-hidden="true"
+          className={cn(
+            'mt-0.5 w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center',
+            checked ? 'border-white' : 'border-zinc-500'
+          )}
+        >
+          {checked && <span className="w-2 h-2 rounded-full bg-white" />}
+        </span>
+        <span className="min-w-0">
+          <span className="flex items-center gap-2">
+            <span className="text-sm font-medium text-zinc-100">{title}</span>
+            <span className="text-xs px-1.5 py-0.5 rounded-md bg-white/[0.08] text-zinc-300">{badge}</span>
+          </span>
+          <span className="block text-[13px] text-zinc-400 mt-0.5">{description}</span>
+        </span>
+      </span>
+    </label>
   );
 }

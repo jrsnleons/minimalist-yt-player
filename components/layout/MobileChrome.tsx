@@ -120,7 +120,7 @@ export function MobileChrome({ activeTab, onTabChange }: MobileChromeProps) {
       )}
 
       <nav aria-label="Main" className="border-t border-white/[0.08] pb-[env(safe-area-inset-bottom)]">
-        <ul className="grid grid-cols-3">
+        <ul className="grid grid-cols-4">
           {NAV_ITEMS.map(({ key, label, icon: Icon }) => {
             const active = activeTab === key;
             return (

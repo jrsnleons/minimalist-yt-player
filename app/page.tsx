@@ -16,6 +16,7 @@ import { ZenPlayerView } from '@/components/player/ZenPlayerView';
 import { HomeView } from '@/components/views/HomeView';
 import { SearchView } from '@/components/views/SearchView';
 import { LibraryView } from '@/components/views/LibraryView';
+import { StatsView } from '@/components/views/StatsView';
 import { ListenTogetherBar } from '@/components/listen-together/ListenTogetherBar';
 import { ListenTogetherModal } from '@/components/listen-together/ListenTogetherModal';
 import { FloatingReactions } from '@/components/listen-together/FloatingReactions';
@@ -28,6 +29,7 @@ import { useAdblockCheck } from '@/hooks/useAdblockCheck';
 import { useDynamicTrackPalette } from '@/hooks/useDynamicTrackPalette';
 import { useListenTogetherSync } from '@/hooks/useListenTogetherSync';
 import { useRemoteHost } from '@/hooks/useRemoteHost';
+import { usePlayTracker } from '@/hooks/usePlayTracker';
 import type { Playlist } from '@/types';
 
 function AppShell() {
@@ -51,6 +53,7 @@ function AppShell() {
   useAdblockCheck();
   useListenTogetherSync();
   useRemoteHost();
+  usePlayTracker();
 
   // Load preferences, session restore, and recently played on startup
   useEffect(() => {
@@ -121,6 +124,7 @@ function AppShell() {
                     {activeTab === 'library' && (
                       <LibraryView initialPlaylist={selectedPlaylistTarget} />
                     )}
+                    {activeTab === 'stats' && <StatsView />}
                   </motion.div>
                 </AnimatePresence>
               </div>

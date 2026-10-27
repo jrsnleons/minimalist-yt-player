@@ -1,6 +1,6 @@
 'use client';
 
-import { Home, Search, Library, Settings, Radio, Smartphone } from 'lucide-react';
+import { Home, Search, Library, BarChart3, Settings, Radio, Smartphone } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/schema';
 import { usePlayerStore } from '@/store/usePlayerStore';
@@ -11,12 +11,13 @@ import { PlaylistCover } from '@/components/ui/PlaylistCover';
 import { cn } from '@/lib/utils';
 import type { Playlist } from '@/types';
 
-export type MainNavTab = 'home' | 'search' | 'library';
+export type MainNavTab = 'home' | 'search' | 'library' | 'stats';
 
 export const NAV_ITEMS: { key: MainNavTab; label: string; icon: typeof Home }[] = [
   { key: 'home', label: 'Home', icon: Home },
   { key: 'search', label: 'Search', icon: Search },
   { key: 'library', label: 'Library', icon: Library },
+  { key: 'stats', label: 'Stats', icon: BarChart3 },
 ];
 
 interface AppSidebarProps {

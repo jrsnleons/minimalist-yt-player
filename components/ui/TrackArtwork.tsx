@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useId, useEffect } from 'react';
-import Image from 'next/image';
+import { useState, useEffect, useRef } from 'react';
 import { cn, cleanThumbnailUrl } from '@/lib/utils';
+import { getCachedPalette } from '@/lib/paletteExtractor';
 import type { Track } from '@/types';
 
 export interface TrackArtworkProps {
@@ -76,6 +76,14 @@ function getInitials(title = '', artist = ''): string {
   return 'YT';
 }
 
+/** Tiny same-video thumbnail used for the blurred placeholder, or null when the host has no small variant. */
+function lowResSource(src: string, size: TrackArtworkProps['size']): string | null {
+  const match = src.match(/^https:\/\/i\.ytimg\.com\/vi\/([a-zA-Z0-9_-]{11})\//);
+  if (!match) return null;
+  const large = size === 'xl' || size === '2xl' || size === 'hero' || size === 'fill';
+  return `https://i.ytimg.com/vi/${match[1]}/${large ? 'mqdefault' : 'default'}.jpg`;
+}
+
 export function TrackArtwork({
   track,
   src: propSrc,
@@ -90,8 +98,10 @@ export function TrackArtwork({
   loading,
 }: TrackArtworkProps) {
   const [imgError, setImgError] = useState(false);
+  // Blur-up stages: color (immediate) -> lowres (blurred preview, optional) -> full (decoded image)
+  const [lowLoaded, setLowLoaded] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
-  const patternId = useId();
+  const imgRef = useRef<HTMLImageElement | null>(null);
 
   const title = propTitle ?? track?.title ?? '';
   const artist = propArtist ?? track?.artist ?? '';
@@ -99,9 +109,25 @@ export function TrackArtwork({
   const rawSrc = propSrc ?? track?.thumbnailUrl;
   const src = cleanThumbnailUrl(rawSrc, id);
 
+  const lowSrc = src ? lowResSource(src, size) : null;
+
   useEffect(() => {
     setImgError(false);
+    setLowLoaded(false);
     setIsLoaded(false);
+  }, [src]);
+
+  // Reveal the full image only after it is decoded, so the cross-fade never shows a half-painted frame.
+  const reveal = (img: HTMLImageElement) => {
+    const done = () => setIsLoaded(true);
+    if (typeof img.decode === 'function') img.decode().then(done, done);
+    else done();
+  };
+
+  useEffect(() => {
+    const img = imgRef.current;
+    if (img && img.complete && img.naturalWidth > 0) reveal(img);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [src]);
 
   const isHero = size === 'hero';
@@ -136,31 +162,45 @@ export function TrackArtwork({
 
   // If valid image exists and has not failed loading
   if (src && !imgError) {
+    // Dominant color from the cached palette, or the deterministic fallback color for this track.
+    const dominant = getCachedPalette(rawSrc)?.primary ?? palette.bgFrom;
+    const state = isLoaded ? 'full' : lowLoaded ? 'lowres' : 'color';
     return (
       <div
-        className={cn(
-          'relative overflow-hidden bg-[#121216] border border-zinc-800/60 shrink-0 select-none',
-          sizeClasses,
-          roundedClasses,
-          className
-        )}
+        data-artwork-state={state}
+        className={cn('relative overflow-hidden shrink-0 select-none', sizeClasses, roundedClasses, className)}
+        style={{ backgroundColor: dominant }}
       >
-        {!isLoaded && (
-          <div className="absolute inset-0 skeleton-shimmer z-0" />
+        {lowSrc && !isLoaded && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={lowSrc}
+            alt=""
+            aria-hidden="true"
+            decoding="async"
+            draggable={false}
+            onLoad={() => setLowLoaded(true)}
+            className={cn(
+              'absolute inset-0 w-full h-full object-cover scale-110 blur-md transition-opacity duration-200 motion-reduce:transition-none',
+              lowLoaded ? 'opacity-100' : 'opacity-0'
+            )}
+          />
         )}
-        <Image
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          ref={imgRef}
           src={src}
           alt={`${title || 'Track'} artwork`}
-          fill
-          priority={shouldEagerLoad}
           loading={shouldEagerLoad ? 'eager' : 'lazy'}
+          decoding="async"
+          fetchPriority={priority ? 'high' : undefined}
+          draggable={false}
+          onLoad={(e) => reveal(e.currentTarget)}
+          onError={() => setImgError(true)}
           className={cn(
-            'object-cover transition-opacity duration-300 relative z-[1]',
+            'absolute inset-0 w-full h-full object-cover transition-opacity duration-200 motion-reduce:transition-none',
             isLoaded ? 'opacity-100' : 'opacity-0'
           )}
-          unoptimized
-          onLoad={() => setIsLoaded(true)}
-          onError={() => setImgError(true)}
         />
       </div>
     );
@@ -170,41 +210,27 @@ export function TrackArtwork({
   return (
     <div
       className={cn(
-        'relative overflow-hidden shrink-0 select-none flex items-center justify-center border border-white/10 shadow-inner',
+        'relative overflow-hidden shrink-0 select-none flex items-center justify-center',
         sizeClasses,
         roundedClasses,
         className
       )}
       style={{
-        background: `linear-gradient(135deg, ${palette.bgFrom} 0%, ${palette.bgTo} 100%)`,
+        backgroundColor: palette.bgFrom,
       }}
       title={`${title || 'Music'} by ${artist || 'Unknown'}`}
       aria-label={`${title} artwork`}
     >
-      {/* Background Subtle Gradient Glow */}
-      <div
-        className="absolute inset-0 opacity-40 pointer-events-none"
-        style={{
-          background: `radial-gradient(circle at 65% 30%, ${palette.accent} 0%, transparent 65%)`,
-        }}
-      />
-
       {/* SVG Generative Geometric Pattern */}
       <svg
         className="absolute inset-0 w-full h-full opacity-35 pointer-events-none"
         viewBox="0 0 100 100"
         preserveAspectRatio="none"
       >
-        <defs>
-          <linearGradient id={`grad-${patternId}`} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor={palette.accent} stopOpacity="0.8" />
-            <stop offset="100%" stopColor={palette.secondary} stopOpacity="0.1" />
-          </linearGradient>
-        </defs>
 
         {/* Variant 0: Concentric Vinyl Rings */}
         {patternVariant === 0 && (
-          <g stroke={`url(#grad-${patternId})`} strokeWidth="0.75" fill="none">
+          <g stroke={palette.accent} strokeWidth="0.75" fill="none">
             <circle cx="50" cy="50" r="42" />
             <circle cx="50" cy="50" r="32" strokeDasharray="3 2" />
             <circle cx="50" cy="50" r="22" />
@@ -215,7 +241,7 @@ export function TrackArtwork({
 
         {/* Variant 1: Acoustic Sound Waves */}
         {patternVariant === 1 && (
-          <g stroke={`url(#grad-${patternId})`} strokeWidth="1.2" fill="none">
+          <g stroke={palette.accent} strokeWidth="1.2" fill="none">
             <path d="M 0 50 Q 25 20, 50 50 T 100 50" />
             <path d="M 0 50 Q 25 35, 50 50 T 100 50" opacity="0.6" />
             <path d="M 0 50 Q 25 65, 50 50 T 100 50" opacity="0.6" />
@@ -226,7 +252,7 @@ export function TrackArtwork({
 
         {/* Variant 2: Minimalist Sound Bars Equalizer */}
         {patternVariant === 2 && (
-          <g fill={`url(#grad-${patternId})`} opacity="0.75">
+          <g fill={palette.accent} opacity="0.75">
             <rect x="18" y="45" width="6" height="15" rx="3" />
             <rect x="28" y="30" width="6" height="42" rx="3" />
             <rect x="38" y="20" width="6" height="60" rx="3" />
@@ -239,7 +265,7 @@ export function TrackArtwork({
 
         {/* Variant 3: Diagonal Bauhaus Mesh */}
         {patternVariant === 3 && (
-          <g stroke={`url(#grad-${patternId})`} strokeWidth="0.8" opacity="0.6">
+          <g stroke={palette.accent} strokeWidth="0.8" opacity="0.6">
             <line x1="0" y1="0" x2="100" y2="100" />
             <line x1="20" y1="0" x2="100" y2="80" />
             <line x1="0" y1="20" x2="80" y2="100" />
@@ -251,7 +277,7 @@ export function TrackArtwork({
 
         {/* Variant 4: Harmonic Resonance Rings & Orbital Nodes */}
         {patternVariant === 4 && (
-          <g stroke={`url(#grad-${patternId})`} strokeWidth="0.7" fill="none">
+          <g stroke={palette.accent} strokeWidth="0.7" fill="none">
             <ellipse cx="50" cy="50" rx="38" ry="24" transform="rotate(-25 50 50)" />
             <ellipse cx="50" cy="50" rx="24" ry="38" transform="rotate(25 50 50)" />
             <circle cx="50" cy="50" r="10" fill={palette.accent} fillOpacity="0.2" />
@@ -272,13 +298,6 @@ export function TrackArtwork({
         </div>
       )}
 
-      {/* Bottom Subtle Corner Glow Accent */}
-      <div
-        className="absolute bottom-0 right-0 w-1/2 h-1/2 opacity-30 pointer-events-none"
-        style={{
-          background: `radial-gradient(circle at bottom right, ${palette.secondary} 0%, transparent 70%)`,
-        }}
-      />
     </div>
   );
 }

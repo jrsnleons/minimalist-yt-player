@@ -310,10 +310,10 @@ export function ImportPlaylistModal({ isOpen, onClose, onImported, initialTab = 
   const ytTotalDuration = (ytPreview?.tracks ?? []).reduce((acc, t) => acc + (t.duration || 0), 0);
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="Import Music & Playlists" className="max-w-xl">
+    <Modal isOpen={isOpen} onClose={handleClose} title="Import" className="max-w-xl">
       <div className="flex flex-col gap-4">
         {/* Source Navigation Tabs (Onyx Segmented Pill) */}
-        <div className="flex items-center p-1 rounded-2xl bg-white/[0.03] border border-white/[0.08]">
+        <div className="flex items-center p-1 rounded-[10px] bg-white/[0.03] border border-white/[0.08]">
           <button
             type="button"
             onClick={() => {
@@ -321,9 +321,9 @@ export function ImportPlaylistModal({ isOpen, onClose, onImported, initialTab = 
               setYtError(null);
             }}
             className={cn(
-              'flex-1 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer',
+              'flex-1 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer',
               activeTab === 'youtube'
-                ? 'bg-white text-black shadow-sm'
+                ? 'bg-white text-black'
                 : 'text-zinc-400 hover:text-zinc-200'
             )}
           >
@@ -338,10 +338,10 @@ export function ImportPlaylistModal({ isOpen, onClose, onImported, initialTab = 
               setSpotifyError(null);
             }}
             className={cn(
-              'flex-1 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer',
+              'flex-1 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer',
               activeTab === 'spotify'
-                ? 'bg-emerald-400 text-black shadow-sm'
-                : 'text-zinc-400 hover:text-emerald-400'
+                ? 'bg-white text-black'
+                : 'text-zinc-400 hover:text-zinc-200'
             )}
           >
             <Radio size={13} />
@@ -355,9 +355,9 @@ export function ImportPlaylistModal({ isOpen, onClose, onImported, initialTab = 
               setFileError(null);
             }}
             className={cn(
-              'flex-1 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer',
+              'flex-1 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer',
               activeTab === 'file'
-                ? 'bg-white text-black shadow-sm'
+                ? 'bg-white text-black'
                 : 'text-zinc-400 hover:text-zinc-200'
             )}
           >
@@ -370,7 +370,7 @@ export function ImportPlaylistModal({ isOpen, onClose, onImported, initialTab = 
         {activeTab === 'youtube' && (
           <div className="flex flex-col gap-4">
             <div>
-              <label htmlFor="yt-url" className="block text-xs font-semibold text-zinc-300 mb-1.5 font-sans tracking-tight">
+              <label htmlFor="yt-url" className="block text-[13px] font-medium text-zinc-300 mb-1.5">
                 YouTube or YouTube Music Playlist URL
               </label>
               <div className="flex gap-2">
@@ -390,13 +390,13 @@ export function ImportPlaylistModal({ isOpen, onClose, onImported, initialTab = 
                   }}
                   placeholder="https://www.youtube.com/playlist?list=PL..."
                   autoFocus
-                  className="flex-1 px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] focus:border-white/30 focus:ring-1 focus:ring-white/20 text-xs text-white placeholder-zinc-600 focus:outline-none transition-all"
+                  className="flex-1 min-w-0 px-3.5 py-2.5 min-h-[40px] rounded-lg bg-[#1d1d23] border border-white/[0.08] focus:border-white/30 focus-visible:ring-2 focus-visible:ring-white/50 text-xs text-white placeholder-zinc-500 focus:outline-none transition-all"
                 />
                 <button
                   type="button"
                   onClick={() => handleFetchYtPreview(ytUrl)}
                   disabled={!ytUrl.trim() || isYtLoading}
-                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white text-black text-xs font-semibold hover:bg-zinc-200 disabled:opacity-40 transition-all shrink-0 shadow-sm cursor-pointer"
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-white text-black text-xs font-semibold hover:bg-zinc-200 disabled:opacity-40 transition-all shrink-0 cursor-pointer"
                 >
                   {isYtLoading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
                   <span>Fetch</span>
@@ -406,7 +406,7 @@ export function ImportPlaylistModal({ isOpen, onClose, onImported, initialTab = 
 
             {!ytPreview && (
               <div className="space-y-1.5">
-                <span className="text-xs font-mono text-zinc-400">Popular playlists:</span>
+                <span className="text-xs font-mono text-zinc-400">Examples</span>
                 <div className="flex flex-wrap gap-1.5">
                   {EXAMPLE_YT_PLAYLISTS.map((ex) => (
                     <button
@@ -416,7 +416,7 @@ export function ImportPlaylistModal({ isOpen, onClose, onImported, initialTab = 
                         setYtUrl(ex.url);
                         handleFetchYtPreview(ex.url);
                       }}
-                      className="px-3 py-1 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/[0.16] text-zinc-300 hover:text-white text-xs transition-all cursor-pointer"
+                      className="px-3 py-1 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/[0.16] text-zinc-300 hover:text-white text-xs transition-all cursor-pointer"
                     >
                       {ex.name}
                     </button>
@@ -426,19 +426,19 @@ export function ImportPlaylistModal({ isOpen, onClose, onImported, initialTab = 
             )}
 
             {ytError && (
-              <div className="p-3 rounded-2xl bg-red-950/40 border border-red-900/60 text-xs text-red-300 flex items-center gap-2">
+              <div className="p-3 rounded-[10px] bg-red-950/40 border border-red-900/60 text-xs text-red-300 flex items-center gap-2">
                 <AlertCircle size={14} className="shrink-0 text-red-400" />
                 <span>{ytError}</span>
               </div>
             )}
 
             {ytPreview && (
-              <div className="p-4 rounded-2xl bg-[#0c0c10] border border-white/[0.08] space-y-3 shadow-inner">
+              <div className="p-4 rounded-[10px] bg-[#141418] border border-white/[0.08] space-y-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-400">
                       <Check size={12} />
-                      <span>YouTube Playlist Verified</span>
+                      <span>YouTube Playlist Found</span>
                     </div>
                     <h4 className="text-sm font-bold text-white truncate mt-0.5">{ytPreview.title}</h4>
                     {ytPreview.author && <p className="text-xs text-zinc-400">By {ytPreview.author}</p>}
@@ -472,7 +472,7 @@ export function ImportPlaylistModal({ isOpen, onClose, onImported, initialTab = 
                     type="button"
                     onClick={() => handleImportYt(false)}
                     disabled={isYtLoading}
-                    className="px-3.5 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-white text-xs font-semibold transition-all border border-white/[0.08] cursor-pointer"
+                    className="px-3.5 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-white text-xs font-semibold transition-all border border-white/[0.08] cursor-pointer"
                   >
                     Import to Library
                   </button>
@@ -480,7 +480,7 @@ export function ImportPlaylistModal({ isOpen, onClose, onImported, initialTab = 
                     type="button"
                     onClick={() => handleImportYt(true)}
                     disabled={isYtLoading}
-                    className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-white text-black text-xs font-semibold hover:bg-zinc-200 transition-all shadow-md cursor-pointer"
+                    className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-white text-black text-xs font-semibold hover:bg-zinc-200 transition-all cursor-pointer"
                   >
                     <Play size={12} fill="currentColor" />
                     <span>Import & Play</span>
@@ -495,8 +495,8 @@ export function ImportPlaylistModal({ isOpen, onClose, onImported, initialTab = 
         {activeTab === 'spotify' && (
           <div className="flex flex-col gap-4">
             <div>
-              <label htmlFor="spotify-url" className="block text-xs font-semibold text-zinc-300 mb-1.5 font-sans tracking-tight">
-                Spotify Playlist or Album Link (No Login Required)
+              <label htmlFor="spotify-url" className="block text-[13px] font-medium text-zinc-300 mb-1.5">
+                Spotify Playlist or Album Link
               </label>
               <div className="flex gap-2">
                 <input
@@ -515,13 +515,13 @@ export function ImportPlaylistModal({ isOpen, onClose, onImported, initialTab = 
                   }}
                   placeholder="https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M"
                   autoFocus
-                  className="flex-1 px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] focus:border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/20 text-xs text-white placeholder-zinc-600 focus:outline-none transition-all"
+                  className="flex-1 min-w-0 px-3.5 py-2.5 min-h-[40px] rounded-lg bg-[#1d1d23] border border-white/[0.08] focus:border-white/40 focus-visible:ring-2 focus-visible:ring-white/50 text-xs text-white placeholder-zinc-500 focus:outline-none transition-all"
                 />
                 <button
                   type="button"
                   onClick={() => handleFetchSpotifyPreview(spotifyUrl)}
                   disabled={!spotifyUrl.trim() || isSpotifyLoading}
-                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-400 text-black text-xs font-semibold hover:bg-emerald-300 disabled:opacity-40 transition-all shrink-0 shadow-sm cursor-pointer"
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-white text-black text-xs font-semibold hover:bg-zinc-200 disabled:opacity-40 transition-all shrink-0 cursor-pointer"
                 >
                   {isSpotifyLoading && !spotifyMatchingProgress ? (
                     <Loader2 size={13} className="animate-spin" />
@@ -545,7 +545,7 @@ export function ImportPlaylistModal({ isOpen, onClose, onImported, initialTab = 
                         setSpotifyUrl(ex.url);
                         handleFetchSpotifyPreview(ex.url);
                       }}
-                      className="px-3 py-1 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.08] hover:border-emerald-500/30 text-zinc-300 hover:text-emerald-300 text-xs transition-all cursor-pointer"
+                      className="px-3 py-1 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/[0.16] text-zinc-300 hover:text-white text-xs transition-all cursor-pointer"
                     >
                       {ex.name}
                     </button>
@@ -555,7 +555,7 @@ export function ImportPlaylistModal({ isOpen, onClose, onImported, initialTab = 
             )}
 
             {spotifyError && (
-              <div className="p-3 rounded-2xl bg-red-950/40 border border-red-900/60 text-xs text-red-300 flex items-center gap-2">
+              <div className="p-3 rounded-[10px] bg-red-950/40 border border-red-900/60 text-xs text-red-300 flex items-center gap-2">
                 <AlertCircle size={14} className="shrink-0 text-red-400" />
                 <span>{spotifyError}</span>
               </div>
@@ -563,7 +563,7 @@ export function ImportPlaylistModal({ isOpen, onClose, onImported, initialTab = 
 
             {/* Live Progress Bar during Matching */}
             {spotifyMatchingProgress && (
-              <div className="p-4 rounded-2xl bg-[#0c0c10] border border-emerald-500/30 space-y-2">
+              <div className="p-4 rounded-[10px] bg-[#141418] border border-white/[0.08] space-y-2">
                 <div className="flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2 font-medium text-emerald-400">
                     <Loader2 size={13} className="animate-spin" />
@@ -575,7 +575,7 @@ export function ImportPlaylistModal({ isOpen, onClose, onImported, initialTab = 
                 </div>
                 <div className="w-full h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-emerald-400 transition-all duration-200"
+                    className="h-full bg-white transition-all duration-200"
                     style={{
                       width: `${(spotifyMatchingProgress.current / spotifyMatchingProgress.total) * 100}%`,
                     }}
@@ -588,10 +588,10 @@ export function ImportPlaylistModal({ isOpen, onClose, onImported, initialTab = 
             )}
 
             {spotifyPreview && !spotifyMatchingProgress && (
-              <div className="p-4 rounded-2xl bg-[#0c0c10] border border-white/[0.08] space-y-3 shadow-inner">
+              <div className="p-4 rounded-[10px] bg-[#141418] border border-white/[0.08] space-y-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-400">
                       <Check size={12} />
                       <span>Spotify Playlist Found</span>
                     </div>
@@ -631,7 +631,7 @@ export function ImportPlaylistModal({ isOpen, onClose, onImported, initialTab = 
                     type="button"
                     onClick={() => handleImportSpotify(false)}
                     disabled={isSpotifyLoading}
-                    className="px-3.5 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-white text-xs font-semibold transition-all border border-white/[0.08] cursor-pointer"
+                    className="px-3.5 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-white text-xs font-semibold transition-all border border-white/[0.08] cursor-pointer"
                   >
                     Match & Save to Library
                   </button>
@@ -639,7 +639,7 @@ export function ImportPlaylistModal({ isOpen, onClose, onImported, initialTab = 
                     type="button"
                     onClick={() => handleImportSpotify(true)}
                     disabled={isSpotifyLoading}
-                    className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-emerald-400 text-black text-xs font-bold hover:bg-emerald-300 transition-all shadow-md cursor-pointer"
+                    className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-white text-black text-xs font-semibold hover:bg-zinc-200 transition-all cursor-pointer"
                   >
                     <Play size={12} fill="currentColor" />
                     <span>Match & Play</span>
@@ -666,7 +666,7 @@ export function ImportPlaylistModal({ isOpen, onClose, onImported, initialTab = 
                 onClick={() => fileInputRef.current?.click()}
                 className="border-2 border-dashed border-white/[0.12] hover:border-white/30 rounded-3xl p-8 text-center cursor-pointer transition-all bg-white/[0.02] hover:bg-white/[0.05] flex flex-col items-center justify-center gap-2.5"
               >
-                <div className="w-10 h-10 rounded-2xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center text-zinc-300 shadow-sm">
+                <div className="w-10 h-10 rounded-[10px] bg-white/[0.05] border border-white/[0.08] flex items-center justify-center text-zinc-300">
                   <Upload size={18} />
                 </div>
                 <h4 className="text-xs font-semibold text-zinc-200 tracking-tight">Select or Drop JSON Backup File</h4>
@@ -675,16 +675,16 @@ export function ImportPlaylistModal({ isOpen, onClose, onImported, initialTab = 
                 </p>
                 <button
                   type="button"
-                  className="mt-2 px-3.5 py-1.5 bg-white/[0.06] hover:bg-white/[0.12] text-zinc-200 text-xs font-medium rounded-xl border border-white/[0.1] transition-all"
+                  className="mt-2 px-3.5 py-1.5 bg-white/[0.06] hover:bg-white/[0.12] text-zinc-200 text-xs font-medium rounded-lg border border-white/[0.1] transition-all"
                 >
                   Browse Files
                 </button>
               </div>
             ) : (
-              <div className="p-4 rounded-2xl bg-[#0c0c10] border border-white/[0.08] space-y-3">
+              <div className="p-4 rounded-[10px] bg-[#141418] border border-white/[0.08] space-y-3">
                 <div className="flex items-start justify-between">
                   <div>
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-400">
                       <Check size={12} />
                       <span>Valid Backup File</span>
                     </div>
@@ -708,19 +708,19 @@ export function ImportPlaylistModal({ isOpen, onClose, onImported, initialTab = 
 
                 {/* Summary Metrics */}
                 <div className="grid grid-cols-3 gap-2 text-center py-1">
-                  <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                  <div className="p-2.5 rounded-lg bg-white/[0.03] border border-white/[0.06]">
                     <span className="block text-sm font-mono font-bold text-white">
                       {fileValidation.summary?.playlistCount}
                     </span>
                     <span className="text-xs text-zinc-400 font-mono">Playlists</span>
                   </div>
-                  <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                  <div className="p-2.5 rounded-lg bg-white/[0.03] border border-white/[0.06]">
                     <span className="block text-sm font-mono font-bold text-white">
                       {fileValidation.summary?.trackCount}
                     </span>
                     <span className="text-xs text-zinc-400 font-mono">Tracks</span>
                   </div>
-                  <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                  <div className="p-2.5 rounded-lg bg-white/[0.03] border border-white/[0.06]">
                     <span className="block text-sm font-mono font-bold text-white">
                       {fileValidation.summary?.historyCount || 0}
                     </span>
@@ -737,7 +737,7 @@ export function ImportPlaylistModal({ isOpen, onClose, onImported, initialTab = 
                         type="button"
                         onClick={() => setRestoreMode('merge')}
                         className={cn(
-                          'p-2.5 rounded-xl border text-left text-xs transition-all cursor-pointer',
+                          'p-2.5 rounded-lg border text-left text-xs transition-all cursor-pointer',
                           restoreMode === 'merge'
                             ? 'border-white/40 bg-white/[0.08] text-white'
                             : 'border-white/[0.06] bg-white/[0.02] text-zinc-400 hover:border-white/[0.12]'
@@ -754,7 +754,7 @@ export function ImportPlaylistModal({ isOpen, onClose, onImported, initialTab = 
                         type="button"
                         onClick={() => setRestoreMode('replace')}
                         className={cn(
-                          'p-2.5 rounded-xl border text-left text-xs transition-all cursor-pointer',
+                          'p-2.5 rounded-lg border text-left text-xs transition-all cursor-pointer',
                           restoreMode === 'replace'
                             ? 'border-red-500/60 bg-red-950/40 text-white'
                             : 'border-white/[0.06] bg-white/[0.02] text-zinc-400 hover:border-white/[0.12]'
@@ -775,7 +775,7 @@ export function ImportPlaylistModal({ isOpen, onClose, onImported, initialTab = 
                     type="button"
                     onClick={handleExecuteRestore}
                     disabled={isFileLoading}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white text-black text-xs font-semibold hover:bg-zinc-200 transition-all shadow-md cursor-pointer disabled:opacity-40"
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white text-black text-xs font-semibold hover:bg-zinc-200 transition-all cursor-pointer disabled:opacity-40"
                   >
                     {isFileLoading ? (
                       <Loader2 size={13} className="animate-spin" />
@@ -793,7 +793,7 @@ export function ImportPlaylistModal({ isOpen, onClose, onImported, initialTab = 
             )}
 
             {fileError && (
-              <div className="p-3 rounded-2xl bg-red-950/40 border border-red-900/60 text-xs text-red-300 flex items-center gap-2">
+              <div className="p-3 rounded-[10px] bg-red-950/40 border border-red-900/60 text-xs text-red-300 flex items-center gap-2">
                 <AlertCircle size={14} className="shrink-0 text-red-400" />
                 <span>{fileError}</span>
               </div>
