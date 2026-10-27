@@ -5,6 +5,7 @@ import type { Track } from '@/types';
 import { getTrackPalette } from '@/components/ui/TrackArtwork';
 import {
   extractPaletteFromImageUrl,
+  clampAccent,
   getCachedPalette,
   type DynamicPalette,
 } from '@/lib/paletteExtractor';
@@ -14,7 +15,7 @@ export function useDynamicTrackPalette(track?: Partial<Track> | null): DynamicPa
     if (!track) {
       return {
         primary: '#a855f7',
-        accent: '#c084fc',
+        accent: clampAccent('#c084fc'),
         secondary: '#e9d5ff',
         bgFrom: '#181224',
         bgTo: '#070709',
@@ -26,7 +27,7 @@ export function useDynamicTrackPalette(track?: Partial<Track> | null): DynamicPa
     const staticPal = getTrackPalette(track.title || '', track.artist || '', track.id || '');
     return {
       primary: staticPal.accent,
-      accent: staticPal.accent,
+      accent: clampAccent(staticPal.accent),
       secondary: staticPal.secondary,
       bgFrom: staticPal.bgFrom,
       bgTo: staticPal.bgTo,
