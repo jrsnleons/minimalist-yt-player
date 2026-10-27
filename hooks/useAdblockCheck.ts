@@ -33,7 +33,7 @@ export function useAdblockCheck() {
           // Adblock is NOT active — show tip
           sessionStorage.setItem('adblockTipShown', '1');
           usePlayerStore.getState().showToast(
-            '💡 Tip: Enable uBlock Origin for uninterrupted listening.'
+            'Tip: uBlock Origin prevents ads interrupting playback.'
           );
         }
       } catch {
