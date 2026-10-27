@@ -1,17 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { db } from '@/db/schema';
 import { formatTime, cn } from '@/lib/utils';
-import {
-  Music,
-  Play,
-  Download,
-  X,
-  Loader2,
-  Check,
-} from 'lucide-react';
+import { Music, Play, Download, X, Loader2, AlertCircle } from 'lucide-react';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
+import { primaryBtn, ghostBtn } from '@/lib/ui';
 import type { Track, SearchPlaylist } from '@/types';
 
 interface PlaylistPreviewModalProps {
@@ -35,6 +31,10 @@ export function PlaylistPreviewModal({
   const [isLoading, setIsLoading] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useFocusTrap(panelRef, { active: isOpen && !!playlist, onEscape: onClose });
 
   useEffect(() => {
     if (!isOpen || !playlist?.id) {
@@ -58,12 +58,12 @@ export function PlaylistPreviewModal({
       })
       .catch((err: Error) => {
         if (err.name === 'AbortError') return;
-        setError('Could not load songs for this playlist.');
+        setError('Could not load songs');
         setIsLoading(false);
       });
 
     return () => controller.abort();
-  }, [isOpen, playlist?.id]);
+  }, [isOpen, playlist?.id, attempt]);
 
   if (!isOpen || !playlist) return null;
 
@@ -106,120 +106,116 @@ export function PlaylistPreviewModal({
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
-      role="dialog"
-      aria-modal="true"
-      aria-label={`Preview songs in ${playlist.title}`}
+      className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
-      <div className="relative w-full max-w-2xl rounded-3xl border border-white/[0.1] bg-[#0c0c12]/95 shadow-[0_20px_60px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col max-h-[85vh] text-white">
-        {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-white/[0.08] bg-white/[0.02] shrink-0">
-          <div className="min-w-0 flex-1 mr-3">
-            <div className="flex items-center gap-2">
-              <Music size={16} className="text-zinc-400 shrink-0" />
-              <h3 className="text-sm font-semibold text-white truncate font-sans">
-                {playlist.title}
-              </h3>
-            </div>
-            <p className="text-xs text-zinc-400 font-mono mt-0.5 truncate">
-              {playlist.author || 'YouTube'} · {isLoading ? 'Loading songs…' : `${tracks.length} tracks · ${formatTime(totalDuration)}`}
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="playlist-preview-title"
+        className="relative w-full max-w-2xl rounded-[14px] border border-white/[0.08] bg-[#141418] shadow-[0_24px_64px_rgba(0,0,0,0.6)] overflow-hidden flex flex-col max-h-[85dvh] text-white"
+      >
+        <div className="flex items-start justify-between gap-3 pl-6 pr-3 pt-4 pb-3 shrink-0">
+          <div className="min-w-0 flex-1">
+            <h2 id="playlist-preview-title" className="text-xl font-semibold tracking-tight text-white truncate">
+              {playlist.title}
+            </h2>
+            <p className="text-[13px] text-zinc-400 mt-0.5 truncate">
+              {playlist.author || 'YouTube'} ·{' '}
+              {isLoading ? 'Loading songs…' : `${tracks.length} ${tracks.length === 1 ? 'song' : 'songs'} · ${formatTime(totalDuration)}`}
             </p>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            {!isLoading && tracks.length > 0 && (
-              <>
-                <button
-                  onClick={handlePlayAll}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white text-black text-xs font-semibold hover:bg-zinc-200 transition-all shadow-sm cursor-pointer min-h-[32px]"
-                >
-                  <Play size={12} fill="currentColor" />
-                  <span>Play All</span>
-                </button>
-
-                <button
-                  onClick={handleImport}
-                  disabled={isImporting}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-white/[0.1] bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 hover:text-white text-xs font-medium transition-all cursor-pointer min-h-[32px] disabled:opacity-50"
-                >
-                  {isImporting ? (
-                    <Loader2 size={12} className="animate-spin text-zinc-400" />
-                  ) : (
-                    <Download size={12} />
-                  )}
-                  <span>Import</span>
-                </button>
-              </>
-            )}
-
-            <button
-              onClick={onClose}
-              aria-label="Close modal"
-              className="w-8 h-8 rounded-xl flex items-center justify-center text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer"
-            >
-              <X size={16} />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="w-10 h-10 rounded-full flex items-center justify-center text-zinc-300 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer shrink-0"
+          >
+            <X size={18} aria-hidden="true" />
+          </button>
         </div>
 
-        {/* Body: Clean Numbered Song List */}
-        <div className="overflow-y-auto flex-1 min-h-0 p-2">
+        {!isLoading && tracks.length > 0 && (
+          <div className="flex items-center gap-2 px-6 pb-3 shrink-0">
+            <button type="button" onClick={handlePlayAll} className={primaryBtn}>
+              <Play size={14} fill="currentColor" aria-hidden="true" />
+              <span>Play All</span>
+            </button>
+            <button type="button" onClick={handleImport} disabled={isImporting} className={ghostBtn}>
+              {isImporting ? (
+                <Loader2 size={14} className="animate-spin" aria-hidden="true" />
+              ) : (
+                <Download size={14} aria-hidden="true" />
+              )}
+              <span>Import</span>
+            </button>
+          </div>
+        )}
+
+        <div className="overflow-y-auto flex-1 min-h-0 px-2 pb-3">
           {isLoading ? (
-            <div className="py-20 flex flex-col items-center justify-center text-zinc-500 text-xs">
-              <Loader2 size={24} className="animate-spin text-zinc-400 mb-2" />
-              <p>Fetching songs…</p>
+            <div className="py-16 flex flex-col items-center justify-center text-zinc-400 text-sm" role="status">
+              <Loader2 size={22} className="animate-spin mb-2" aria-hidden="true" />
+              <p>Loading songs…</p>
             </div>
           ) : error ? (
-            <div className="py-20 text-center text-zinc-400 text-xs">
-              <p className="font-semibold text-rose-400">{error}</p>
-              <button
-                onClick={onClose}
-                className="mt-3 px-3 py-1 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-zinc-300 text-xs"
-              >
-                Close
+            <EmptyState
+              tone="error"
+              icon={<AlertCircle size={28} />}
+              title={error}
+              description="Check the connection and try again."
+            >
+              <button type="button" onClick={() => setAttempt((n) => n + 1)} className={primaryBtn}>
+                Try Again
               </button>
-            </div>
+            </EmptyState>
           ) : tracks.length === 0 ? (
-            <div className="py-20 text-center text-zinc-500 text-xs">
-              No songs found in this playlist.
-            </div>
+            <EmptyState icon={<Music size={28} />} title="No songs found" description="This playlist has no playable songs." />
           ) : (
-            <table className="w-full text-left border-collapse table-fixed text-xs" role="grid">
-              <thead className="sticky top-0 bg-[#0c0c12] z-10">
-                <tr className="border-b border-white/[0.06] text-xs font-mono text-zinc-400">
-                  <th className="w-12 px-3 py-2 text-center">#</th>
-                  <th className="px-3 py-2">Title</th>
-                  <th className="w-36 px-3 py-2 hidden sm:table-cell">Artist</th>
-                  <th className="w-20 px-3 py-2 text-right">Time</th>
+            <table className="w-full text-left border-collapse table-fixed text-sm" aria-label={`Songs in ${playlist.title}`}>
+              <thead className="sticky top-0 bg-[#141418] z-10">
+                <tr className="border-b border-white/[0.08] text-xs font-medium text-zinc-400">
+                  <th scope="col" className="w-12 px-3 py-2 text-center">#</th>
+                  <th scope="col" className="px-3 py-2">Title</th>
+                  <th scope="col" className="w-36 px-3 py-2 hidden sm:table-cell">Artist</th>
+                  <th scope="col" className="w-20 px-3 py-2 text-right">Time</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/[0.03]">
+              <tbody>
                 {tracks.map((track, i) => {
                   const isCurrent = currentTrack?.id === track.id;
                   return (
                     <tr
                       key={`${track.id}-${i}`}
-                      onClick={() => handlePlayTrack(track)}
                       className={cn(
-                        'group hover:bg-white/[0.05] transition-colors cursor-pointer select-none',
-                        isCurrent ? 'bg-white/[0.08] text-white font-semibold' : 'text-zinc-300'
+                        'relative border-b border-white/[0.04] hover:bg-white/[0.05] focus-within:bg-white/[0.05] transition-colors',
+                        isCurrent && 'bg-white/[0.06]'
                       )}
                     >
-                      <td className="w-12 px-3 py-2.5 text-center font-mono text-xs text-zinc-500 group-hover:text-zinc-300">
+                      <td className="w-12 px-3 py-2 text-center font-mono text-[13px] text-zinc-400 tabular-nums">
                         {i + 1}
                       </td>
-                      <td className="px-3 py-2.5 min-w-0">
-                        <div className="truncate font-medium text-white group-hover:text-white">
-                          {track.title}
-                        </div>
-                        <div className="text-xs text-zinc-400 truncate sm:hidden mt-0.5">
-                          {track.artist}
-                        </div>
+                      <td className="px-3 py-2 min-w-0">
+                        <button
+                          type="button"
+                          onClick={() => handlePlayTrack(track)}
+                          aria-label={`Play ${track.title} by ${track.artist}`}
+                          className="block w-full text-left cursor-pointer after:content-[''] after:absolute after:inset-0"
+                        >
+                          <span className={cn('block truncate font-medium', isCurrent ? 'text-[var(--track-accent,#e9b44c)]' : 'text-zinc-100')}>
+                            {track.title}
+                          </span>
+                          <span className="block text-[13px] text-zinc-400 truncate sm:hidden">{track.artist}</span>
+                        </button>
                       </td>
-                      <td className="w-36 px-3 py-2.5 hidden sm:table-cell text-xs text-zinc-400 truncate">
+                      <td className="w-36 px-3 py-2 hidden sm:table-cell text-[13px] text-zinc-400 truncate">
                         {track.artist}
                       </td>
-                      <td className="w-20 px-3 py-2.5 text-right font-mono text-xs text-zinc-400">
+                      <td className="w-20 px-3 py-2 text-right font-mono text-[13px] text-zinc-400 tabular-nums">
                         {formatTime(track.duration || 0)}
                       </td>
                     </tr>

@@ -22,6 +22,7 @@ import { TrackArtwork } from '@/components/ui/TrackArtwork';
 import { CommandPaletteSkeletonItem } from '@/components/ui/Skeleton';
 import { debounce, formatTime, uuid, cn } from '@/lib/utils';
 import { exportFullLibrary } from '@/lib/backup';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { useRemoteHostStore } from '@/store/useRemoteHostStore';
 import type { Track, AppAction, Playlist } from '@/types';
 
@@ -108,6 +109,9 @@ export function CommandPalette() {
 
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useFocusTrap(panelRef, { active: commandPaletteOpen, initialFocus: inputRef, onEscape: closeCommandPalette });
 
   const triggerFeedback = useCallback((message: string) => {
     if (bannerTimerRef.current) clearTimeout(bannerTimerRef.current);
@@ -534,8 +538,6 @@ export function CommandPalette() {
         play(current.track);
         toggleCommandPalette();
       }
-    } else if (e.key === 'Escape') {
-      toggleCommandPalette();
     }
   };
 
@@ -554,117 +556,119 @@ export function CommandPalette() {
 
   return (
     <>
-      <div className="fixed inset-0 z-[200] flex items-start justify-center pt-16 px-4" role="presentation">
+      <div className="fixed inset-0 z-[200] flex items-start justify-center pt-[10vh] px-4" role="presentation">
         {/* Backdrop */}
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-xl" onClick={toggleCommandPalette} aria-hidden="true" />
+        <div className="fixed inset-0 bg-black/70" onClick={closeCommandPalette} aria-hidden="true" />
 
-        {/* Modal Container */}
+        {/* Panel */}
         <div
-          className="relative w-full max-w-2xl rounded-3xl border border-white/[0.1] bg-[#09090d]/95 shadow-[0_25px_70px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col backdrop-blur-2xl text-white select-none"
-          role="combobox"
-          aria-expanded="true"
-          aria-haspopup="listbox"
-          aria-label="Command palette"
+          ref={panelRef}
+          className="relative w-full max-w-2xl rounded-[14px] border border-white/[0.08] bg-[#141418] shadow-[0_24px_64px_rgba(0,0,0,0.6)] overflow-hidden flex flex-col text-white select-none"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Search and commands"
         >
           {/* Input Header */}
-          <div className="flex items-center gap-3 px-5 py-4 border-b border-white/[0.06] bg-[#0d0d12]/80">
+          <div className="flex items-center gap-3 px-5 min-h-[56px] border-b border-white/[0.08]">
             {isLoading || isSmartProcessing ? (
-              <Loader2 size={18} className="text-zinc-400 animate-spin shrink-0" />
+              <Loader2 size={18} className="text-zinc-400 animate-spin shrink-0" aria-hidden="true" />
             ) : (
-              <Search size={18} className="text-zinc-400 shrink-0" />
+              <Search size={18} className="text-zinc-400 shrink-0" aria-hidden="true" />
             )}
             <input
               ref={inputRef}
               type="text"
+              role="combobox"
+              aria-expanded="true"
+              aria-controls="cmd-listbox"
               value={query}
               onChange={(e) => {
                 setQuery(e.target.value);
                 setActiveIndex(0);
               }}
               onKeyDown={handleKeyDown}
-              placeholder="Search tracks, library, actions, or paste YouTube/Spotify links…"
-              aria-label="Search query input"
+              placeholder="Search songs, commands, or paste a link"
+              aria-label="Search"
               aria-autocomplete="list"
               aria-activedescendant={activeItemId}
-              className="flex-1 bg-transparent text-white placeholder-zinc-500 text-sm outline-none focus:outline-none focus:ring-0 border-0"
+              className="flex-1 min-w-0 bg-transparent text-white placeholder-zinc-500 text-[15px] outline-none focus:outline-none focus:ring-0 border-0"
             />
-            <kbd className="px-2 py-0.5 text-xs rounded-lg bg-white/[0.06] border border-white/[0.08] text-zinc-400 font-mono shrink-0">
-              ESC
+            <kbd className="px-2 py-0.5 text-xs rounded-md bg-[#1d1d23] border border-white/[0.14] text-zinc-300 font-mono shrink-0">
+              Esc
             </kbd>
           </div>
 
-          {/* Non-intrusive in-palette action banner */}
-          <AnimatePresence>
-            {inlineBanner && (
-              <motion.div
-                key={inlineBanner.id}
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.15 }}
-                className="px-5 py-2 bg-emerald-500/10 border-b border-emerald-500/20 flex items-center justify-between text-emerald-300 text-xs font-medium"
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <Check size={13} className="text-emerald-400 shrink-0" />
+          {/* In-palette confirmation */}
+          <div role="status" aria-live="polite">
+            <AnimatePresence>
+              {inlineBanner && (
+                <motion.div
+                  key={inlineBanner.id}
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="px-5 py-2 bg-white/[0.04] border-b border-white/[0.08] flex items-center gap-2 text-zinc-100 text-[13px]"
+                >
+                  <Check size={14} className="text-emerald-400 shrink-0" aria-hidden="true" />
                   <span className="truncate">{inlineBanner.text}</span>
-                </div>
-                <span className="text-xs text-emerald-400 font-mono tracking-wider shrink-0 ml-2">Done</span>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
-          {/* Scope Filters (Apple Segmented Glass Pills) */}
+          {/* Scope Filters */}
           {!smartUrl && (
-            <div className="flex items-center px-4 py-2 border-b border-white/[0.06] bg-[#0c0c10] text-xs" role="tablist">
-              <div className="flex items-center gap-1 p-0.5 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-                {[
-                  { key: 'all', label: 'All Results' },
-                  { key: 'youtube', label: 'YouTube' },
-                  { key: 'local', label: 'Library' },
-                  { key: 'actions', label: 'Commands' },
-                ].map(({ key, label }) => (
-                  <button
-                    key={key}
-                    onClick={() => {
-                      setScope(key as typeof scope);
-                      setActiveIndex(0);
-                    }}
-                    role="tab"
-                    aria-selected={scope === key}
-                    className={cn(
-                      'px-3 py-1 rounded-lg text-xs transition-all cursor-pointer select-none font-sans',
-                      scope === key
-                        ? 'bg-white/[0.14] text-white font-semibold shadow-sm'
-                        : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]'
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
+            <div className="flex items-center gap-1 px-3 py-2 border-b border-white/[0.08] overflow-x-auto" role="tablist" aria-label="Result type">
+              {[
+                { key: 'all', label: 'All' },
+                { key: 'youtube', label: 'YouTube' },
+                { key: 'local', label: 'Library' },
+                { key: 'actions', label: 'Commands' },
+              ].map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => {
+                    setScope(key as typeof scope);
+                    setActiveIndex(0);
+                  }}
+                  role="tab"
+                  aria-selected={scope === key}
+                  tabIndex={scope === key ? 0 : -1}
+                  className={cn(
+                    'px-3 min-h-[32px] rounded-lg text-[13px] transition-colors cursor-pointer select-none shrink-0',
+                    scope === key
+                      ? 'bg-white/[0.12] text-white font-semibold'
+                      : 'text-zinc-400 hover:text-white hover:bg-white/[0.06]'
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
           )}
 
           {/* Results List */}
           <div
             ref={listRef}
+            id="cmd-listbox"
             role="listbox"
-            aria-label="Command and search results"
-            className="max-h-[420px] overflow-y-auto py-2 divide-y divide-white/[0.04]"
+            aria-label="Results"
+            className="max-h-[min(420px,55dvh)] overflow-y-auto py-1"
           >
             {isLoading && items.length === 0 ? (
-              <div className="py-2 px-2 space-y-1">
-                <div className="px-2.5 py-1 text-xs font-semibold text-zinc-500 uppercase tracking-wider font-sans flex items-center gap-1.5">
-                  <Loader2 size={11} className="animate-spin text-zinc-400" />
-                  <span>Searching YouTube catalog…</span>
+              <div className="py-2 px-2 space-y-1" role="status">
+                <div className="px-2.5 py-1 text-[13px] text-zinc-400 flex items-center gap-1.5">
+                  <Loader2 size={12} className="animate-spin" aria-hidden="true" />
+                  <span>Searching…</span>
                 </div>
                 {Array.from({ length: 5 }).map((_, i) => (
                   <CommandPaletteSkeletonItem key={`cmd-skel-${i}`} />
                 ))}
               </div>
             ) : items.length === 0 ? (
-              <div className="py-14 text-center text-zinc-500 text-xs">
-                {query ? 'No results found' : 'Type to search tracks or commands'}
+              <div className="py-12 text-center text-zinc-400 text-sm">
+                {query ? 'No results' : 'Type to search songs or commands'}
               </div>
             ) : (
               (['Smart Action', 'Actions', 'Recently Played', 'Library', 'YouTube Search'] as const).map(
@@ -673,11 +677,9 @@ export function CommandPalette() {
                   if (sectionItems.length === 0) return null;
 
                   return (
-                    <div key={sectionName} className="py-1.5 px-2">
-                      <div className="px-2.5 py-1 text-xs font-semibold text-zinc-500 uppercase tracking-wider font-sans">
-                        {sectionName}
-                      </div>
-                      <div className="space-y-1 mt-1">
+                    <div key={sectionName} role="group" aria-label={sectionName} className="py-1 px-2">
+                      <div className="px-2.5 py-1 text-[13px] font-medium text-zinc-400">{sectionName}</div>
+                      <div className="mt-0.5">
                         {sectionItems.map((item) => {
                           const itemGlobalIndex = items.indexOf(item);
                           const isSelected = itemGlobalIndex === activeIndex;
@@ -695,36 +697,29 @@ export function CommandPalette() {
                                 aria-selected={isSelected}
                                 disabled={isSmartProcessing}
                                 className={cn(
-                                  'w-full flex items-center justify-between p-3 rounded-2xl text-left transition-all border cursor-pointer active:scale-98',
-                                  isSelected
-                                    ? 'bg-white/[0.1] border-white/30 text-white shadow-lg'
-                                    : 'bg-white/[0.03] border-white/[0.08] text-zinc-200 hover:bg-white/[0.06]'
+                                  'w-full flex items-center justify-between gap-3 px-3 py-2 min-h-[52px] rounded-lg text-left transition-colors cursor-pointer',
+                                  isSelected ? 'bg-white/[0.1] text-white' : 'text-zinc-200 hover:bg-white/[0.05]'
                                 )}
                               >
                                 <div className="flex items-center gap-3 min-w-0">
-                                  <div className="w-10 h-10 rounded-xl bg-white/[0.06] border border-white/[0.1] flex items-center justify-center shrink-0 text-white">
+                                  <div className="w-10 h-10 rounded-md bg-white/[0.08] flex items-center justify-center shrink-0 text-white">
                                     {isSmartProcessing ? (
-                                      <Loader2 size={18} className="animate-spin" />
-                                    ) : item.smartData.iconType === 'spotify' ? (
-                                      <Radio size={18} className="text-emerald-400" />
+                                      <Loader2 size={18} className="animate-spin" aria-hidden="true" />
                                     ) : item.smartData.iconType === 'playlist' ? (
-                                      <ListPlus size={18} className="text-white" />
+                                      <ListPlus size={18} aria-hidden="true" />
+                                    ) : item.smartData.iconType === 'spotify' ? (
+                                      <Radio size={18} aria-hidden="true" />
                                     ) : (
-                                      <Play size={18} className="text-white fill-white" />
+                                      <Play size={18} className="fill-white" aria-hidden="true" />
                                     )}
                                   </div>
                                   <div className="min-w-0 flex-1">
-                                    <p className="text-xs font-semibold text-white truncate flex items-center gap-1.5">
-                                      <span>{item.smartData.title}</span>
-                                      <Radio size={11} className="text-amber-400" />
-                                    </p>
-                                    <p className="text-xs text-zinc-400 truncate mt-0.5">
-                                      {item.smartData.subtitle}
-                                    </p>
+                                    <p className="text-sm font-medium text-white truncate">{item.smartData.title}</p>
+                                    <p className="text-[13px] text-zinc-400 truncate">{item.smartData.subtitle}</p>
                                   </div>
                                 </div>
-                                <kbd className="px-2 py-1 text-xs rounded-lg bg-white text-black font-semibold shadow-sm shrink-0 ml-3">
-                                  ENTER ↵
+                                <kbd className="px-2 py-1 text-xs rounded-md bg-[#f4f4f6] text-[#0b0b0e] font-semibold shrink-0">
+                                  Enter
                                 </kbd>
                               </button>
                             );
@@ -746,18 +741,16 @@ export function CommandPalette() {
                                 role="option"
                                 aria-selected={isSelected}
                                 className={cn(
-                                  'w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left text-xs transition-all cursor-pointer active:scale-98',
-                                  isSelected
-                                    ? 'bg-white/[0.08] text-white border border-white/[0.15] shadow-sm'
-                                    : 'text-zinc-300 hover:bg-white/[0.04] border border-transparent'
+                                  'w-full flex items-center justify-between gap-3 px-3 min-h-[40px] rounded-lg text-left text-sm transition-colors cursor-pointer',
+                                  isSelected ? 'bg-white/[0.1] text-white' : 'text-zinc-300 hover:bg-white/[0.05]'
                                 )}
                               >
-                                <div className="flex items-center gap-2.5">
-                                  <Zap size={14} className={isSelected ? 'text-white' : 'text-zinc-500'} />
-                                  <span className="font-medium">{item.action.label}</span>
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <Zap size={14} className={isSelected ? 'text-white' : 'text-zinc-400'} aria-hidden="true" />
+                                  <span className="font-medium truncate">{item.action.label}</span>
                                 </div>
                                 {item.action.shortcut && (
-                                  <kbd className="px-1.5 py-0.5 text-xs rounded-md bg-white/[0.06] border border-white/[0.08] text-zinc-300 font-mono">
+                                  <kbd className="px-1.5 py-0.5 text-xs rounded-md bg-[#1d1d23] border border-white/[0.14] text-zinc-300 font-mono shrink-0">
                                     {item.action.shortcut}
                                   </kbd>
                                 )}
@@ -770,6 +763,8 @@ export function CommandPalette() {
                             const t = item.track;
                             const isNextDone = buttonFeedback[t.id] === 'next';
                             const isQueueDone = buttonFeedback[t.id] === 'queue';
+                            const rowBtn =
+                              'flex items-center justify-center gap-1.5 px-2.5 min-h-[36px] rounded-lg text-[13px] font-medium transition-colors cursor-pointer';
 
                             return (
                               <div
@@ -779,13 +774,10 @@ export function CommandPalette() {
                                 role="option"
                                 aria-selected={isSelected}
                                 className={cn(
-                                  'w-full flex items-center justify-between px-3 py-2 rounded-xl transition-all group',
-                                  isSelected
-                                    ? 'bg-white/[0.08] text-white border border-white/[0.12]'
-                                    : 'text-zinc-300 hover:bg-white/[0.03] border border-transparent'
+                                  'w-full flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg transition-colors',
+                                  isSelected ? 'bg-white/[0.1] text-white' : 'text-zinc-300 hover:bg-white/[0.05]'
                                 )}
                               >
-                                {/* Left track preview */}
                                 <div
                                   onClick={() => {
                                     play(t);
@@ -793,21 +785,19 @@ export function CommandPalette() {
                                   }}
                                   className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
                                 >
-                                  <TrackArtwork track={t} size="sm" rounded="lg" />
+                                  <TrackArtwork track={t} size="md" rounded="md" />
 
                                   <div className="min-w-0 flex-1">
-                                    <p className="text-xs font-medium truncate">{t.title}</p>
-                                    <p className="text-xs text-zinc-400 truncate">{t.artist}</p>
+                                    <p className="text-sm font-medium truncate">{t.title}</p>
+                                    <p className="text-[13px] text-zinc-400 truncate">{t.artist}</p>
                                   </div>
                                 </div>
 
-                                {/* Right Actions: Duration + Play Now + Add to Queue + Add to Playlist */}
-                                <div className="flex items-center gap-1.5 shrink-0 ml-3">
-                                  <span className="font-mono text-xs text-zinc-500 mr-1 hidden sm:inline">
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <span className="font-mono text-[13px] text-zinc-400 mr-1 hidden sm:inline tabular-nums">
                                     {formatTime(t.duration)}
                                   </span>
 
-                                  {/* 1. Play Now */}
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -815,64 +805,48 @@ export function CommandPalette() {
                                       toggleCommandPalette();
                                     }}
                                     aria-label={`Play ${t.title} now`}
-                                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white text-black text-xs font-semibold hover:bg-zinc-200 transition-all shadow-sm cursor-pointer active:scale-95"
-                                    title="Play Now"
+                                    className={cn(rowBtn, 'bg-[#f4f4f6] text-[#0b0b0e] font-semibold hover:bg-white')}
                                   >
-                                    <Play size={11} fill="currentColor" />
+                                    <Play size={12} fill="currentColor" aria-hidden="true" />
                                     <span>Play</span>
                                   </button>
 
-                                  {/* 2. Play Next */}
                                   <button
                                     onClick={(e) => handlePlayNextTrack(t, e)}
                                     aria-label={`Play ${t.title} next`}
-                                    className={cn(
-                                      'flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-all border cursor-pointer active:scale-95',
-                                      isNextDone
-                                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.2)]'
-                                        : 'bg-white/[0.04] hover:bg-white/[0.08] text-zinc-200 border-white/[0.08]'
-                                    )}
-                                    title="Play Next"
+                                    className={cn(rowBtn, 'text-zinc-200 hover:bg-white/[0.1]')}
                                   >
                                     {isNextDone ? (
-                                      <Check size={12} className="text-emerald-400" />
+                                      <Check size={14} className="text-emerald-400" aria-hidden="true" />
                                     ) : (
-                                      <ListStart size={12} />
+                                      <ListStart size={14} aria-hidden="true" />
                                     )}
-                                    <span>{isNextDone ? 'Set Next!' : 'Next'}</span>
+                                    <span className="hidden sm:inline">{isNextDone ? 'Next Set' : 'Next'}</span>
                                   </button>
 
-                                  {/* 3. Add to Queue */}
                                   <button
                                     onClick={(e) => handleAddToQueueTrack(t, e)}
-                                    aria-label={`Add ${t.title} to Queue`}
-                                    className={cn(
-                                      'flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-all border cursor-pointer active:scale-95',
-                                      isQueueDone
-                                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.2)]'
-                                        : 'bg-white/[0.04] hover:bg-white/[0.08] text-zinc-200 border-white/[0.08]'
-                                    )}
-                                    title="Add to end of Queue"
+                                    aria-label={`Add ${t.title} to queue`}
+                                    className={cn(rowBtn, 'text-zinc-200 hover:bg-white/[0.1]')}
                                   >
                                     {isQueueDone ? (
-                                      <Check size={12} className="text-emerald-400" />
+                                      <Check size={14} className="text-emerald-400" aria-hidden="true" />
                                     ) : (
-                                      <Plus size={12} />
+                                      <Plus size={14} aria-hidden="true" />
                                     )}
-                                    <span>{isQueueDone ? 'Queued!' : 'Queue'}</span>
+                                    <span className="hidden sm:inline">{isQueueDone ? 'Queued' : 'Queue'}</span>
                                   </button>
 
-                                  {/* 4. Add to Playlist */}
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setPlaylistTrack(t);
                                     }}
-                                    aria-label={`Add ${t.title} to Playlist`}
-                                    className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 hover:text-white transition-all border border-white/[0.08] cursor-pointer active:scale-95"
+                                    aria-label={`Add ${t.title} to playlist`}
                                     title="Add to Playlist"
+                                    className={cn(rowBtn, 'w-9 !px-0 text-zinc-200 hover:bg-white/[0.1]')}
                                   >
-                                    <ListPlus size={13} />
+                                    <ListPlus size={16} aria-hidden="true" />
                                   </button>
                                 </div>
                               </div>
@@ -890,19 +864,19 @@ export function CommandPalette() {
           </div>
 
           {/* Footer Hints */}
-          <div className="flex items-center justify-between px-5 py-3 border-t border-white/[0.06] bg-[#060609]/90 text-xs text-zinc-500">
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-5 py-2.5 border-t border-white/[0.08] text-xs text-zinc-400">
             <div className="flex items-center gap-3">
               <span>
-                <kbd className="font-mono text-zinc-400">↑↓</kbd> Navigate
+                <kbd className="font-mono text-zinc-300">↑↓</kbd> Navigate
               </span>
               <span>
-                <kbd className="font-mono text-zinc-400">↵</kbd> Play / Open
+                <kbd className="font-mono text-zinc-300">↵</kbd> Play
               </span>
               <span>
-                <kbd className="font-mono text-zinc-400">ESC</kbd> Close
+                <kbd className="font-mono text-zinc-300">Esc</kbd> Close
               </span>
             </div>
-            <span className="text-xs text-zinc-500">Paste YouTube or Spotify link to play</span>
+            <span className="hidden sm:inline">Paste a YouTube or Spotify link to play it</span>
           </div>
         </div>
       </div>
@@ -924,7 +898,6 @@ export function CommandPalette() {
           clearQueue();
           setShowClearConfirm(false);
           closeCommandPalette();
-          showToast('Queue cleared');
         }}
         title="Clear Queue"
         description="This will remove all songs currently queued in the active session."

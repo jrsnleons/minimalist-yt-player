@@ -26,46 +26,39 @@ export function KeyboardShortcutsModal() {
       className="max-w-xl"
     >
       <div className="space-y-5">
-        <p className="text-sm text-zinc-400 leading-relaxed">
-          Keys for playback, views, and navigation.
-        </p>
+        <p className="text-sm text-zinc-400">Keys for playback, views, and navigation.</p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
           {groups.map((group) => (
-            <div
-              key={group.category}
-              className="p-3.5 rounded-2xl border border-white/[0.07] bg-[#0c0c10] space-y-2.5 shadow-inner"
-            >
-              <h3 className="text-sm font-semibold text-zinc-200 tracking-tight font-sans">
+            <section key={group.category} aria-label={group.category}>
+              <h3 className="text-[13px] font-semibold text-zinc-300 pb-2 mb-1 border-b border-white/[0.08]">
                 {group.category}
               </h3>
 
-              <div className="space-y-2">
+              <ul>
                 {group.items.map((item, idx) => (
-                  <div
+                  <li
                     key={`${group.category}-${idx}`}
-                    className="flex items-center justify-between text-sm py-0.5"
+                    className="flex items-center justify-between gap-3 text-sm min-h-[36px]"
                   >
-                    <span className="text-zinc-400 text-sm truncate mr-2">
-                      {item.label}
-                    </span>
+                    <span className="text-zinc-200 truncate">{item.label}</span>
 
-                    <div className="flex items-center gap-1 shrink-0">
+                    <span className="flex items-center gap-1 shrink-0">
                       {item.key.map((k, kIdx) => (
                         <span key={kIdx} className="flex items-center gap-1">
-                          <kbd className="px-1.5 py-0.5 text-xs font-mono font-medium rounded-md bg-white/[0.06] border border-white/[0.1] text-zinc-200 shadow-sm">
+                          <kbd className="px-1.5 py-0.5 text-xs font-mono rounded-md bg-[#1d1d23] border border-white/[0.14] text-zinc-100">
                             {k}
                           </kbd>
                           {kIdx < item.key.length - 1 && (
-                            <span className="text-xs text-zinc-500 font-mono">/</span>
+                            <span className="text-xs text-zinc-400 font-mono" aria-hidden="true">/</span>
                           )}
                         </span>
                       ))}
-                    </div>
-                  </div>
+                    </span>
+                  </li>
                 ))}
-              </div>
-            </div>
+              </ul>
+            </section>
           ))}
         </div>
       </div>
