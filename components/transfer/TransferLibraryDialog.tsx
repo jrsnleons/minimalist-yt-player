@@ -308,6 +308,10 @@ export function TransferLibraryDialog() {
   const openIncoming = useTransferStore((s) => s.openIncoming);
   const [available, setAvailable] = useState<boolean | null>(null);
   const [manual, setManual] = useState<{ code: string; token: string } | null>(null);
+  // Modal only calls showModal() when isOpen changes after it mounts. The palette can remount
+  // this dialog while the store is already open, so open it one render later.
+  const [ready, setReady] = useState(false);
+  useEffect(() => setReady(isOpen), [isOpen]);
 
   // Opened from a link: /?transfer=CODE#t=SECRET
   useEffect(() => {
@@ -333,7 +337,7 @@ export function TransferLibraryDialog() {
   const session = incoming ?? manual;
 
   return (
-    <Modal isOpen={isOpen} onClose={close} title="Transfer Library" className="max-w-sm">
+    <Modal isOpen={isOpen && ready} onClose={close} title="Transfer Library" className="max-w-sm">
       {available === null ? (
         <div className="flex justify-center py-6">
           <Loader2 size={20} className="animate-spin text-zinc-400" aria-label="Checking" />
