@@ -1,0 +1,50 @@
+[
+  {
+    "id": "e2eTrk00001",
+    "title": "Midnight Drive",
+    "artist": "Neon Harbor",
+    "duration": 215,
+    "thumbnailUrl": "https://i.ytimg.com/vi/e2eTrk00001/hqdefault.jpg",
+    "addedAt": 1700000000001
+  },
+  {
+    "id": "e2eTrk00002",
+    "title": "Paper Lanterns",
+    "artist": "Neon Harbor",
+    "duration": 187,
+    "thumbnailUrl": "https://i.ytimg.com/vi/e2eTrk00002/hqdefault.jpg",
+    "addedAt": 1700000000002
+  },
+  {
+    "id": "e2eTrk00003",
+    "title": "Slow Orbit",
+    "artist": "Glass Valley",
+    "duration": 243,
+    "thumbnailUrl": "https://i.ytimg.com/vi/e2eTrk00003/hqdefault.jpg",
+    "addedAt": 1700000000003
+  },
+  {
+    "id": "e2eTrk00004",
+    "title": "Salt and Static",
+    "artist": "Glass Valley",
+    "duration": 201,
+    "thumbnailUrl": "https://i.ytimg.com/vi/e2eTrk00004/hqdefault.jpg",
+    "addedAt": 1700000000004
+  },
+  {
+    "id": "e2eTrk00005",
+    "title": "Winter Signal",
+    "artist": "Ora Lind",
+    "duration": 176,
+    "thumbnailUrl": "https://i.ytimg.com/vi/e2eTrk00005/hqdefault.jpg",
+    "addedAt": 1700000000005
+  },
+  {
+    "id": "e2eTrk00006",
+    "title": "Harbor Lights",
+    "artist": "Ora Lind",
+    "duration": 229,
+    "thumbnailUrl": "https://i.ytimg.com/vi/e2eTrk00006/hqdefault.jpg",
+    "addedAt": 1700000000006
+  }
+]
