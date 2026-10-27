@@ -108,6 +108,25 @@ For complete deployment details (Docker Compose, Netlify, Railway, Render, Fly.i
 
 ---
 
+## Phone Remote
+
+A phone can control Onyx while it plays on a laptop or TV.
+
+1. On the playing device, open Connect Phone from the sidebar or the command palette.
+2. Scan the QR code with the phone camera, or use Copy Link and open it on the phone. The link carries a secret key in the URL fragment, so it is not sent to the server in page requests.
+3. The phone shows Connected. Play, pause, seek, volume, queue editing, search and playlists all run on the playing device.
+4. Choose End Session in the same dialog to stop remote access. Reloading the playing device keeps the session for that tab.
+
+Add the remote page to the phone home screen to reopen it later. The pairing key is stored on the phone for that code. Entering only the 6-character code works on a phone that already has the key; otherwise use the QR code or link.
+
+Sessions expire after 2 hours without a connected device. While Listen Together locks playback, remote playback commands are ignored; volume and like still work.
+
+**Limitation:** sessions live in server memory. On serverless hosts such as Vercel, the playing device and the phone may be routed to different instances and fail to see each other. This is the same limitation as Listen Together. Self-hosting on a single long-running Node process (`pnpm start` or Docker) avoids it.
+
+## Installable App
+
+Onyx ships a web manifest and a service worker (production builds only). It caches the app shell and static assets, and shows an offline page when the network is unavailable. API routes, event streams and media are never cached.
+
 ## 🔒 Privacy Guarantee
 
 - **No Remote User Database**: All listening history, playlists, and settings remain stored strictly in your browser's IndexedDB.
