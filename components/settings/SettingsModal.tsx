@@ -17,7 +17,6 @@ import {
   HardDrive,
   Radio,
   Trash2,
-  Sparkles,
   ShieldCheck,
   FileDown,
   Upload,
@@ -175,7 +174,7 @@ export function SettingsModal() {
 
           <div className="p-4 rounded-2xl border border-white/[0.08] bg-[#0c0c10] space-y-3 shadow-inner">
             <p className="text-xs text-zinc-400 leading-relaxed">
-              Your entire library lives locally in your browser. Export JSON backup files to safeguard playlists or move to other devices.
+              The library is stored in this browser. Export a JSON backup to keep playlists or move to another device.
             </p>
 
             <div className="flex items-center gap-2.5">
@@ -232,19 +231,19 @@ export function SettingsModal() {
                     <span className="block font-mono font-bold text-white">
                       {fileValidation.summary?.playlistCount}
                     </span>
-                    <span className="text-[11px] text-zinc-500 uppercase tracking-wider font-mono">Playlists</span>
+                    <span className="text-xs text-zinc-500 uppercase tracking-wider font-mono">Playlists</span>
                   </div>
                   <div className="p-2 rounded-xl bg-white/[0.03] border border-white/[0.06]">
                     <span className="block font-mono font-bold text-white">
                       {fileValidation.summary?.trackCount}
                     </span>
-                    <span className="text-[11px] text-zinc-500 uppercase tracking-wider font-mono">Tracks</span>
+                    <span className="text-xs text-zinc-500 uppercase tracking-wider font-mono">Tracks</span>
                   </div>
                   <div className="p-2 rounded-xl bg-white/[0.03] border border-white/[0.06]">
                     <span className="block font-mono font-bold text-white">
                       {fileValidation.summary?.historyCount}
                     </span>
-                    <span className="text-[11px] text-zinc-500 uppercase tracking-wider font-mono">History</span>
+                    <span className="text-xs text-zinc-500 uppercase tracking-wider font-mono">History</span>
                   </div>
                 </div>
 
@@ -265,7 +264,7 @@ export function SettingsModal() {
                         <Layers size={12} />
                         <span>Merge (Safe)</span>
                       </div>
-                      <p className="text-[11px] text-zinc-500 mt-0.5">Keep existing playlists</p>
+                      <p className="text-xs text-zinc-500 mt-0.5">Keep existing playlists</p>
                     </button>
 
                     <button
@@ -282,7 +281,7 @@ export function SettingsModal() {
                         <RefreshCw size={12} />
                         <span>Full Replace</span>
                       </div>
-                      <p className="text-[11px] text-zinc-500 mt-0.5">Wipe and replace</p>
+                      <p className="text-xs text-zinc-500 mt-0.5">Wipe and replace</p>
                     </button>
                   </div>
                 </div>
@@ -311,7 +310,7 @@ export function SettingsModal() {
         {/* 2. Visual Effects */}
         <section className="space-y-3 pt-2 border-t border-white/[0.06]">
           <div className="flex items-center gap-2">
-            <Sparkles size={15} className="text-white" />
+            <Radio size={15} className="text-white" />
             <h3 className="text-xs font-semibold text-zinc-200 tracking-tight font-sans">
               Visual Effects
             </h3>
@@ -401,7 +400,7 @@ export function SettingsModal() {
                 Audio Crossfade
               </h3>
             </div>
-            <span className="text-[11px] font-mono text-zinc-400">
+            <span className="text-xs font-mono text-zinc-400">
               {crossfadeDuration > 0 ? `${crossfadeDuration}s fade` : 'Disabled'}
             </span>
           </div>
@@ -469,7 +468,7 @@ export function SettingsModal() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-semibold text-white">YouTube IFrame Engine</span>
-                  <span className="text-[11px] px-1.5 py-0.5 rounded-md bg-white/[0.1] text-white uppercase font-mono">
+                  <span className="text-xs px-1.5 py-0.5 rounded-md bg-white/[0.1] text-white uppercase font-mono">
                     Standard · Reliable
                   </span>
                 </div>
@@ -498,7 +497,7 @@ export function SettingsModal() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-semibold text-white">Direct Audio Stream</span>
-                  <span className="text-[11px] px-1.5 py-0.5 rounded-md bg-amber-500/20 border border-amber-500/30 text-amber-300 uppercase font-mono">
+                  <span className="text-xs px-1.5 py-0.5 rounded-md bg-amber-500/20 border border-amber-500/30 text-amber-300 uppercase font-mono">
                     Experimental
                   </span>
                 </div>
@@ -536,15 +535,15 @@ export function SettingsModal() {
           <div className="grid grid-cols-3 gap-2 text-center">
             <div className="p-3 rounded-2xl border border-white/[0.06] bg-[#0c0c10]">
               <span className="block text-base font-semibold text-white font-mono">{trackCount}</span>
-              <span className="text-[11px] text-zinc-500 uppercase tracking-wider font-mono">Saved Tracks</span>
+              <span className="text-xs text-zinc-500 uppercase tracking-wider font-mono">Saved Tracks</span>
             </div>
             <div className="p-3 rounded-2xl border border-white/[0.06] bg-[#0c0c10]">
               <span className="block text-base font-semibold text-white font-mono">{playlistCount}</span>
-              <span className="text-[11px] text-zinc-500 uppercase tracking-wider font-mono">Playlists</span>
+              <span className="text-xs text-zinc-500 uppercase tracking-wider font-mono">Playlists</span>
             </div>
             <div className="p-3 rounded-2xl border border-white/[0.06] bg-[#0c0c10]">
               <span className="block text-base font-semibold text-white font-mono">{historyCount}</span>
-              <span className="text-[11px] text-zinc-500 uppercase tracking-wider font-mono">Plays Logged</span>
+              <span className="text-xs text-zinc-500 uppercase tracking-wider font-mono">Plays Logged</span>
             </div>
           </div>
 

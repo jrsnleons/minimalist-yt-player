@@ -265,7 +265,7 @@ export function TrackArtwork({
         <div
           className={cn(
             'relative z-10 font-mono-time font-bold uppercase tracking-wider text-white/90 drop-shadow-md flex items-center justify-center',
-            isHero ? 'text-2xl md:text-3xl' : isSm ? 'text-[11px]' : 'text-xs'
+            isHero ? 'text-2xl md:text-3xl' : isSm ? 'text-xs' : 'text-xs'
           )}
         >
           {initials}

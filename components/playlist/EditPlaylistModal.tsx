@@ -87,7 +87,7 @@ export function EditPlaylistModal({ playlist, isOpen, onClose, onUpdated }: Edit
             maxLength={250}
             className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] focus:border-white/30 focus:ring-1 focus:ring-white/20 text-white text-xs placeholder-zinc-500 focus:outline-none resize-none transition-all"
           />
-          <div className="text-right text-[11px] font-mono text-zinc-400 mt-1">
+          <div className="text-right text-xs font-mono text-zinc-400 mt-1">
             {description.length}/250
           </div>
         </div>

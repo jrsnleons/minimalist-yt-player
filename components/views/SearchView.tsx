@@ -15,12 +15,9 @@ import { uuid, cn } from '@/lib/utils';
 import {
   Search,
   Loader2,
-  Music,
   Download,
   Play,
   X,
-  Disc3,
-  Video,
 } from 'lucide-react';
 import type { Track, SearchPlaylist, Playlist } from '@/types';
 
@@ -46,67 +43,51 @@ function SearchPlaylistCard({
   onViewSongs: (pl: SearchPlaylist) => void;
 }) {
   return (
-    <div
-      onClick={() => onViewSongs(playlist)}
-      className="group flex items-center justify-between p-3 rounded-2xl border border-white/[0.07] bg-[#0c0c11] hover:bg-white/[0.04] hover:border-white/[0.14] transition-all duration-200 cursor-pointer overflow-hidden select-none"
-    >
-      <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
-        <div className="shrink-0">
-          <TrackArtwork
-            src={playlist.thumbnailUrl}
-            title={playlist.title}
-            artist={playlist.author}
-            id={playlist.id}
-            size="md"
-            rounded="lg"
-          />
-        </div>
-        <div className="min-w-0 flex-1">
-          <h5 className="text-xs font-semibold text-zinc-200 group-hover:text-white truncate leading-snug">
-            {playlist.title}
-          </h5>
-          <p className="text-[11px] text-zinc-400 truncate mt-0.5 font-sans">
-            {playlist.author || 'YouTube'}
-          </p>
-        </div>
-      </div>
-
-      {/* Quick Playlist Actions */}
-      <div
-        className="flex items-center gap-1 shrink-0"
-        onClick={(e) => e.stopPropagation()}
+    <div className="group relative flex items-center justify-between gap-2 p-3 rounded-lg bg-white/[0.04] hover:bg-white/[0.07] focus-within:bg-white/[0.07] transition-colors">
+      <button
+        type="button"
+        onClick={() => onViewSongs(playlist)}
+        aria-label={`View songs in ${playlist.title}`}
+        className="flex items-center gap-3 min-w-0 flex-1 text-left cursor-pointer after:content-[''] after:absolute after:inset-0 after:rounded-lg"
       >
-        <button
-          onClick={() => onViewSongs(playlist)}
-          className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer min-h-[36px] flex items-center"
-          title="View songs"
-          aria-label={`View songs in ${playlist.title}`}
-        >
-          Songs
-        </button>
+        <TrackArtwork
+          src={playlist.thumbnailUrl}
+          title={playlist.title}
+          artist={playlist.author}
+          id={playlist.id}
+          size="md"
+          rounded="md"
+        />
+        <span className="min-w-0 flex-1 flex flex-col">
+          <span className="truncate text-sm font-medium text-zinc-100">{playlist.title}</span>
+          <span className="truncate text-[13px] text-zinc-400">{playlist.author || 'YouTube'}</span>
+        </span>
+      </button>
 
+      {/* Secondary actions sit above the stretched button */}
+      <div className="relative z-10 flex items-center gap-1 shrink-0">
         <button
           onClick={() => onPlay(playlist)}
           disabled={isLoading}
-          className="p-2 rounded-xl bg-white text-black hover:bg-zinc-200 transition-all shadow-sm cursor-pointer disabled:opacity-50 min-h-[36px] min-w-[36px] flex items-center justify-center"
+          className="w-9 h-9 rounded-full bg-[#f4f4f6] text-[#0b0b0e] hover:bg-white transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center"
           title="Play playlist"
           aria-label={`Play playlist ${playlist.title}`}
         >
           {isLoading ? (
-            <Loader2 size={13} className="animate-spin" />
+            <Loader2 size={16} className="animate-spin" />
           ) : (
-            <Play size={13} fill="currentColor" />
+            <Play size={16} fill="currentColor" className="ml-0.5" />
           )}
         </button>
 
         <button
           onClick={() => onImport(playlist)}
           disabled={isLoading}
-          className="p-2 rounded-xl bg-white/[0.04] text-zinc-300 hover:text-white hover:bg-white/[0.08] border border-white/[0.08] transition-all cursor-pointer disabled:opacity-50 min-h-[36px] min-w-[36px] flex items-center justify-center"
+          className="w-9 h-9 rounded-full text-zinc-300 hover:text-white hover:bg-white/[0.1] transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center"
           title="Import to library"
           aria-label={`Import playlist ${playlist.title}`}
         >
-          <Download size={13} />
+          <Download size={16} />
         </button>
       </div>
     </div>
@@ -251,15 +232,15 @@ export function SearchView() {
   const isSearchActive = query.trim().length >= 2;
 
   return (
-    <div className="rounded-2xl border border-white/[0.08] bg-[#09090d] overflow-hidden shadow-sm h-full flex flex-col min-h-0">
+    <div className="h-full flex flex-col min-h-0">
       {/* Pinned Search Input Header */}
-      <div className="p-4 border-b border-white/[0.06] bg-[#0c0c10] shrink-0 space-y-3">
-        {/* Search Bar with Filter Pills */}
-        <div className="flex items-center gap-3">
+      <div className="pb-4 shrink-0 space-y-4">
+        <h1 className="text-[32px] leading-tight font-bold tracking-tight text-white">Search</h1>
+        <div className="flex flex-wrap items-center gap-3">
           {/* Single clean container with no inner outline boxes */}
-          <div className="relative flex-1 flex items-center rounded-2xl bg-white/[0.04] border border-white/[0.08] focus-within:border-white/25 focus-within:bg-white/[0.06] transition-all duration-200 group">
+          <div className="relative flex-1 min-w-[220px] flex items-center rounded-lg bg-white/[0.04] border border-white/[0.12] focus-within:border-white/40 focus-within:bg-white/[0.06] transition-colors group">
             <Search
-              size={15}
+              size={16}
               className="absolute left-3.5 text-zinc-400 group-focus-within:text-white transition-colors pointer-events-none shrink-0"
             />
             <input
@@ -273,13 +254,14 @@ export function SearchView() {
                   setQuery('');
                 }
               }}
-              placeholder="Search songs, artists, videos, or playlists…"
+              aria-label="Search"
+              placeholder="Songs, artists, videos, or playlists"
               autoFocus
               autoComplete="off"
               autoCorrect="off"
               spellCheck="false"
               enterKeyHint="search"
-              className="w-full bg-transparent border-0 outline-none focus:outline-none focus:ring-0 text-xs text-white placeholder-zinc-500 py-2.5 pl-9 pr-16"
+              className="w-full bg-transparent border-0 outline-none focus:outline-none focus:ring-0 text-sm text-white placeholder-zinc-400 py-3 pl-10 pr-16"
             />
             <div className="absolute right-2.5 flex items-center gap-1.5 shrink-0">
               {isLoading && (
@@ -292,14 +274,14 @@ export function SearchView() {
                     setQuery('');
                     inputRef.current?.focus();
                   }}
-                  className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer"
-                  aria-label="Clear search query"
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-zinc-300 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer"
+                  aria-label="Clear search"
                   title="Clear (ESC)"
                 >
                   <X size={13} />
                 </button>
               ) : (
-                <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[11px] font-mono text-zinc-500 bg-white/[0.04] border border-white/[0.08] rounded-md pointer-events-none">
+                <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-xs font-mono text-zinc-400 bg-white/[0.04] border border-white/[0.08] rounded-md pointer-events-none">
                   ESC
                 </kbd>
               )}
@@ -308,9 +290,9 @@ export function SearchView() {
 
           {/* Clean Segmented Filter Selector */}
           <div
-            className="flex items-center bg-white/[0.03] border border-white/[0.08] p-0.5 rounded-xl shrink-0"
-            role="tablist"
-            aria-label="Search filter category"
+            className="flex items-center bg-white/[0.04] p-0.5 rounded-lg shrink-0"
+            role="group"
+            aria-label="Filter results"
           >
             {(['all', 'song', 'video', 'playlist'] as const).map((filter) => {
               const count =
@@ -326,13 +308,12 @@ export function SearchView() {
                 <button
                   key={filter}
                   onClick={() => setSearchFilter(filter)}
-                  role="tab"
-                  aria-selected={searchFilter === filter}
+                  aria-pressed={searchFilter === filter}
                   className={cn(
-                    'flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-medium capitalize transition-all cursor-pointer min-h-[36px]',
+                    'flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-sm font-medium transition-colors cursor-pointer min-h-[40px]',
                     searchFilter === filter
-                      ? 'bg-white text-black shadow-sm font-semibold'
-                      : 'text-zinc-400 hover:text-zinc-200'
+                      ? 'bg-[#f4f4f6] text-[#0b0b0e] font-semibold'
+                      : 'text-zinc-300 hover:text-white'
                   )}
                 >
                   <span>
@@ -347,10 +328,10 @@ export function SearchView() {
                   {count !== null && count > 0 && (
                     <span
                       className={cn(
-                        'px-1.5 py-0.2 rounded text-[11px] font-mono font-medium',
+                        'px-1.5 rounded text-xs font-mono font-medium',
                         searchFilter === filter
                           ? 'bg-black/10 text-black'
-                          : 'bg-white/[0.06] text-zinc-400'
+                          : 'bg-white/[0.08] text-zinc-300'
                       )}
                     >
                       {count}
@@ -364,13 +345,13 @@ export function SearchView() {
       </div>
 
       {/* Scrollable Results / Skeletons / Empty State Area */}
-      <div className="overflow-y-auto flex-1 min-h-0">
+      <div className="overflow-y-auto flex-1 min-h-0 pb-8">
         {isLoading && isSearchActive && !hasResults ? (
           /* ─── SHIMMER SKELETON LOADING STATE ───────────────────────── */
-          <div className="p-3.5 space-y-4">
+          <div className="space-y-8">
             {(searchFilter === 'all' || searchFilter === 'playlist') && (
               <section className="space-y-2.5">
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
                   {Array.from({ length: 3 }).map((_, i) => (
                     <PlaylistCardSkeleton key={`skeleton-pl-${i}`} />
                   ))}
@@ -380,9 +361,9 @@ export function SearchView() {
 
             {(searchFilter === 'all' || searchFilter === 'song') && (
               <section className="space-y-2.5">
-                <div className="rounded-2xl border border-white/[0.06] bg-[#0c0c10] overflow-hidden">
-                  <table className="w-full text-left border-collapse table-fixed" role="grid">
-                    <tbody className="divide-y divide-white/[0.03]">
+                <div>
+                  <table className="w-full text-left border-collapse table-fixed">
+                    <tbody>
                       {Array.from({ length: 4 }).map((_, i) => (
                         <TrackRowSkeleton key={`skeleton-track-${i}`} index={i} />
                       ))}
@@ -394,44 +375,41 @@ export function SearchView() {
           </div>
         ) : !hasResults ? (
           /* ─── MINIMALIST EMPTY OR NO RESULTS STATE ───────────────────── */
-          <div className="py-20 px-4 text-center text-zinc-500 text-xs flex flex-col items-center justify-center my-auto">
-            <div className="w-12 h-12 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center text-zinc-500 mb-3">
-              <Search size={20} />
-            </div>
+          <div className="py-20 px-4 text-center flex flex-col items-center justify-center my-auto">
+            <Search size={28} className="text-zinc-500 mb-3" aria-hidden="true" />
             {query.trim() ? (
               <div className="max-w-sm mx-auto space-y-1">
-                <p className="font-semibold text-zinc-200 text-xs font-sans">
+                <p className="font-semibold text-zinc-200 text-sm">
                   No Results Found
                 </p>
-                <p className="text-zinc-400 text-[11px] leading-relaxed">
-                  No tracks or playlists found matching &quot;{query}&quot;.
+                <p className="text-zinc-400 text-sm leading-relaxed">
+                  Nothing matches &quot;{query}&quot;.
                 </p>
               </div>
             ) : (
               <div className="max-w-sm mx-auto space-y-1">
-                <p className="font-semibold text-zinc-200 text-xs font-sans">
+                <p className="font-semibold text-zinc-200 text-sm">
                   Search Music
                 </p>
-                <p className="text-zinc-400 text-[11px] leading-relaxed">
-                  Find official tracks, YouTube videos, and playlists.
+                <p className="text-zinc-400 text-sm leading-relaxed">
+                  Find songs, YouTube videos, and playlists.
                 </p>
               </div>
             )}
           </div>
         ) : (
           /* ─── POPULATED RESULTS ────────────────────────────────────── */
-          <div className="p-3.5 space-y-4">
+          <div className="space-y-8">
             {/* 1. Playlists Section (Shown in 'all' or 'playlist' mode) */}
             {(searchFilter === 'all' || searchFilter === 'playlist') && playlists.length > 0 && (
-              <section className="space-y-2">
-                <div className="flex items-center gap-2 px-1">
-                  <Music size={14} className="text-zinc-400" />
-                  <h4 className="text-xs font-semibold text-zinc-200 tracking-tight font-sans">
-                    Playlists ({playlists.length})
-                  </h4>
+              <section className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-semibold tracking-tight text-white">
+                    Playlists
+                  </h2>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
                   {playlists.map((pl) => (
                     <SearchPlaylistCard
                       key={pl.id}
@@ -448,26 +426,25 @@ export function SearchView() {
 
             {/* 2. Songs Section (Shown in 'all' or 'song' mode) */}
             {(searchFilter === 'all' || searchFilter === 'song') && tracks.length > 0 && (
-              <section className="space-y-2">
+              <section className="space-y-3">
                 {searchFilter === 'all' && (
-                  <div className="flex items-center gap-2 px-1 pt-1">
-                    <Disc3 size={14} className="text-zinc-400" />
-                    <h4 className="text-xs font-semibold text-zinc-200 tracking-tight font-sans">
-                      Songs ({tracks.length})
-                    </h4>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-semibold tracking-tight text-white">
+                      Songs
+                    </h2>
                   </div>
                 )}
 
-                <div className="rounded-2xl border border-white/[0.06] bg-[#0c0c10] overflow-hidden">
-                  <table className="w-full text-left border-collapse table-fixed" role="grid">
-                    <thead className="sticky top-0 z-10 bg-[#09090d]">
-                      <tr className="border-b border-white/[0.06] text-[11px] font-medium text-zinc-400">
-                        <th className="w-10 px-2 py-2 text-center">#</th>
-                        <th className="px-2 py-2">Track</th>
-                        <th className="w-28 px-2 py-2 text-right">Actions</th>
+                <div>
+                  <table className="w-full text-left border-collapse table-fixed">
+                    <thead className="sticky top-0 z-10 bg-[#0b0b0e]">
+                      <tr className="border-b border-white/[0.06] text-xs font-medium text-zinc-400">
+                        <th scope="col" className="w-14 px-2 py-2 text-center">#</th>
+                        <th scope="col" className="px-2 py-2">Title</th>
+                        <th scope="col" className="w-36 px-2 py-2 text-right">Duration</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/[0.03]">
+                    <tbody>
                       {tracks.map((track, i) => (
                         <TrackRow
                           key={`song-${track.id}`}
@@ -484,31 +461,30 @@ export function SearchView() {
 
             {/* 3. YouTube Videos Section (Shown in 'all' or 'video' mode) */}
             {(searchFilter === 'all' || searchFilter === 'video') && videos.length > 0 && (
-              <section className="space-y-2">
-                <div className="flex items-center justify-between px-1 pt-1">
+              <section className="space-y-3">
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Video size={14} className="text-zinc-400" />
-                    <h4 className="text-xs font-semibold text-zinc-200 tracking-tight font-sans">
-                      Videos ({videos.length})
-                    </h4>
+                    <h2 className="text-xl font-semibold tracking-tight text-white">
+                      Videos
+                    </h2>
                   </div>
                   {searchFilter === 'all' && (
-                    <span className="text-[11px] text-zinc-400 font-mono">
-                      Live sets, full albums & covers
+                    <span className="text-[13px] text-zinc-400">
+                      Live sets, full albums, and covers
                     </span>
                   )}
                 </div>
 
-                <div className="rounded-2xl border border-white/[0.06] bg-[#0c0c10] overflow-hidden">
-                  <table className="w-full text-left border-collapse table-fixed" role="grid">
-                    <thead className="sticky top-0 z-10 bg-[#09090d]">
-                      <tr className="border-b border-white/[0.06] text-[11px] font-medium text-zinc-400">
-                        <th className="w-10 px-2 py-2 text-center">#</th>
-                        <th className="px-2 py-2">Video / Track</th>
-                        <th className="w-28 px-2 py-2 text-right">Actions</th>
+                <div>
+                  <table className="w-full text-left border-collapse table-fixed">
+                    <thead className="sticky top-0 z-10 bg-[#0b0b0e]">
+                      <tr className="border-b border-white/[0.06] text-xs font-medium text-zinc-400">
+                        <th scope="col" className="w-14 px-2 py-2 text-center">#</th>
+                        <th scope="col" className="px-2 py-2">Title</th>
+                        <th scope="col" className="w-36 px-2 py-2 text-right">Duration</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/[0.03]">
+                    <tbody>
                       {videos.map((videoTrack, i) => (
                         <TrackRow
                           key={`video-${videoTrack.id}`}

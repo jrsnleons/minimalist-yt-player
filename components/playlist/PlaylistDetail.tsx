@@ -7,6 +7,7 @@ import { usePlayerStore } from '@/store/usePlayerStore';
 import { TrackRow } from './TrackRow';
 import { TrackRowSkeleton } from '@/components/ui/Skeleton';
 import { Tooltip } from '@/components/ui/Tooltip';
+import { PlaylistCover } from '@/components/ui/PlaylistCover';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { formatTime } from '@/lib/utils';
 import type { Playlist, Track } from '@/types';
@@ -43,36 +44,37 @@ export function PlaylistDetail({ playlist, onClose }: PlaylistDetailProps) {
     onClose();
   };
 
+  const thead = (
+    <thead className="sticky top-0 z-10 bg-[#0b0b0e]">
+      <tr className="border-b border-white/[0.08] text-xs font-medium text-zinc-400">
+        <th scope="col" className="w-14 px-2 py-2 text-center">#</th>
+        <th scope="col" className="px-2 py-2">Title</th>
+        <th scope="col" className="w-36 px-2 py-2 text-right">Duration</th>
+      </tr>
+    </thead>
+  );
+
   return (
-    <div className="mx-4 sm:mx-6 mb-6 rounded-2xl border border-white/[0.08] bg-[#0d0d12] overflow-hidden shadow-sm">
-      {/* Playlist Header Banner */}
-      <div className="flex items-center justify-between p-5 sm:p-6 border-b border-white/[0.06] bg-[#121217]">
-        <div className="flex items-center gap-4">
+    <div className="pb-8">
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-5">
+        <div className="flex items-center gap-4 min-w-0">
           <button
             onClick={onClose}
-            aria-label="Back to playlists"
-            className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/[0.06] transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center"
-            title="Back to playlists"
+            aria-label="Back to library"
+            className="w-10 h-10 rounded-full text-zinc-300 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer flex items-center justify-center shrink-0"
           >
-            <ArrowLeft size={18} />
+            <ArrowLeft size={20} />
           </button>
 
-          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-white/[0.05] border border-white/10 flex items-center justify-center shrink-0 shadow-inner">
-            <Music size={24} className="text-zinc-300" />
-          </div>
+          <PlaylistCover playlist={playlist} className="w-16 h-16 rounded-md shrink-0" iconSize={26} />
 
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-medium text-zinc-400">
-                Playlist
-              </span>
-            </div>
-            <h2 className="text-lg sm:text-xl font-semibold text-white tracking-tight">{playlist.name}</h2>
+          <div className="min-w-0">
+            <h1 className="text-[32px] leading-tight font-bold text-white tracking-tight truncate">{playlist.name}</h1>
             {playlist.description && (
-              <p className="text-xs text-zinc-400 mt-0.5">{playlist.description}</p>
+              <p className="text-sm text-zinc-300 truncate">{playlist.description}</p>
             )}
-            <p className="text-xs font-mono-time text-zinc-400 mt-1">
-              {tracks?.length ?? 0} tracks · {formatTime(totalDuration)}
+            <p className="text-[13px] text-zinc-400">
+              {tracks?.length ?? 0} {(tracks?.length ?? 0) === 1 ? 'song' : 'songs'} · {formatTime(totalDuration)}
             </p>
           </div>
         </div>
@@ -81,10 +83,10 @@ export function PlaylistDetail({ playlist, onClose }: PlaylistDetailProps) {
           {(tracks?.length ?? 0) > 0 && (
             <button
               onClick={handlePlayAll}
-              aria-label={`Play all tracks in ${playlist.name}`}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white text-black text-xs font-semibold hover:bg-zinc-200 transition-all shadow-sm active:scale-95 cursor-pointer min-h-[36px]"
+              aria-label={`Play all songs in ${playlist.name}`}
+              className="flex items-center gap-2 px-3.5 rounded-lg bg-[#f4f4f6] text-[#0b0b0e] text-sm font-semibold hover:bg-white transition-colors cursor-pointer min-h-[40px]"
             >
-              <Play size={13} fill="currentColor" />
+              <Play size={14} fill="currentColor" aria-hidden="true" />
               <span>Play All</span>
             </button>
           )}
@@ -92,10 +94,10 @@ export function PlaylistDetail({ playlist, onClose }: PlaylistDetailProps) {
           <Tooltip content="Delete Playlist" side="top">
             <button
               onClick={() => setShowDeleteConfirm(true)}
-              aria-label={`Delete playlist ${playlist.name}`}
-              className="p-2 rounded-xl text-zinc-400 hover:text-rose-400 hover:bg-white/[0.06] transition-all cursor-pointer min-h-[36px] min-w-[36px] flex items-center justify-center"
+              aria-label={`Delete ${playlist.name}`}
+              className="w-10 h-10 rounded-full text-zinc-300 hover:text-rose-400 hover:bg-white/[0.08] transition-colors cursor-pointer flex items-center justify-center"
             >
-              <Trash2 size={16} />
+              <Trash2 size={18} />
             </button>
           </Tooltip>
         </div>
@@ -106,45 +108,32 @@ export function PlaylistDetail({ playlist, onClose }: PlaylistDetailProps) {
         onClose={() => setShowDeleteConfirm(false)}
         onConfirm={handleDeletePlaylist}
         title={`Delete "${playlist.name}"?`}
-        description="This playlist will be permanently removed from the library. The songs will remain available."
+        description="This playlist is removed from the library. The songs stay available."
         confirmText="Delete Playlist"
         cancelText="Cancel"
         isDestructive={true}
       />
 
-      {/* Track Table */}
       <div className="overflow-x-auto">
         {!tracks ? (
-          <table className="w-full text-left border-collapse table-fixed" role="grid" aria-label={`Loading tracks in ${playlist.name}`}>
-            <thead className="sticky top-0 z-10 bg-[#09090d]">
-              <tr className="border-b border-white/[0.06] text-[11px] font-medium text-zinc-400">
-                <th className="w-10 px-2 py-2 text-center">#</th>
-                <th className="px-2 py-2">Track</th>
-                <th className="w-28 px-2 py-2 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/[0.03]">
+          <table className="w-full text-left border-collapse table-fixed" aria-label={`Loading songs in ${playlist.name}`}>
+            {thead}
+            <tbody>
               {Array.from({ length: 5 }).map((_, i) => (
                 <TrackRowSkeleton key={`pl-detail-skel-${i}`} index={i} />
               ))}
             </tbody>
           </table>
         ) : tracks.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-zinc-500 text-center">
-            <Music size={28} className="mb-2 text-zinc-600" />
-            <p className="text-xs font-medium text-zinc-300">This playlist is empty</p>
-            <p className="text-[11px] text-zinc-500 mt-1">Use search or the context menu on any song to add tracks</p>
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <Music size={28} className="mb-2 text-zinc-500" aria-hidden="true" />
+            <p className="text-sm font-semibold text-zinc-200">This playlist is empty</p>
+            <p className="text-sm text-zinc-400 mt-1">Use Search or the song menu to add songs.</p>
           </div>
         ) : (
-          <table className="w-full text-left border-collapse table-fixed" role="grid" aria-label={`Tracks in ${playlist.name}`}>
-            <thead className="sticky top-0 z-10 bg-[#09090d]">
-              <tr className="border-b border-white/[0.06] text-[11px] font-medium text-zinc-400">
-                <th className="w-10 px-2 py-2 text-center">#</th>
-                <th className="px-2 py-2">Track</th>
-                <th className="w-28 px-2 py-2 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/[0.03]">
+          <table className="w-full text-left border-collapse table-fixed" aria-label={`Songs in ${playlist.name}`}>
+            {thead}
+            <tbody>
               {tracks.map((track, i) => (
                 <TrackRow
                   key={track.id}

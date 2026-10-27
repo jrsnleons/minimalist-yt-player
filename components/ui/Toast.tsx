@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { cn } from '@/lib/utils';
-import { X, CheckCircle2, Sparkles } from 'lucide-react';
+import { X, CheckCircle2, Radio } from 'lucide-react';
 
 export function Toast() {
   const toastMessage = usePlayerStore((s) => s.toastMessage);
@@ -43,7 +43,7 @@ export function Toast() {
         {isPositive ? (
           <CheckCircle2 size={15} className="text-emerald-400" />
         ) : (
-          <Sparkles size={14} className="text-white" />
+          <Radio size={14} className="text-white" />
         )}
       </div>
 

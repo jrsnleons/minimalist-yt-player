@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { AnimatePresence, motion } from 'framer-motion';
 import { db } from '@/db/schema';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { TrackRow } from '@/components/playlist/TrackRow';
@@ -13,9 +12,9 @@ import { ImportPlaylistModal } from '@/components/playlist/ImportPlaylistModal';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { exportSinglePlaylist } from '@/lib/backup';
-import { getTrackPalette } from '@/components/ui/TrackArtwork';
+import { cn } from '@/lib/utils';
+import { PlaylistCover } from '@/components/ui/PlaylistCover';
 import {
-  Music,
   Plus,
   Play,
   Trash2,
@@ -33,7 +32,9 @@ interface LibraryViewProps {
 }
 
 export function LibraryView({ initialPlaylist }: LibraryViewProps) {
-  const { play, currentTrack, showToast } = usePlayerStore();
+  const play = usePlayerStore((s) => s.play);
+  const currentTrack = usePlayerStore((s) => s.currentTrack);
+  const showToast = usePlayerStore((s) => s.showToast);
   const likedTrackIds = usePlayerStore((s) => s.likedTrackIds);
   const recentlyPlayed = usePlayerStore((s) => s.recentlyPlayed);
 
@@ -109,36 +110,57 @@ export function LibraryView({ initialPlaylist }: LibraryViewProps) {
     );
   }
 
+  const trackTable = (tracks: Track[], label: string) => (
+    <table className="w-full text-left border-collapse table-fixed" aria-label={label}>
+      <thead className="sticky top-0 z-10 bg-[#0b0b0e]">
+        <tr className="border-b border-white/[0.08] text-xs font-medium text-zinc-400">
+          <th scope="col" className="w-14 px-2 py-2 text-center">#</th>
+          <th scope="col" className="px-2 py-2">Title</th>
+          <th scope="col" className="w-36 px-2 py-2 text-right">Duration</th>
+        </tr>
+      </thead>
+      <tbody>
+        {tracks.map((track, i) => (
+          <TrackRow
+            key={`${track.id}-${i}`}
+            track={track}
+            index={i}
+            isActive={currentTrack?.id === track.id}
+          />
+        ))}
+      </tbody>
+    </table>
+  );
+
+  const primaryBtn =
+    'flex items-center gap-2 px-3.5 rounded-lg bg-[#f4f4f6] text-[#0b0b0e] text-sm font-semibold hover:bg-white transition-colors cursor-pointer min-h-[40px]';
+  const ghostBtn =
+    'flex items-center gap-2 px-3.5 rounded-lg border border-white/[0.12] text-zinc-100 text-sm font-medium hover:bg-white/[0.08] transition-colors cursor-pointer min-h-[40px]';
+
   // 2. Render Liked Songs Detail
   if (viewingSpecial === 'liked') {
     return (
-      <div className="rounded-2xl border border-white/[0.08] bg-[#0d0d12] overflow-hidden shadow-sm h-full flex flex-col min-h-0">
-        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-white/[0.06] bg-[#141018] shrink-0">
-          <div className="flex items-center gap-3">
+      <div className="h-full flex flex-col min-h-0">
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-4 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
             <button
               onClick={() => setViewingSpecial(null)}
               aria-label="Back to library"
-              className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer min-h-[36px] min-w-[36px] flex items-center justify-center"
+              className="w-10 h-10 rounded-full text-zinc-300 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer flex items-center justify-center shrink-0"
             >
-              <ArrowLeft size={18} />
+              <ArrowLeft size={20} />
             </button>
-            <div className="w-11 h-11 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-500 flex items-center justify-center shrink-0">
-              <Heart size={20} className="fill-rose-500" />
-            </div>
-            <div>
-              <h2 className="text-sm sm:text-base font-semibold text-white">Liked Songs</h2>
-              <p className="text-[11px] font-mono text-zinc-400 mt-0.5">
-                {likedTracks?.length || 0} track{(likedTracks?.length || 0) !== 1 ? 's' : ''}
+            <div className="min-w-0">
+              <h1 className="text-[32px] leading-tight font-bold tracking-tight text-white truncate">Liked Songs</h1>
+              <p className="text-[13px] text-zinc-400">
+                {likedTracks?.length || 0} {(likedTracks?.length || 0) === 1 ? 'song' : 'songs'}
               </p>
             </div>
           </div>
 
           {likedTracks && likedTracks.length > 0 && (
-            <button
-              onClick={() => play(likedTracks[0], likedTracks)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white text-black text-xs font-semibold hover:bg-zinc-200 transition-all shadow-sm cursor-pointer min-h-[34px]"
-            >
-              <Play size={12} fill="currentColor" />
+            <button onClick={() => play(likedTracks[0], likedTracks)} className={primaryBtn}>
+              <Play size={14} fill="currentColor" aria-hidden="true" />
               <span>Play All</span>
             </button>
           )}
@@ -146,33 +168,13 @@ export function LibraryView({ initialPlaylist }: LibraryViewProps) {
 
         <div className="overflow-y-auto flex-1 min-h-0">
           {!likedTracks || likedTracks.length === 0 ? (
-            <div className="py-20 text-center text-zinc-500 text-xs flex flex-col items-center justify-center">
-              <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-zinc-500 mb-3">
-                <Heart size={22} />
-              </div>
-              <p className="font-semibold text-zinc-200">No liked songs yet</p>
-              <p className="text-xs text-zinc-400 mt-1">Tap the heart icon on any song to save it here</p>
+            <div className="py-20 text-center flex flex-col items-center justify-center">
+              <Heart size={28} className="text-zinc-500 mb-3" aria-hidden="true" />
+              <p className="text-sm font-semibold text-zinc-200">No liked songs yet</p>
+              <p className="text-sm text-zinc-400 mt-1">Use the heart on any song to save it here.</p>
             </div>
           ) : (
-            <table className="w-full text-left border-collapse table-fixed" role="grid">
-              <thead className="sticky top-0 z-10 bg-[#0d0d12]">
-                <tr className="border-b border-white/[0.06] text-[11px] font-medium text-zinc-400">
-                  <th className="w-10 px-2 py-2 text-center">#</th>
-                  <th className="px-2 py-2">Track</th>
-                  <th className="w-28 px-2 py-2 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/[0.03]">
-                {likedTracks.map((track, i) => (
-                  <TrackRow
-                    key={`${track.id}-${i}`}
-                    track={track}
-                    index={i}
-                    isActive={currentTrack?.id === track.id}
-                  />
-                ))}
-              </tbody>
-            </table>
+            trackTable(likedTracks, 'Liked Songs')
           )}
         </div>
       </div>
@@ -182,79 +184,50 @@ export function LibraryView({ initialPlaylist }: LibraryViewProps) {
   // 3. Render History Detail
   if (viewingSpecial === 'history') {
     return (
-      <div className="rounded-2xl border border-white/[0.08] bg-[#0d0d12] overflow-hidden shadow-sm h-full flex flex-col min-h-0">
-        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-white/[0.06] bg-[#121217] shrink-0">
-          <div className="flex items-center gap-3">
+      <div className="h-full flex flex-col min-h-0">
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-4 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
             <button
               onClick={() => setViewingSpecial(null)}
               aria-label="Back to library"
-              className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer min-h-[36px] min-w-[36px] flex items-center justify-center"
+              className="w-10 h-10 rounded-full text-zinc-300 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer flex items-center justify-center shrink-0"
             >
-              <ArrowLeft size={18} />
+              <ArrowLeft size={20} />
             </button>
-            <div className="w-11 h-11 rounded-xl bg-white/[0.06] border border-white/[0.1] text-zinc-300 flex items-center justify-center shrink-0">
-              <Clock size={20} />
-            </div>
-            <div>
-              <h2 className="text-sm sm:text-base font-semibold text-white">Listening History</h2>
-              <p className="text-[11px] font-mono text-zinc-400 mt-0.5">
-                {recentlyPlayed.length} track{recentlyPlayed.length !== 1 ? 's' : ''}
+            <div className="min-w-0">
+              <h1 className="text-[32px] leading-tight font-bold tracking-tight text-white truncate">Listening History</h1>
+              <p className="text-[13px] text-zinc-400">
+                {recentlyPlayed.length} {recentlyPlayed.length === 1 ? 'song' : 'songs'}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {recentlyPlayed.length > 0 && (
-              <>
-                <button
-                  onClick={() => play(recentlyPlayed[0], recentlyPlayed)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white text-black text-xs font-semibold hover:bg-zinc-200 transition-all shadow-sm cursor-pointer min-h-[34px]"
-                >
-                  <Play size={12} fill="currentColor" />
-                  <span>Play All</span>
-                </button>
-                <button
-                  onClick={() => setShowClearHistoryConfirm(true)}
-                  aria-label="Clear listening history"
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs text-zinc-400 hover:text-rose-400 hover:bg-white/[0.06] transition-all cursor-pointer min-h-[34px]"
-                >
-                  <Trash2 size={13} />
-                  <span>Clear</span>
-                </button>
-              </>
-            )}
-          </div>
+          {recentlyPlayed.length > 0 && (
+            <div className="flex items-center gap-2">
+              <button onClick={() => play(recentlyPlayed[0], recentlyPlayed)} className={primaryBtn}>
+                <Play size={14} fill="currentColor" aria-hidden="true" />
+                <span>Play All</span>
+              </button>
+              <button
+                onClick={() => setShowClearHistoryConfirm(true)}
+                className={ghostBtn}
+              >
+                <Trash2 size={14} aria-hidden="true" />
+                <span>Clear</span>
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="overflow-y-auto flex-1 min-h-0">
           {recentlyPlayed.length === 0 ? (
-            <div className="py-20 text-center text-zinc-500 text-xs flex flex-col items-center justify-center">
-              <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-zinc-500 mb-3">
-                <Clock size={22} />
-              </div>
-              <p className="font-semibold text-zinc-200">No listening history</p>
-              <p className="text-xs text-zinc-400 mt-1">Tracks you play will be recorded here automatically</p>
+            <div className="py-20 text-center flex flex-col items-center justify-center">
+              <Clock size={28} className="text-zinc-500 mb-3" aria-hidden="true" />
+              <p className="text-sm font-semibold text-zinc-200">No listening history</p>
+              <p className="text-sm text-zinc-400 mt-1">Songs you play are recorded here.</p>
             </div>
           ) : (
-            <table className="w-full text-left border-collapse table-fixed" role="grid">
-              <thead className="sticky top-0 z-10 bg-[#0d0d12]">
-                <tr className="border-b border-white/[0.06] text-[11px] font-medium text-zinc-400">
-                  <th className="w-10 px-2 py-2 text-center">#</th>
-                  <th className="px-2 py-2">Track</th>
-                  <th className="w-28 px-2 py-2 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/[0.03]">
-                {recentlyPlayed.map((track, i) => (
-                  <TrackRow
-                    key={`${track.id}-${i}`}
-                    track={track}
-                    index={i}
-                    isActive={currentTrack?.id === track.id}
-                  />
-                ))}
-              </tbody>
-            </table>
+            trackTable(recentlyPlayed, 'Listening History')
           )}
         </div>
 
@@ -263,7 +236,7 @@ export function LibraryView({ initialPlaylist }: LibraryViewProps) {
           onClose={() => setShowClearHistoryConfirm(false)}
           onConfirm={handleClearHistory}
           title="Clear History"
-          description="This will permanently delete your listening history from this browser."
+          description="This permanently deletes the listening history from this browser."
           confirmText="Clear History"
           cancelText="Cancel"
           isDestructive={true}
@@ -273,189 +246,119 @@ export function LibraryView({ initialPlaylist }: LibraryViewProps) {
   }
 
   // 4. Default: Unified Library Browser
+  const collectionCard =
+    'group relative flex items-center gap-3 p-3 rounded-lg bg-white/[0.04] hover:bg-white/[0.07] transition-colors';
+  const stretched = "text-left cursor-pointer after:content-[''] after:absolute after:inset-0 after:rounded-lg min-w-0 flex-1";
+
   return (
-    <div className="rounded-2xl border border-white/[0.08] bg-[#09090d] overflow-hidden shadow-sm h-full flex flex-col min-h-0">
-      {/* Pinned Header */}
-      <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-white/[0.06] bg-[#0f0f14] shrink-0">
-        <div className="flex items-center gap-2.5">
-          <Music size={16} className="text-white" />
-          <h2 className="text-xs font-semibold tracking-tight text-white font-sans">
-            Library
-          </h2>
-        </div>
-
+    <div className="h-full flex flex-col min-h-0">
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-5 shrink-0">
+        <h1 className="text-[32px] leading-tight font-bold tracking-tight text-white">Library</h1>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setIsImportModalOpen(true)}
-            aria-label="Import Playlist"
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.08] text-zinc-300 hover:text-white text-xs font-medium transition-all cursor-pointer min-h-[36px]"
-          >
-            <Download size={13} />
-            <span className="hidden sm:inline">Import</span>
+          <button onClick={() => setIsImportModalOpen(true)} className={ghostBtn}>
+            <Download size={16} aria-hidden="true" />
+            <span>Import</span>
           </button>
-
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
-            aria-label="New Playlist"
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white text-black text-xs font-semibold hover:bg-zinc-200 transition-all shadow-sm cursor-pointer min-h-[36px]"
-          >
-            <Plus size={13} />
+          <button onClick={() => setIsCreateModalOpen(true)} className={primaryBtn}>
+            <Plus size={16} aria-hidden="true" />
             <span>New Playlist</span>
           </button>
         </div>
       </div>
 
-      {/* Body: Scrollable */}
-      <div className="overflow-y-auto flex-1 min-h-0 p-4 sm:p-5 space-y-5">
-        {/* Pinned Smart Playlists Section (Liked Songs & History) */}
-        <div>
-          <span className="text-xs font-semibold text-zinc-300 tracking-tight font-sans block mb-2 px-1">
-            Pinned Collections
-          </span>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            {/* 1. Liked Songs */}
-            <div
-              onClick={() => setViewingSpecial('liked')}
-              className="group flex items-center justify-between p-3.5 rounded-2xl border border-rose-500/20 bg-gradient-to-br from-rose-950/20 via-[#120d14] to-[#09090d] hover:border-rose-500/40 hover:from-rose-950/30 transition-all duration-200 cursor-pointer select-none"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-11 h-11 rounded-xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-500 shrink-0 shadow-sm">
-                  <Heart size={18} className="fill-rose-500" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h3 className="text-xs font-semibold text-white group-hover:text-rose-200 truncate transition-colors">
-                    Liked Songs
-                  </h3>
-                  <p className="text-[11px] text-zinc-400 font-mono mt-0.5">
-                    {likedTrackIds.length} track{likedTrackIds.length !== 1 ? 's' : ''}
-                  </p>
-                </div>
-              </div>
-              <span className="text-xs text-zinc-500 group-hover:text-zinc-300 transition-colors pr-1">
-                View →
+      <div className="overflow-y-auto flex-1 min-h-0 pb-8 space-y-8">
+        <section aria-labelledby="lib-collections">
+          <h2 id="lib-collections" className="text-xl font-semibold tracking-tight text-white mb-3.5">
+            Collections
+          </h2>
+          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <li className={collectionCard}>
+              <span className="w-12 h-12 rounded-md bg-white/[0.08] text-rose-400 flex items-center justify-center shrink-0">
+                <Heart size={20} className="fill-current" aria-hidden="true" />
               </span>
-            </div>
-
-            {/* 2. Listening History */}
-            <div
-              onClick={() => setViewingSpecial('history')}
-              className="group flex items-center justify-between p-3.5 rounded-2xl border border-white/[0.08] bg-gradient-to-br from-white/[0.03] to-[#09090d] hover:border-white/[0.16] hover:bg-white/[0.06] transition-all duration-200 cursor-pointer select-none"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-11 h-11 rounded-xl bg-white/[0.05] border border-white/[0.1] flex items-center justify-center text-zinc-300 shrink-0 shadow-sm">
-                  <Clock size={18} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h3 className="text-xs font-semibold text-white group-hover:text-zinc-200 truncate transition-colors">
-                    Listening History
-                  </h3>
-                  <p className="text-[11px] text-zinc-400 font-mono mt-0.5">
-                    {recentlyPlayed.length} play{recentlyPlayed.length !== 1 ? 's' : ''} logged
-                  </p>
-                </div>
-              </div>
-              <span className="text-xs text-zinc-500 group-hover:text-zinc-300 transition-colors pr-1">
-                View →
+              <button onClick={() => setViewingSpecial('liked')} className={stretched}>
+                <span className="block truncate text-sm font-medium text-zinc-100">Liked Songs</span>
+                <span className="block text-[13px] text-zinc-400">
+                  {likedTrackIds.length} {likedTrackIds.length === 1 ? 'song' : 'songs'}
+                </span>
+              </button>
+            </li>
+            <li className={collectionCard}>
+              <span className="w-12 h-12 rounded-md bg-white/[0.08] text-zinc-300 flex items-center justify-center shrink-0">
+                <Clock size={20} aria-hidden="true" />
               </span>
-            </div>
-          </div>
-        </div>
+              <button onClick={() => setViewingSpecial('history')} className={stretched}>
+                <span className="block truncate text-sm font-medium text-zinc-100">Listening History</span>
+                <span className="block text-[13px] text-zinc-400">
+                  {recentlyPlayed.length} {recentlyPlayed.length === 1 ? 'play' : 'plays'}
+                </span>
+              </button>
+            </li>
+          </ul>
+        </section>
 
-        {/* User Playlists Section */}
-        <div>
-          <div className="flex items-center justify-between mb-2.5 px-1">
-            <span className="text-xs font-semibold text-zinc-300 tracking-tight font-sans">
-              Playlists ({playlists?.length || 0})
-            </span>
-          </div>
+        <section aria-labelledby="lib-playlists">
+          <h2 id="lib-playlists" className="text-xl font-semibold tracking-tight text-white mb-3.5">
+            Playlists
+          </h2>
 
           {!playlists || playlists.length === 0 ? (
-            <div className="p-8 rounded-2xl border border-dashed border-white/[0.08] bg-white/[0.01] text-center my-2">
-              <p className="text-xs font-semibold text-zinc-200">No custom playlists</p>
-              <p className="text-[11px] text-zinc-400 mt-1 max-w-sm mx-auto leading-relaxed">
-                Create playlists to organize music or import them directly from YouTube and Spotify.
+            <div className="p-8 rounded-lg border border-dashed border-white/[0.12] text-center">
+              <p className="text-sm font-semibold text-zinc-200">No playlists yet</p>
+              <p className="text-sm text-zinc-400 mt-1 max-w-sm mx-auto">
+                Create a playlist or import one from YouTube or Spotify.
               </p>
-              <button
-                onClick={() => setIsCreateModalOpen(true)}
-                className="mt-3 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white text-black text-xs font-semibold hover:bg-zinc-200 transition-all shadow-sm cursor-pointer min-h-[36px]"
-              >
-                <Plus size={12} />
+              <button onClick={() => setIsCreateModalOpen(true)} className={cn(primaryBtn, 'mt-4 mx-auto')}>
+                <Plus size={16} aria-hidden="true" />
                 <span>Create Playlist</span>
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {playlists.map((playlist) => {
-                const palette = getTrackPalette(playlist.name, playlist.description || '', playlist.id);
-                return (
-                  <div
-                    key={playlist.id}
-                    onClick={() => setSelectedPlaylist(playlist)}
-                    className="group relative flex items-center justify-between p-3 rounded-2xl border border-white/[0.07] bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/[0.14] transition-all duration-200 cursor-pointer overflow-hidden select-none"
-                  >
-                    <div className="flex items-center gap-3 min-w-0 flex-1 mr-2">
-                      <div
-                        className="w-10 h-10 rounded-xl border border-white/[0.08] flex items-center justify-center text-zinc-400 group-hover:text-white transition-all shrink-0"
-                        style={{ backgroundColor: `${palette.accent}18` }}
+            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {playlists.map((playlist) => (
+                <li key={playlist.id} className={collectionCard}>
+                  <PlaylistCover playlist={playlist} className="w-12 h-12 rounded-md shrink-0" />
+                  <button onClick={() => setSelectedPlaylist(playlist)} className={stretched}>
+                    <span className="block truncate text-sm font-medium text-zinc-100">{playlist.name}</span>
+                    <span className="block text-[13px] text-zinc-400">
+                      {playlist.trackIds.length} {playlist.trackIds.length === 1 ? 'song' : 'songs'}
+                    </span>
+                  </button>
+
+                  <div className="relative z-10 flex items-center text-zinc-300 shrink-0">
+                    <Tooltip content="Export JSON" side="top">
+                      <button
+                        onClick={() => handleExportPlaylist(playlist)}
+                        className="hover:text-white hover:bg-white/[0.1] rounded-full transition-colors cursor-pointer w-9 h-9 flex items-center justify-center"
+                        aria-label={`Export ${playlist.name}`}
                       >
-                        <Music size={16} />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <h4 className="text-xs font-semibold text-zinc-200 group-hover:text-white truncate">
-                          {playlist.name}
-                        </h4>
-                        <p className="text-[11px] text-zinc-400 font-mono mt-0.5">
-                          {playlist.trackIds.length} track{playlist.trackIds.length !== 1 ? 's' : ''}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-0.5 text-zinc-400 shrink-0">
-                      <Tooltip content="Export JSON" side="top">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleExportPlaylist(playlist);
-                          }}
-                          className="p-2 hover:text-white hover:bg-white/[0.08] rounded-xl transition-colors cursor-pointer min-h-[36px] min-w-[36px] flex items-center justify-center"
-                          aria-label="Export playlist"
-                        >
-                          <FileDown size={14} />
-                        </button>
-                      </Tooltip>
-
-                      <Tooltip content="Edit details" side="top">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingPlaylist(playlist);
-                          }}
-                          className="p-2 hover:text-white hover:bg-white/[0.08] rounded-xl transition-colors cursor-pointer min-h-[36px] min-w-[36px] flex items-center justify-center"
-                          aria-label="Edit playlist"
-                        >
-                          <Pencil size={14} />
-                        </button>
-                      </Tooltip>
-
-                      <Tooltip content="Delete playlist" side="top">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setPlaylistToDelete(playlist);
-                          }}
-                          className="p-2 hover:text-rose-400 hover:bg-white/[0.08] rounded-xl transition-colors cursor-pointer min-h-[36px] min-w-[36px] flex items-center justify-center"
-                          aria-label="Delete playlist"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </Tooltip>
-                    </div>
+                        <FileDown size={16} />
+                      </button>
+                    </Tooltip>
+                    <Tooltip content="Edit Details" side="top">
+                      <button
+                        onClick={() => setEditingPlaylist(playlist)}
+                        className="hover:text-white hover:bg-white/[0.1] rounded-full transition-colors cursor-pointer w-9 h-9 flex items-center justify-center"
+                        aria-label={`Edit ${playlist.name}`}
+                      >
+                        <Pencil size={16} />
+                      </button>
+                    </Tooltip>
+                    <Tooltip content="Delete Playlist" side="top">
+                      <button
+                        onClick={() => setPlaylistToDelete(playlist)}
+                        className="hover:text-rose-400 hover:bg-white/[0.1] rounded-full transition-colors cursor-pointer w-9 h-9 flex items-center justify-center"
+                        aria-label={`Delete ${playlist.name}`}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </Tooltip>
                   </div>
-                );
-              })}
-            </div>
+                </li>
+              ))}
+            </ul>
           )}
-        </div>
+        </section>
       </div>
 
       {/* Modals */}
@@ -482,7 +385,7 @@ export function LibraryView({ initialPlaylist }: LibraryViewProps) {
         onClose={() => setPlaylistToDelete(null)}
         onConfirm={confirmDeletePlaylist}
         title={`Delete "${playlistToDelete?.name}"?`}
-        description="This playlist will be permanently removed from the library. The songs will remain available."
+        description="This playlist is removed from the library. The songs stay available."
         confirmText="Delete Playlist"
         cancelText="Cancel"
         isDestructive={true}
