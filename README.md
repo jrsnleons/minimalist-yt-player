@@ -145,6 +145,29 @@ Without `ABLY_API_KEY`, use the JSON backup in Settings instead.
 
 Onyx ships a web manifest and a service worker (production builds only). It caches the app shell and static assets, and shows an offline page when the network is unavailable. API routes, event streams and media are never cached.
 
+## Testing
+
+End-to-end tests use [Playwright](https://playwright.dev) and live in `e2e/`. They cover navigation, playback controls, keyboard shortcuts, the queue, focus management, Stats, Settings, Search, Phone Remote, artwork, the PWA manifest and an axe accessibility scan. A desktop (1440x900) and a phone (Pixel 7) project run; the phone project runs the tests tagged `@mobile`.
+
+The tests never touch the network. YouTube, image hosts, Ably and Spotify requests are blocked, `i.ytimg.com` artwork is served from a local PNG, and `/api/search`, `/api/stream`, `/api/playlist` and `/api/radio` return the fixtures in `e2e/fixtures/`. Each test starts with an empty browser profile; `e2e/helpers/seed.ts` writes library data into the app's IndexedDB database. Phone Remote runs over the in-memory SSE relay (`ABLY_API_KEY` is cleared for the test server).
+
+```bash
+pnpm install
+npx playwright install chromium     # once; CI installs it too
+
+pnpm test:e2e                       # production build + start on port 3100, then run everything
+PW_DEV=1 pnpm test:e2e              # same tests against `next dev` (no build step)
+pnpm test:e2e e2e/queue.spec.ts     # one file
+pnpm test:e2e --project=mobile      # one project
+pnpm test:e2e --ui                  # Playwright UI mode
+```
+
+- **Production vs dev server**: the default run executes `pnpm build && pnpm start -p 3100` (this is what CI uses). `PW_DEV=1` starts `next dev -p 3100` instead, which is faster to start and works where the build cannot reach the network (the Open Graph image route fetches a font during the build). The service worker test only runs against a production build.
+- **Existing server**: outside CI a server already listening on the port is reused, so you can keep `pnpm start -p 3100` running between runs. Use `PW_PORT` to change the port.
+- **Browser location**: if Chromium is installed somewhere Playwright does not look, set `PW_CHROMIUM_PATH` to its executable. Leave it unset otherwise.
+- **Type check**: `pnpm typecheck` covers the app and the tests.
+- **Known accessibility issue**: `e2e/a11y.spec.ts` lists one tracked finding (`label-content-name-mismatch` on the stretched row and card buttons). Any other serious or critical axe violation fails the run.
+
 ## 🔒 Privacy Guarantee
 
 - **No Remote User Database**: All listening history, playlists, and settings remain stored strictly in your browser's IndexedDB.
