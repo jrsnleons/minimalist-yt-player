@@ -341,7 +341,7 @@ function Scrubber({
   const heldActive = held && receivedAt < held.at;
   const shown = drag ?? (heldActive ? held.value : progress);
   const max = Math.max(duration, 1);
-  const pct = Math.min(100, (shown / max) * 100);
+  const pct = duration > 0 ? Math.min(100, (shown / max) * 100) : 0;
 
   const commit = () => {
     if (drag === null) return;
