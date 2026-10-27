@@ -48,6 +48,8 @@ interface PlayerState {
   pause: () => void;
   togglePlay: () => void;
   next: () => void;
+  /** Track that next() will play, without advancing. Stable for shuffle. Null if none / repeat-one. */
+  peekNextTrack: () => Track | null;
   previous: () => void;
   seek: (seconds: number) => void;
   setProgress: (seconds: number) => void;
@@ -63,6 +65,7 @@ interface PlayerState {
   clearQueue: () => void;
 
   crossfadeDuration: number; // seconds (0 = off, 1-12)
+  normalizeVolume: boolean; // per-track loudness normalization (direct audio mode)
   likedTrackIds: string[];
 
   // Actions — Modes
@@ -71,6 +74,7 @@ interface PlayerState {
   toggleVideo: () => void;
   setPlaybackMode: (mode: PlaybackMode) => void;
   setCrossfadeDuration: (seconds: number) => void;
+  setNormalizeVolume: (enabled: boolean) => void;
   toggleZenMode: (enabled?: boolean) => void;
   toggleAmbientVisualizer: () => void;
   toggleSessionRestore: () => void;
@@ -112,6 +116,23 @@ interface PlayerState {
 }
 
 // Kept outside of Zustand state so timer management doesn't cause extra re-renders
+// Shuffle choice made ahead of time so the audio engine can preload the exact
+// track next() will play. Cleared when next() consumes it; ignored when stale.
+let pendingShuffle: { idx: number; trackId: string; fromIndex: number } | null = null;
+
+function pickShuffleIndex(queue: Track[], queueIndex: number): number {
+  const p = pendingShuffle;
+  if (p && p.fromIndex === queueIndex && p.idx !== queueIndex && queue[p.idx]?.id === p.trackId) {
+    return p.idx;
+  }
+  let idx: number;
+  do {
+    idx = Math.floor(Math.random() * queue.length);
+  } while (idx === queueIndex);
+  pendingShuffle = { idx, trackId: queue[idx].id, fromIndex: queueIndex };
+  return idx;
+}
+
 let _toastTimer: ReturnType<typeof setTimeout> | null = null;
 let _sessionSaveTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -166,6 +187,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   ambientVisualizerEnabled: true,
   sessionRestoreEnabled: true,
   crossfadeDuration: 3,
+  normalizeVolume: true,
   likedTrackIds: [],
 
   leftSidebarOpen: true,
@@ -250,6 +272,23 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     scheduleSaveSession(get());
   },
 
+  peekNextTrack: () => {
+    const { queue, queueIndex, shuffleMode, repeatMode, radioQueue } = get();
+    if (queue.length === 0) return radioQueue[0] ?? null;
+    if (repeatMode === 'one') return null;
+    let nextIdx: number;
+    if (shuffleMode && queue.length > 1) {
+      nextIdx = pickShuffleIndex(queue, queueIndex);
+    } else {
+      nextIdx = queueIndex + 1;
+    }
+    if (nextIdx >= queue.length) {
+      if (repeatMode === 'all') return queue[0] ?? null;
+      return radioQueue[0] ?? null;
+    }
+    return queue[nextIdx] ?? null;
+  },
+
   next: () => {
     const { queue, queueIndex, shuffleMode, repeatMode } = get();
     if (queue.length === 0) {
@@ -289,9 +328,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     let nextIdx: number;
     if (shuffleMode && queue.length > 1) {
       // Exclude current index so shuffle never plays the same track twice in a row
-      do {
-        nextIdx = Math.floor(Math.random() * queue.length);
-      } while (nextIdx === queueIndex);
+      nextIdx = pickShuffleIndex(queue, queueIndex);
+      pendingShuffle = null;
     } else {
       nextIdx = queueIndex + 1;
     }
@@ -511,6 +549,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       }
       return { sessionRestoreEnabled: next };
     });
+  },
+
+  setNormalizeVolume: (enabled) => {
+    set({ normalizeVolume: enabled });
+    db.preferences.put({ key: 'normalizeVolume', value: enabled }).catch(() => {});
   },
 
   setCrossfadeDuration: (seconds) => {
@@ -744,6 +787,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         restorePref,
         crossfadePref,
         sidebarModePref,
+        normalizePref,
       ] = await Promise.all([
         db.preferences.get('volume'),
         db.preferences.get('repeatMode'),
@@ -755,6 +799,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         db.preferences.get('sessionRestoreEnabled'),
         db.preferences.get('crossfadeDuration'),
         db.preferences.get('sidebarPlayerMode'),
+        db.preferences.get('normalizeVolume'),
       ]);
 
       set((s) => ({
@@ -767,6 +812,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         ambientVisualizerEnabled: typeof vizPref?.value === 'boolean' ? vizPref.value : s.ambientVisualizerEnabled,
         sessionRestoreEnabled: typeof restorePref?.value === 'boolean' ? restorePref.value : s.sessionRestoreEnabled,
         crossfadeDuration: typeof crossfadePref?.value === 'number' ? crossfadePref.value : s.crossfadeDuration,
+        normalizeVolume: typeof normalizePref?.value === 'boolean' ? normalizePref.value : s.normalizeVolume,
         sidebarPlayerMode: (sidebarModePref?.value === 'pill' || sidebarModePref?.value === 'docked') ? sidebarModePref.value : s.sidebarPlayerMode,
       }));
 
