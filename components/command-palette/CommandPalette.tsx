@@ -22,6 +22,7 @@ import { TrackArtwork } from '@/components/ui/TrackArtwork';
 import { CommandPaletteSkeletonItem } from '@/components/ui/Skeleton';
 import { debounce, formatTime, uuid, cn } from '@/lib/utils';
 import { exportFullLibrary } from '@/lib/backup';
+import { useRemoteHostStore } from '@/store/useRemoteHostStore';
 import type { Track, AppAction, Playlist } from '@/types';
 
 // Helper to detect and parse pasted URLs in search input
@@ -183,6 +184,13 @@ export function CommandPalette() {
         action: () => {
           cycleRepeat();
           triggerFeedback('Repeat mode updated');
+        },
+      },
+      {
+        id: 'connect-phone',
+        label: 'Connect Phone',
+        action: () => {
+          useRemoteHostStore.getState().openModal();
         },
       },
       {

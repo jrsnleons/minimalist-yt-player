@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { GeistSans } from 'geist/font/sans';
 import { JetBrains_Mono } from 'next/font/google';
+import { ServiceWorkerRegister } from '@/components/pwa/ServiceWorkerRegister';
 import './globals.css';
 
 const jetbrainsMono = JetBrains_Mono({
@@ -12,9 +13,10 @@ const jetbrainsMono = JetBrains_Mono({
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://onyx-player.vercel.app';
 
 export const viewport: Viewport = {
-  themeColor: '#050507',
+  themeColor: '#0b0b0e',
   width: 'device-width',
   initialScale: 1,
+  viewportFit: 'cover',
 };
 
 export const metadata: Metadata = {
@@ -68,8 +70,17 @@ export const metadata: Metadata = {
     description: 'A local-first music player for YouTube.',
   },
   icons: {
-    icon: '/favicon.ico',
-    apple: '/favicon.ico',
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [{ url: '/icons/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+  },
+  appleWebApp: {
+    capable: true,
+    title: 'Onyx',
+    statusBarStyle: 'black-translucent',
   },
 };
 
@@ -84,7 +95,10 @@ export default function RootLayout({
       className={`${GeistSans.variable} ${jetbrainsMono.variable} dark`}
       style={{ colorScheme: 'dark' }}
     >
-      <body className={GeistSans.className}>{children}</body>
+      <body className={GeistSans.className}>
+        {children}
+        <ServiceWorkerRegister />
+      </body>
     </html>
   );
 }

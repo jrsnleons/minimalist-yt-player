@@ -1,10 +1,11 @@
 'use client';
 
-import { Home, Search, Library, Settings, Radio } from 'lucide-react';
+import { Home, Search, Library, Settings, Radio, Smartphone } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db/schema';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { useListenTogetherStore } from '@/store/useListenTogetherStore';
+import { useRemoteHostStore } from '@/store/useRemoteHostStore';
 import { usePlatformShortcut } from '@/hooks/usePlatformShortcut';
 import { PlaylistCover } from '@/components/ui/PlaylistCover';
 import { cn } from '@/lib/utils';
@@ -30,6 +31,9 @@ export function AppSidebar({ activeTab, onTabChange, onSelectPlaylist }: AppSide
   const isInRoom = useListenTogetherStore((s) => s.isInRoom);
   const roomCode = useListenTogetherStore((s) => s.roomCode);
   const openListenModal = useListenTogetherStore((s) => s.openModal);
+  const phones = useRemoteHostStore((s) => s.phones);
+  const hasRemote = useRemoteHostStore((s) => s.session !== null);
+  const openRemoteModal = useRemoteHostStore((s) => s.openModal);
   const shortcutKey = usePlatformShortcut('⌘K');
 
   const playlists = useLiveQuery(
@@ -108,6 +112,10 @@ export function AppSidebar({ activeTab, onTabChange, onSelectPlaylist }: AppSide
         <button onClick={() => openListenModal()} className={itemClass}>
           <Radio size={18} aria-hidden="true" className={isInRoom ? 'text-emerald-400' : undefined} />
           <span>{isInRoom ? `Live · ${roomCode}` : 'Listen Together'}</span>
+        </button>
+        <button onClick={openRemoteModal} className={itemClass}>
+          <Smartphone size={18} aria-hidden="true" className={phones > 0 ? 'text-emerald-400' : undefined} />
+          <span>{phones > 0 ? 'Phone Connected' : hasRemote ? 'Phone Remote' : 'Connect Phone'}</span>
         </button>
         <button onClick={toggleSettings} className={itemClass}>
           <Settings size={18} aria-hidden="true" />

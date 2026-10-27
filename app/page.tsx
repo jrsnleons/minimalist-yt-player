@@ -19,6 +19,7 @@ import { LibraryView } from '@/components/views/LibraryView';
 import { ListenTogetherBar } from '@/components/listen-together/ListenTogetherBar';
 import { ListenTogetherModal } from '@/components/listen-together/ListenTogetherModal';
 import { FloatingReactions } from '@/components/listen-together/FloatingReactions';
+import { ConnectPhoneModal } from '@/components/remote/ConnectPhoneModal';
 import { Toast } from '@/components/ui/Toast';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { useHotkeys } from '@/hooks/useHotkeys';
@@ -26,6 +27,7 @@ import { useMediaSession } from '@/hooks/useMediaSession';
 import { useAdblockCheck } from '@/hooks/useAdblockCheck';
 import { useDynamicTrackPalette } from '@/hooks/useDynamicTrackPalette';
 import { useListenTogetherSync } from '@/hooks/useListenTogetherSync';
+import { useRemoteHost } from '@/hooks/useRemoteHost';
 import type { Playlist } from '@/types';
 
 function AppShell() {
@@ -48,6 +50,7 @@ function AppShell() {
   useMediaSession();
   useAdblockCheck();
   useListenTogetherSync();
+  useRemoteHost();
 
   // Load preferences, session restore, and recently played on startup
   useEffect(() => {
@@ -141,6 +144,7 @@ function AppShell() {
       <SettingsModal />
       <KeyboardShortcutsModal />
       <ListenTogetherModal />
+      <ConnectPhoneModal />
       <FloatingReactions />
       <Toast />
     </div>
