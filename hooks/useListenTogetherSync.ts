@@ -3,7 +3,9 @@
 import { useEffect, useRef } from 'react';
 import { useListenTogetherStore } from '@/store/useListenTogetherStore';
 import { usePlayerStore } from '@/store/usePlayerStore';
-import type { FloatingReaction, RoomState } from '@/lib/rooms/roomManager';
+import { getTransport, peekTransport } from '@/lib/realtime/transport';
+import type { PlaybackSync } from '@/lib/realtime/transport';
+import type { RoomState } from '@/lib/rooms/roomManager';
 import type { Track } from '@/types';
 
 export function useListenTogetherSync() {
@@ -33,11 +35,7 @@ export function useListenTogetherSync() {
     if (!isInRoom || !roomCode) return;
 
     const handleBeforeUnload = () => {
-      const payload = JSON.stringify({ action: 'leave', userId });
-      navigator.sendBeacon(
-        `/api/rooms/${encodeURIComponent(roomCode)}/action`,
-        new Blob([payload], { type: 'application/json' })
-      );
+      peekTransport()?.rooms.leaveOnUnload(roomCode, userId);
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
@@ -55,17 +53,11 @@ export function useListenTogetherSync() {
 
     const broadcast = (track: Track | null, playing: boolean, prog: number) => {
       lastBroadcastRef.current = Date.now();
-      fetch(`/api/rooms/${encodeURIComponent(roomCode)}/action`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'sync',
-          userId,
-          currentTrack: track,
-          isPlaying: playing,
-          progress: prog,
-        }),
-      }).catch(() => {});
+      getTransport()
+        .then((t) =>
+          t.rooms.act(roomCode, userId, { action: 'sync', currentTrack: track, isPlaying: playing, progress: prog })
+        )
+        .catch(() => {});
     };
 
     // Broadcast on track, isPlaying, or seek change
@@ -98,195 +90,123 @@ export function useListenTogetherSync() {
     };
   }, [isInRoom, roomCode, isHost, allowListenerControls, userId]);
 
-  // Handle SSE Receiver for all participants with auto-reconnect
+  // Receive room events from the active transport (Ably channel or SSE stream)
   useEffect(() => {
     if (!isInRoom || !roomCode) return;
 
-    let eventSource: EventSource | null = null;
-    let retryDelay = 1000;
-    let retryTimer: ReturnType<typeof setTimeout> | null = null;
-    let intentionallyClosed = false;
-    const MAX_RETRY_DELAY = 30_000;
+    let stopped = false;
+    let stop: (() => void) | null = null;
 
-    function connect() {
-      if (intentionallyClosed) return;
-      setSyncStatus('syncing');
-      const url = `/api/rooms/${encodeURIComponent(roomCode!)}/events?userId=${encodeURIComponent(userId)}`;
-      const es = new EventSource(url);
-      eventSource = es;
+    const applyBriefly = (apply: () => void) => {
+      isApplyingRemoteSyncRef.current = true;
+      apply();
+      setTimeout(() => {
+        isApplyingRemoteSyncRef.current = false;
+      }, 150);
+    };
 
-      es.onopen = () => {
-        setSyncStatus('synced');
-        retryDelay = 1000;
-      };
+    const onRoomSync = (room: RoomState) => {
+      setRoomSync(room);
 
-      es.addEventListener('room:sync', (e: MessageEvent) => {
-        try {
-          const room = JSON.parse(e.data) as RoomState;
-          setRoomSync(room);
-
-          // Late joiner: if listener has no track (or track mismatch) and room has one, sync state
-          const currentHost = useListenTogetherStore.getState().isHost;
-          if (!currentHost && room.currentTrack) {
-            const player = usePlayerStore.getState();
-            if (!player.currentTrack || player.currentTrack.id !== room.currentTrack.id) {
-              isApplyingRemoteSyncRef.current = true;
-              usePlayerStore.setState({
-                currentTrack: room.currentTrack,
-                queue: room.queue?.length ? room.queue : [room.currentTrack],
-                queueIndex: 0,
-                isPlaying: room.isPlaying,
-                progress: room.progress,
-                seekTarget: { time: room.progress, id: Date.now() },
-              });
-              setTimeout(() => {
-                isApplyingRemoteSyncRef.current = false;
-              }, 150);
-            }
-          }
-        } catch {}
-      });
-
-      es.addEventListener('queue:sync', (e: MessageEvent) => {
-        try {
-          const data = JSON.parse(e.data) as { queue: Track[] };
-          if (data.queue && Array.isArray(data.queue)) {
-            const player = usePlayerStore.getState();
-            const currentQueueIds = player.queue.map((t) => t.id).join(',');
-            const newQueueIds = data.queue.map((t) => t.id).join(',');
-            if (currentQueueIds !== newQueueIds) {
-              isApplyingRemoteSyncRef.current = true;
-              usePlayerStore.setState({ queue: data.queue });
-              setTimeout(() => {
-                isApplyingRemoteSyncRef.current = false;
-              }, 150);
-            }
-          }
-        } catch {}
-      });
-
-      es.addEventListener('host:transfer', (e: MessageEvent) => {
-        try {
-          const data = JSON.parse(e.data) as { newHostId: string; newHostName: string };
-          if (data.newHostId === userId) {
-            usePlayerStore.getState().showToast('You are now the DJ');
-          } else {
-            usePlayerStore.getState().showToast(`${data.newHostName} is now the DJ`);
-          }
-        } catch {}
-      });
-
-      es.addEventListener('playback:sync', (e: MessageEvent) => {
-        try {
-          const data = JSON.parse(e.data) as {
-            currentTrack: Track | null;
-            isPlaying: boolean;
-            progress: number;
-            timestamp: number;
-            queue: Track[];
-            initiatorId?: string;
-          };
-
-          // Skip applying if this client initiated the action
-          if (data.initiatorId && data.initiatorId === userId) {
-            return;
-          }
-
-          const currentHost = useListenTogetherStore.getState().isHost;
-          // If host generated the event and no other initiatorId, host skips
-          if (currentHost && (!data.initiatorId || data.initiatorId === userId)) {
-            return;
-          }
-
-          const player = usePlayerStore.getState();
-
-          // 1. Sync active track
-          if (data.currentTrack && data.currentTrack.id !== player.currentTrack?.id) {
-            isApplyingRemoteSyncRef.current = true;
-            const newIndex = player.queue.findIndex((t) => t.id === data.currentTrack?.id);
+      // Late joiner: if listener has no track (or track mismatch) and room has one, sync state
+      const currentHost = useListenTogetherStore.getState().isHost;
+      if (!currentHost && room.currentTrack) {
+        const player = usePlayerStore.getState();
+        if (!player.currentTrack || player.currentTrack.id !== room.currentTrack.id) {
+          applyBriefly(() =>
             usePlayerStore.setState({
-              currentTrack: data.currentTrack,
-              queueIndex: newIndex >= 0 ? newIndex : 0,
-              isPlaying: data.isPlaying,
-              progress: data.progress,
-              seekTarget: { time: data.progress, id: Date.now() },
-            });
-            setTimeout(() => {
-              isApplyingRemoteSyncRef.current = false;
-            }, 150);
-            return;
-          }
-
-          // 3. Sync play / pause state
-          if (data.isPlaying !== player.isPlaying) {
-            isApplyingRemoteSyncRef.current = true;
-            usePlayerStore.setState({ isPlaying: data.isPlaying });
-            setTimeout(() => {
-              isApplyingRemoteSyncRef.current = false;
-            }, 150);
-          }
-
-          // 4. Soft drift correction (> 1.5s threshold)
-          if (data.isPlaying) {
-            const elapsedSinceBroadcast = (Date.now() - data.timestamp) / 1000;
-            const expectedProgress = data.progress + elapsedSinceBroadcast;
-            const drift = Math.abs(player.progress - expectedProgress);
-
-            if (drift > 1.5) {
-              isApplyingRemoteSyncRef.current = true;
-              player.seek(expectedProgress);
-              setTimeout(() => {
-                isApplyingRemoteSyncRef.current = false;
-              }, 150);
-            }
-          } else {
-            // Paused: align exactly if drifted
-            if (Math.abs(player.progress - data.progress) > 1.0) {
-              isApplyingRemoteSyncRef.current = true;
-              player.seek(data.progress);
-              setTimeout(() => {
-                isApplyingRemoteSyncRef.current = false;
-              }, 150);
-            }
-          }
-        } catch {}
-      });
-
-      es.addEventListener('reaction:new', (e: MessageEvent) => {
-        try {
-          const reaction = JSON.parse(e.data) as FloatingReaction;
-          if (reaction.userId !== userId) {
-            addReactionLocally(reaction);
-          }
-        } catch {}
-      });
-
-      es.onerror = () => {
-        setSyncStatus('offline');
-        es.close();
-        if (eventSource === es) {
-          eventSource = null;
+              currentTrack: room.currentTrack,
+              queue: room.queue?.length ? room.queue : [room.currentTrack as Track],
+              queueIndex: 0,
+              isPlaying: room.isPlaying,
+              progress: room.progress,
+              seekTarget: { time: room.progress, id: Date.now() },
+            })
+          );
         }
+      }
+    };
 
-        if (!intentionallyClosed) {
-          if (retryTimer) clearTimeout(retryTimer);
-          retryTimer = setTimeout(() => {
-            retryDelay = Math.min(retryDelay * 2, MAX_RETRY_DELAY);
-            connect();
-          }, retryDelay);
+    const onQueueSync = (queue: Track[]) => {
+      const player = usePlayerStore.getState();
+      const currentQueueIds = player.queue.map((t) => t.id).join(',');
+      const newQueueIds = queue.map((t) => t.id).join(',');
+      if (currentQueueIds !== newQueueIds) {
+        applyBriefly(() => usePlayerStore.setState({ queue }));
+      }
+    };
+
+    const onHostTransfer = (data: { newHostId: string; newHostName: string }) => {
+      if (data.newHostId === userId) {
+        usePlayerStore.getState().showToast('You are now the DJ');
+      } else {
+        usePlayerStore.getState().showToast(`${data.newHostName} is now the DJ`);
+      }
+    };
+
+    const onPlaybackSync = (data: PlaybackSync) => {
+      // Skip applying if this client initiated the action
+      if (data.initiatorId && data.initiatorId === userId) return;
+
+      const currentHost = useListenTogetherStore.getState().isHost;
+      // If host generated the event and no other initiatorId, host skips
+      if (currentHost && (!data.initiatorId || data.initiatorId === userId)) return;
+
+      const player = usePlayerStore.getState();
+
+      // 1. Sync active track
+      if (data.currentTrack && data.currentTrack.id !== player.currentTrack?.id) {
+        const track = data.currentTrack;
+        applyBriefly(() => {
+          const newIndex = player.queue.findIndex((t) => t.id === track.id);
+          usePlayerStore.setState({
+            currentTrack: track,
+            queueIndex: newIndex >= 0 ? newIndex : 0,
+            isPlaying: data.isPlaying,
+            progress: data.progress,
+            seekTarget: { time: data.progress, id: Date.now() },
+          });
+        });
+        return;
+      }
+
+      // 3. Sync play / pause state
+      if (data.isPlaying !== player.isPlaying) {
+        applyBriefly(() => usePlayerStore.setState({ isPlaying: data.isPlaying }));
+      }
+
+      // 4. Soft drift correction (> 1.5s threshold)
+      if (data.isPlaying) {
+        const elapsedSinceBroadcast = (Date.now() - data.timestamp) / 1000;
+        const expectedProgress = data.progress + elapsedSinceBroadcast;
+        if (Math.abs(player.progress - expectedProgress) > 1.5) {
+          applyBriefly(() => player.seek(expectedProgress));
         }
-      };
-    }
+      } else if (Math.abs(player.progress - data.progress) > 1.0) {
+        // Paused: align exactly if drifted
+        applyBriefly(() => player.seek(data.progress));
+      }
+    };
 
-    connect();
+    getTransport()
+      .then((transport) => {
+        if (stopped) return;
+        stop = transport.rooms.listen(roomCode, userId, {
+          onRoomSync,
+          onQueueSync,
+          onHostTransfer,
+          onPlaybackSync,
+          onReaction: (reaction) => {
+            if (reaction.userId !== userId) addReactionLocally(reaction);
+          },
+          onStatus: setSyncStatus,
+        });
+      })
+      .catch(() => setSyncStatus('offline'));
 
     return () => {
-      intentionallyClosed = true;
-      if (retryTimer) clearTimeout(retryTimer);
-      if (eventSource) {
-        eventSource.close();
-        eventSource = null;
-      }
+      stopped = true;
+      stop?.();
       setSyncStatus('offline');
     };
   }, [isInRoom, roomCode, userId, setRoomSync, addReactionLocally, setSyncStatus]);

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { RoomParticipant, FloatingReaction, RoomState } from '@/lib/rooms/roomManager';
 import type { Track } from '@/types';
 import { uuid } from '@/lib/utils';
+import { getTransport, type RoomAction } from '@/lib/realtime/transport';
 
 interface ListenTogetherState {
   isInRoom: boolean;
@@ -61,6 +62,18 @@ function getStoredUser(): { userId: string; userName: string } {
 export const useListenTogetherStore = create<ListenTogetherState>((set, get) => {
   const initialUser = getStoredUser();
 
+  /** Sends a room action through whichever transport is active. */
+  const act = async (action: RoomAction): Promise<boolean> => {
+    const { roomCode, userId } = get();
+    if (!roomCode) return false;
+    try {
+      const transport = await getTransport();
+      return await transport.rooms.act(roomCode, userId, action);
+    } catch {
+      return false;
+    }
+  };
+
   return {
     isInRoom: false,
     roomCode: null,
@@ -94,32 +107,20 @@ export const useListenTogetherStore = create<ListenTogetherState>((set, get) => 
     createRoom: async (customName, initialPlayback) => {
       const { userId, userName } = get();
       try {
-        const res = await fetch('/api/rooms', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'create',
-            userId,
-            userName,
-            roomName: customName,
-            initialPlayback,
-          }),
+        const transport = await getTransport();
+        const room = await transport.rooms.create({ userId, userName, roomName: customName, initialPlayback });
+        if (!room) return false;
+        set({
+          isInRoom: true,
+          roomCode: room.code,
+          roomName: room.name,
+          isHost: true,
+          allowListenerControls: false,
+          participants: room.participants,
+          syncStatus: 'synced',
+          isModalOpen: false,
         });
-        const data = await res.json();
-        if (data.room) {
-          set({
-            isInRoom: true,
-            roomCode: data.room.code,
-            roomName: data.room.name,
-            isHost: true,
-            allowListenerControls: false,
-            participants: data.room.participants,
-            syncStatus: 'synced',
-            isModalOpen: false,
-          });
-          return true;
-        }
-        return false;
+        return true;
       } catch {
         return false;
       }
@@ -128,26 +129,23 @@ export const useListenTogetherStore = create<ListenTogetherState>((set, get) => 
     joinRoom: async (code) => {
       const { userId, userName } = get();
       try {
-        const res = await fetch('/api/rooms', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'join', code: code.toUpperCase().trim(), userId, userName }),
-        });
-        const data = await res.json();
-        if (data.room) {
+        const transport = await getTransport();
+        const result = await transport.rooms.join({ code, userId, userName });
+        if ('room' in result) {
+          const room = result.room;
           set({
             isInRoom: true,
-            roomCode: data.room.code,
-            roomName: data.room.name,
-            isHost: data.room.hostId === userId,
-            allowListenerControls: data.room.allowListenerControls ?? false,
-            participants: data.room.participants,
+            roomCode: room.code,
+            roomName: room.name,
+            isHost: room.hostId === userId,
+            allowListenerControls: room.allowListenerControls ?? false,
+            participants: room.participants,
             syncStatus: 'synced',
             isModalOpen: false,
           });
           return { success: true };
         }
-        return { success: false, error: data.error || 'Failed to join session' };
+        return { success: false, error: result.error };
       } catch {
         return { success: false, error: 'Network error. Check connection and try again.' };
       }
@@ -156,23 +154,10 @@ export const useListenTogetherStore = create<ListenTogetherState>((set, get) => 
     leaveRoom: async () => {
       const { roomCode, userId } = get();
       if (roomCode) {
-        const payload = { action: 'leave', userId };
-        const url = `/api/rooms/${roomCode}/action`;
         try {
-          const res = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-          });
-          if (!res.ok) throw new Error('leave failed');
-        } catch {
-          // Single retry
-          fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-          }).catch(() => {});
-        }
+          const transport = await getTransport();
+          await transport.rooms.leave(roomCode, userId);
+        } catch {}
       }
       set({
         isInRoom: false,
@@ -199,12 +184,7 @@ export const useListenTogetherStore = create<ListenTogetherState>((set, get) => 
       };
 
       get().addReactionLocally(reaction);
-
-      fetch(`/api/rooms/${roomCode}/action`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'reaction', userId, emoji }),
-      }).catch(() => {});
+      act({ action: 'reaction', emoji }).catch(() => {});
     },
 
     addReactionLocally: (reaction) => {
@@ -227,107 +207,21 @@ export const useListenTogetherStore = create<ListenTogetherState>((set, get) => 
 
     setSyncStatus: (status) => set({ syncStatus: status }),
 
-    transferDj: async (targetUserId: string) => {
-      const { roomCode, userId } = get();
-      if (!roomCode) return false;
-      try {
-        const res = await fetch(`/api/rooms/${roomCode}/action`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'transfer-dj', userId, targetUserId }),
-        });
-        const data = await res.json();
-        return !!data.success;
-      } catch {
-        return false;
-      }
-    },
+    transferDj: (targetUserId: string) => act({ action: 'transfer-dj', targetUserId }),
 
     toggleListenerControls: async (allow: boolean) => {
-      const { roomCode, userId } = get();
-      if (!roomCode) return false;
+      if (!get().roomCode) return false;
       set({ allowListenerControls: allow });
-      try {
-        const res = await fetch(`/api/rooms/${roomCode}/action`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'toggle-listener-controls', userId, allowListenerControls: allow }),
-        });
-        const data = await res.json();
-        return !!data.success;
-      } catch {
-        return false;
-      }
+      return act({ action: 'toggle-listener-controls', allowListenerControls: allow });
     },
 
-    addTrackToSharedQueue: async (track: Track, options?: { playNext?: boolean }) => {
-      const { roomCode, userId, userName } = get();
-      if (!roomCode) return false;
-      try {
-        const res = await fetch(`/api/rooms/${roomCode}/action`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'queue-add',
-            userId,
-            userName,
-            track,
-            playNext: !!options?.playNext,
-          }),
-        });
-        const data = await res.json();
-        return !!data.success;
-      } catch {
-        return false;
-      }
-    },
+    addTrackToSharedQueue: (track: Track, options?: { playNext?: boolean }) =>
+      act({ action: 'queue-add', track, userName: get().userName, playNext: !!options?.playNext }),
 
-    removeTrackFromSharedQueue: async (trackId: string) => {
-      const { roomCode, userId } = get();
-      if (!roomCode) return false;
-      try {
-        const res = await fetch(`/api/rooms/${roomCode}/action`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'queue-remove', userId, trackId }),
-        });
-        const data = await res.json();
-        return !!data.success;
-      } catch {
-        return false;
-      }
-    },
+    removeTrackFromSharedQueue: (trackId: string) => act({ action: 'queue-remove', trackId }),
 
-    reorderSharedQueue: async (newQueue: Track[]) => {
-      const { roomCode, userId } = get();
-      if (!roomCode) return false;
-      try {
-        const res = await fetch(`/api/rooms/${roomCode}/action`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'queue-reorder', userId, queue: newQueue }),
-        });
-        const data = await res.json();
-        return !!data.success;
-      } catch {
-        return false;
-      }
-    },
+    reorderSharedQueue: (newQueue: Track[]) => act({ action: 'queue-reorder', queue: newQueue }),
 
-    clearSharedQueue: async () => {
-      const { roomCode, userId } = get();
-      if (!roomCode) return false;
-      try {
-        const res = await fetch(`/api/rooms/${roomCode}/action`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'queue-clear', userId }),
-        });
-        const data = await res.json();
-        return !!data.success;
-      } catch {
-        return false;
-      }
-    },
+    clearSharedQueue: () => act({ action: 'queue-clear' }),
   };
 });

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { runSse, type SseStatus } from '@/lib/remote/sseClient';
+import { getTransport, type LinkStatus, type RemoteClientLink } from '@/lib/realtime/transport';
 import { forgetToken, getStoredToken, storeToken } from '@/lib/remote/tokenStore';
 import type { RemoteCommand, RemoteState } from '@/lib/remote/types';
 
@@ -19,7 +19,8 @@ function vibrate() {
 
 export function useRemoteClient(code: string) {
   const [token, setToken] = useState<string | null | undefined>(undefined);
-  const [sse, setSse] = useState<SseStatus>('connecting');
+  const [sse, setSse] = useState<LinkStatus>('connecting');
+  const linkRef = useRef<RemoteClientLink | null>(null);
   const [hostOnline, setHostOnline] = useState(false);
   const [fatal, setFatal] = useState<'invalid' | 'ended' | null>(null);
   const [snap, setSnap] = useState<{ state: RemoteState; receivedAt: number } | null>(null);
@@ -40,26 +41,46 @@ export function useRemoteClient(code: string) {
 
   useEffect(() => {
     if (!token) return;
-    const ctrl = new AbortController();
-    runSse({
-      url: `/api/remote/${code}/events`,
-      token,
-      signal: ctrl.signal,
-      onStatus: setSse,
-      onEvent: (event, data) => {
-        if (event === 'state') {
-          setSnap({ state: data as RemoteState, receivedAt: performance.now() });
-          setOptimistic({});
-        } else if (event === 'presence') {
-          setHostOnline(!!(data as { host?: boolean }).host);
-        }
-      },
-      onFatal: (reason) => {
-        if (reason === 'invalid') forgetToken(code);
-        setFatal(reason);
-      },
-    });
-    return () => ctrl.abort();
+    let cancelled = false;
+    let link: RemoteClientLink | null = null;
+    let retry: ReturnType<typeof setTimeout> | null = null;
+
+    const connect = () => {
+      setSse('connecting');
+      getTransport()
+        .then((transport) => {
+          if (cancelled) return;
+          link = transport.connectRemoteClient(
+            { code, token },
+            {
+              onStatus: setSse,
+              onState: (state) => {
+                setSnap({ state, receivedAt: performance.now() });
+                setOptimistic({});
+              },
+              onHostOnline: setHostOnline,
+              onFatal: (reason) => {
+                if (reason === 'invalid') forgetToken(code);
+                setFatal(reason);
+              },
+            }
+          );
+          linkRef.current = link;
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setSse('reconnecting');
+          retry = setTimeout(connect, 3000);
+        });
+    };
+    connect();
+
+    return () => {
+      cancelled = true;
+      if (retry) clearTimeout(retry);
+      link?.close();
+      if (linkRef.current === link) linkRef.current = null;
+    };
   }, [code, token]);
 
   // Keep the screen awake while the remote is open. Optional; ignored when unsupported.
@@ -100,30 +121,24 @@ export function useRemoteClient(code: string) {
     async (command: RemoteCommand, opts?: { haptic?: boolean }) => {
       if (!token) return false;
       if (opts?.haptic !== false) vibrate();
-      try {
-        const res = await fetch(`/api/remote/${code}/command`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify(command),
-        });
-        if (res.status === 401 || res.status === 404) {
-          forgetToken(code);
-          setFatal('invalid');
-          return false;
-        }
-        if (res.status === 409) {
-          setHostOnline(false);
-          setSendError('Host is offline');
-          return false;
-        }
-        if (!res.ok) throw new Error();
-        setSendError(null);
-        return true;
-      } catch {
+      const result = await (linkRef.current?.sendCommand(command) ?? Promise.resolve('error' as const));
+      if (result === 'invalid') {
+        forgetToken(code);
+        setFatal('invalid');
+        return false;
+      }
+      if (result === 'offline') {
+        setHostOnline(false);
+        setSendError('Host is offline');
+        return false;
+      }
+      if (result === 'error') {
         setSendError('Command failed. Check the connection.');
         setOptimistic({});
         return false;
       }
+      setSendError(null);
+      return true;
     },
     [code, token]
   );
