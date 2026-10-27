@@ -622,14 +622,14 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
           await db.playlists.add({
             id: 'liked-songs',
             name: 'Liked Songs',
-            description: 'Your favorite tracks in one collection ❤️',
+            description: 'Songs marked with a heart',
             trackIds: [track.id],
             createdAt: Date.now(),
             updatedAt: Date.now(),
           });
         }
       } catch {}
-      showToast(`Added "${track.title}" to Liked Songs ❤️`);
+      showToast(`Added "${track.title}" to Liked Songs`);
     }
   },
 

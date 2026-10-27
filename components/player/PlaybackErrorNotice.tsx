@@ -24,28 +24,38 @@ export function PlaybackErrorNotice({ variant, className }: { variant: 'bar' | '
     <div
       role="alert"
       className={cn(
-        'flex items-center gap-2 text-sm text-zinc-100',
+        'flex gap-2 text-sm text-zinc-100',
         variant === 'bar'
-          ? 'absolute bottom-full left-0 right-0 px-4 py-1 bg-[#1d1d23] border-t border-white/[0.14]'
-          : 'rounded-[10px] bg-[#1d1d23] pl-3 pr-1 py-1 flex-wrap',
+          ? 'items-center absolute bottom-full left-1/2 -translate-x-1/2 w-[min(560px,calc(100%-2rem))] px-3 py-1 rounded-t-[10px] bg-[#1d1d23] border border-b-0 border-white/[0.14]'
+          : 'flex-col rounded-[10px] bg-[#1d1d23] pl-3 pr-1 pt-2.5 pb-1',
         className
       )}
     >
-      <AlertCircle size={16} className="text-rose-300 shrink-0" aria-hidden="true" />
-      <span className="min-w-0 flex-1 truncate">Can&apos;t play this song. {error.message}.</span>
-      <button
-        type="button"
-        onClick={() => {
-          clearPlaybackError();
-          next();
-        }}
-        className={cn(btn, 'text-zinc-100 hover:bg-white/[0.1]')}
-      >
-        Skip
-      </button>
-      <button type="button" onClick={retryCurrentTrack} className={cn(btn, 'bg-[#f4f4f6] text-[#0b0b0e] font-semibold hover:bg-white')}>
-        Try Again
-      </button>
+      <p className={cn('flex items-start gap-2 min-w-0 flex-1', variant === 'bar' && 'items-center truncate')}>
+        <AlertCircle size={16} className="text-rose-300 shrink-0 mt-0.5" aria-hidden="true" />
+        <span className={cn('min-w-0', variant === 'bar' && 'truncate')}>
+          Can&apos;t play this song. {error.message}.
+        </span>
+      </p>
+      <div className="flex items-center justify-end gap-1 shrink-0">
+        <button
+          type="button"
+          onClick={() => {
+            clearPlaybackError();
+            next();
+          }}
+          className={cn(btn, 'text-zinc-100 hover:bg-white/[0.1]')}
+        >
+          Skip
+        </button>
+        <button
+          type="button"
+          onClick={retryCurrentTrack}
+          className={cn(btn, 'bg-[#f4f4f6] text-[#0b0b0e] font-semibold hover:bg-white')}
+        >
+          Try Again
+        </button>
+      </div>
     </div>
   );
 }

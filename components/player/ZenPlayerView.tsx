@@ -40,7 +40,7 @@ export function ZenPlayerView() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Focus Mode / Now Playing sheet: trap focus, close on Escape, return focus to the opener.
-  useFocusTrap(containerRef, { onEscape: () => toggleZenMode(false) });
+  useFocusTrap(containerRef, { initialFocus: containerRef, onEscape: () => toggleZenMode(false) });
   const isDesktop = useMediaQuery('(min-width: 768px)');
   const paletteKey = usePlatformShortcut('⌘K');
 
@@ -59,7 +59,7 @@ export function ZenPlayerView() {
       role="dialog"
       aria-modal="true"
       aria-label={isDesktop ? 'Focus mode' : 'Now playing'}
-      className="fixed inset-0 z-50 flex flex-col text-white overflow-hidden bg-[color-mix(in_oklab,var(--track-accent,#e9b44c)_14%,#0b0b0e)]"
+      className="fixed inset-0 z-50 flex flex-col text-white overflow-hidden outline-none bg-[color-mix(in_oklab,var(--track-accent,#e9b44c)_14%,#0b0b0e)]"
       style={{
         ['--track-accent' as string]: palette.accent,
       }}

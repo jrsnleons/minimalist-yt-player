@@ -177,8 +177,8 @@ export function SettingsModal() {
           title="Playback"
           description="How songs are played and blended."
         >
-          <fieldset className="py-3 border-b border-white/[0.06]">
-            <legend className="text-sm font-medium text-zinc-100">Playback Engine</legend>
+          <div role="radiogroup" aria-labelledby="engine-label" className="py-3">
+            <p id="engine-label" className="text-sm font-medium text-zinc-100">Playback Engine</p>
             <p className="text-[13px] text-zinc-400 mt-0.5 mb-3">Choose how audio is loaded.</p>
             <div className="flex flex-col gap-2">
               <EngineOption
@@ -202,10 +202,10 @@ export function SettingsModal() {
                 <span>Stream links refresh automatically. The YouTube player is used if a stream fails.</span>
               </p>
             )}
-          </fieldset>
+          </div>
 
-          <fieldset className="py-3">
-            <legend className="text-sm font-medium text-zinc-100">Crossfade</legend>
+          <div role="radiogroup" aria-labelledby="crossfade-label" className="py-3">
+            <p id="crossfade-label" className="text-sm font-medium text-zinc-100">Crossfade</p>
             <p className="text-[13px] text-zinc-400 mt-0.5 mb-3">
               Fade between songs.{' '}
               <span className="text-zinc-200">{crossfadeDuration > 0 ? `${crossfadeDuration}s fade` : 'Off'}</span>
@@ -238,7 +238,7 @@ export function SettingsModal() {
                 </label>
               ))}
             </div>
-          </fieldset>
+          </div>
         </SettingsSection>
 
         {/* Appearance */}
@@ -349,8 +349,8 @@ export function SettingsModal() {
                 ))}
               </dl>
 
-              <fieldset>
-                <legend className="text-[13px] font-medium text-zinc-300 mb-1.5">Restore Mode</legend>
+              <div role="radiogroup" aria-labelledby="restore-mode-label">
+                <p id="restore-mode-label" className="text-[13px] font-medium text-zinc-300 mb-1.5">Restore Mode</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {[
                     { mode: 'merge' as const, icon: Layers, title: 'Merge', text: 'Keep existing playlists' },
@@ -384,7 +384,7 @@ export function SettingsModal() {
                     </label>
                   ))}
                 </div>
-              </fieldset>
+              </div>
 
               <button
                 type="button"

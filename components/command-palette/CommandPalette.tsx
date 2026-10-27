@@ -805,7 +805,12 @@ export function CommandPalette() {
                                       toggleCommandPalette();
                                     }}
                                     aria-label={`Play ${t.title} now`}
-                                    className={cn(rowBtn, 'bg-[#f4f4f6] text-[#0b0b0e] font-semibold hover:bg-white')}
+                                    className={cn(
+                                      rowBtn,
+                                      isSelected
+                                        ? 'bg-[#f4f4f6] text-[#0b0b0e] font-semibold hover:bg-white'
+                                        : 'bg-white/[0.08] text-zinc-100 hover:bg-white/[0.14]'
+                                    )}
                                   >
                                     <Play size={12} fill="currentColor" aria-hidden="true" />
                                     <span>Play</span>
