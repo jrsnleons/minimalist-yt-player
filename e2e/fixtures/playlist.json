@@ -1,0 +1,30 @@
+{
+  "title": "Delta Marsh Essentials",
+  "description": "Fixture playlist",
+  "tracks": [
+    {
+      "id": "e2eTrk00011",
+      "title": "Copper Skyline",
+      "artist": "Delta Marsh",
+      "duration": 198,
+      "thumbnailUrl": "https://i.ytimg.com/vi/e2eTrk00011/hqdefault.jpg",
+      "addedAt": 1700000000011
+    },
+    {
+      "id": "e2eTrk00012",
+      "title": "Quiet Engines",
+      "artist": "Delta Marsh",
+      "duration": 222,
+      "thumbnailUrl": "https://i.ytimg.com/vi/e2eTrk00012/hqdefault.jpg",
+      "addedAt": 1700000000012
+    },
+    {
+      "id": "e2eTrk00013",
+      "title": "Lowlight",
+      "artist": "Pia Okoye",
+      "duration": 205,
+      "thumbnailUrl": "https://i.ytimg.com/vi/e2eTrk00013/hqdefault.jpg",
+      "addedAt": 1700000000013
+    }
+  ]
+}

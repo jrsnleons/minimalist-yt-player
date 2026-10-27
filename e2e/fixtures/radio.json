@@ -1,0 +1,28 @@
+{
+  "suggestions": [
+    {
+      "id": "e2eTrk00021",
+      "title": "Radio One",
+      "artist": "Signal Fire",
+      "duration": 190,
+      "thumbnailUrl": "https://i.ytimg.com/vi/e2eTrk00021/hqdefault.jpg",
+      "addedAt": 1700000000021
+    },
+    {
+      "id": "e2eTrk00022",
+      "title": "Radio Two",
+      "artist": "Signal Fire",
+      "duration": 200,
+      "thumbnailUrl": "https://i.ytimg.com/vi/e2eTrk00022/hqdefault.jpg",
+      "addedAt": 1700000000022
+    },
+    {
+      "id": "e2eTrk00023",
+      "title": "Radio Three",
+      "artist": "Signal Fire",
+      "duration": 210,
+      "thumbnailUrl": "https://i.ytimg.com/vi/e2eTrk00023/hqdefault.jpg",
+      "addedAt": 1700000000023
+    }
+  ]
+}
