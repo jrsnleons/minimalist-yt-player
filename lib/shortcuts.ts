@@ -49,7 +49,7 @@ export const SHORTCUTS: ShortcutDef[] = [
   { id: 'focus', keys: ['z', 'f'], display: ['Z', 'F'], label: 'Focus Mode', group: 'Display & Navigation' },
   { id: 'panel', keys: ['q'], display: ['Q'], label: 'Now Playing Panel', group: 'Display & Navigation' },
   { id: 'help', keys: ['?'], display: ['?'], label: 'Keyboard Shortcuts', group: 'Display & Navigation' },
-  { id: 'close', keys: [], display: ['Esc'], label: 'Close Overlay / Exit Focus Mode', group: 'Display & Navigation', special: true },
+  { id: 'close', keys: [], display: ['Esc'], label: 'Close / Exit Focus', group: 'Display & Navigation', special: true },
 ];
 
 export const SHORTCUT_GROUPS: ShortcutDef['group'][] = ['Playback', 'Display & Navigation'];

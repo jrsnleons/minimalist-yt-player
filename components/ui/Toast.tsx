@@ -32,7 +32,7 @@ export function Toast() {
       aria-atomic="true"
       style={{ zIndex: 99999 }}
       className={cn(
-        'fixed bottom-24 right-6',
+        'fixed bottom-40 md:bottom-24 right-4 md:right-6',
         'flex items-center gap-3 px-4 py-3 rounded-2xl',
         'bg-[#101016]/95 backdrop-blur-2xl border border-white/20 text-white',
         'shadow-[0_20px_50px_rgba(0,0,0,0.9)] max-w-sm pointer-events-auto',

@@ -11,6 +11,8 @@ function isInputFocused(): boolean {
   const el = document.activeElement;
   if (!el) return false;
   const tag = el.tagName.toLowerCase();
+  // Sliders keep their own arrow/Home/End handling (see handleKeyDown) but still allow global keys.
+  if (tag === 'input' && (el as HTMLInputElement).type === 'range') return false;
   return (
     tag === 'input' ||
     tag === 'textarea' ||
@@ -69,6 +71,21 @@ export function useHotkeys() {
       // All single-key shortcuts are disabled when in a text input
       if (isInputFocused()) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+      // Space activates a focused button or link instead of toggling playback.
+      if (e.key === ' ' && document.activeElement?.closest('button, a[href], summary, [role="button"], [role="menuitem"]')) {
+        return;
+      }
+
+      // A focused slider owns its arrow keys.
+      const active = document.activeElement;
+      if (
+        active instanceof HTMLInputElement &&
+        active.type === 'range' &&
+        ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown'].includes(e.key)
+      ) {
+        return;
+      }
 
       const action = matchShortcut(e.key);
       if (!action) return;
