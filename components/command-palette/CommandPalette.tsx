@@ -24,6 +24,8 @@ import { debounce, formatTime, uuid, cn } from '@/lib/utils';
 import { exportFullLibrary } from '@/lib/backup';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { useRemoteHostStore } from '@/store/useRemoteHostStore';
+import { useTransferStore } from '@/store/useTransferStore';
+import { TransferLibraryDialog } from '@/components/transfer/TransferLibraryDialog';
 import type { Track, AppAction, Playlist } from '@/types';
 
 // Helper to detect and parse pasted URLs in search input
@@ -195,6 +197,13 @@ export function CommandPalette() {
         label: 'Connect Phone',
         action: () => {
           useRemoteHostStore.getState().openModal();
+        },
+      },
+      {
+        id: 'transfer-library',
+        label: 'Transfer Library',
+        action: () => {
+          useTransferStore.getState().open('send');
         },
       },
       {
@@ -550,7 +559,8 @@ export function CommandPalette() {
     }
   }, [activeIndex]);
 
-  if (!commandPaletteOpen) return null;
+  // The transfer dialog stays mounted while the palette is closed so it can open from a link.
+  if (!commandPaletteOpen) return <TransferLibraryDialog />;
 
   const activeItemId = items[activeIndex] ? `cmd-item-${items[activeIndex].id}` : undefined;
 
@@ -885,6 +895,8 @@ export function CommandPalette() {
           </div>
         </div>
       </div>
+
+      <TransferLibraryDialog />
 
       {/* Add To Playlist Modal */}
       {playlistTrack && (

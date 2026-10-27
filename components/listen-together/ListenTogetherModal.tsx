@@ -1,10 +1,16 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
+import { Loader2 } from 'lucide-react';
+import { Modal } from '@/components/ui/Modal';
 import { useListenTogetherStore } from '@/store/useListenTogetherStore';
 import { usePlayerStore } from '@/store/usePlayerStore';
-import { Radio, Users, X, Loader2, Copy, Check, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+const field =
+  'w-full min-h-[44px] px-3 rounded-lg bg-white/[0.05] border border-white/[0.08] text-sm text-white placeholder:text-zinc-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60';
+const primary =
+  'w-full min-h-[44px] rounded-lg bg-white text-black text-sm font-semibold flex items-center justify-center gap-2 hover:bg-zinc-200 transition-colors duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white';
 
 export function ListenTogetherModal() {
   const isModalOpen = useListenTogetherStore((s) => s.isModalOpen);
@@ -23,7 +29,9 @@ export function ListenTogetherModal() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const inputRef = useRef<HTMLInputElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
+  const codeRef = useRef<HTMLInputElement>(null);
+  const uid = useId();
 
   useEffect(() => {
     if (prefillCode) {
@@ -33,32 +41,18 @@ export function ListenTogetherModal() {
   }, [prefillCode]);
 
   useEffect(() => {
-    if (isModalOpen) {
-      setErrorMessage(null);
-      setNameInput(userName);
-      setTimeout(() => inputRef.current?.focus(), 80);
-    }
-  }, [isModalOpen, userName]);
-
-  // Handle ESC dismiss
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isModalOpen) {
-        closeModal();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isModalOpen, closeModal]);
-
-  if (!isModalOpen) return null;
+    if (!isModalOpen) return;
+    setErrorMessage(null);
+    setNameInput(userName);
+    const t = setTimeout(() => (activeTab === 'join' ? codeRef : nameRef).current?.focus(), 80);
+    return () => clearTimeout(t);
+    // Focus only when the dialog opens or the tab changes, not on every keystroke.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isModalOpen, activeTab]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nameInput.trim()) {
-      setErrorMessage('Enter a nickname');
-      return;
-    }
+    if (!nameInput.trim()) return setErrorMessage('Enter a nickname.');
     setUserName(nameInput.trim());
     setIsSubmitting(true);
     setErrorMessage(null);
@@ -77,23 +71,14 @@ export function ListenTogetherModal() {
     );
     setIsSubmitting(false);
 
-    if (success) {
-      showToast('Live session created! Share the code with friends.');
-    } else {
-      setErrorMessage('Failed to create session. Please try again.');
-    }
+    if (success) showToast('Session started. Share the code to invite others.');
+    else setErrorMessage('Could not start the session. Try again.');
   };
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!roomCodeInput.trim()) {
-      setErrorMessage('Please enter a 6-character room code');
-      return;
-    }
-    if (!nameInput.trim()) {
-      setErrorMessage('Enter a nickname');
-      return;
-    }
+    if (!roomCodeInput.trim()) return setErrorMessage('Enter the 6-character code.');
+    if (!nameInput.trim()) return setErrorMessage('Enter a nickname.');
     setUserName(nameInput.trim());
     setIsSubmitting(true);
     setErrorMessage(null);
@@ -101,200 +86,146 @@ export function ListenTogetherModal() {
     const result = await joinRoom(roomCodeInput.trim());
     setIsSubmitting(false);
 
-    if (result.success) {
-      showToast('Joined live session!');
-    } else {
-      setErrorMessage(result.error || 'Room not found. Check the code and try again.');
-    }
+    if (result.success) showToast('Joined session');
+    else setErrorMessage(result.error || 'Session not found. Check the code and try again.');
   };
 
+  const switchTab = (tab: 'create' | 'join') => {
+    setActiveTab(tab);
+    setErrorMessage(null);
+  };
+
+  const nameId = `${uid}-name`;
+  const sessionId = `${uid}-session`;
+  const codeId = `${uid}-code`;
+
   return (
-    <div
-      onClick={closeModal}
-      className="fixed inset-0 z-[220] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Listen Together session dialog"
-    >
-      <div
-        className="relative w-full max-w-md rounded-[28px] border border-white/15 bg-[#0c0c12]/95 shadow-[0_24px_70px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col text-white"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-white/[0.08] bg-white/[0.02]">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-300 flex items-center justify-center">
-              <Radio size={16} />
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-white tracking-tight font-sans">
-                Listen Together
-              </h3>
-              <p className="text-xs text-zinc-400 font-sans mt-0.5">
-                Listen to the same song at the same time
-              </p>
-            </div>
-          </div>
+    <Modal isOpen={isModalOpen} onClose={closeModal} title="Listen Together" className="max-w-sm">
+      <div className="flex flex-col gap-5">
+        <p className="text-sm text-zinc-400">Play the same song at the same time on every device.</p>
 
-          <button
-            onClick={closeModal}
-            aria-label="Close dialog"
-            className="w-8 h-8 rounded-xl flex items-center justify-center text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer"
-          >
-            <X size={16} />
-          </button>
-        </div>
-
-        {/* Tab Selector */}
-        <div className="p-5 pb-0">
-          <div className="flex items-center bg-white/[0.04] border border-white/[0.08] p-1 rounded-2xl">
+        <div role="tablist" aria-label="Session type" className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-white/[0.04]">
+          {(
+            [
+              ['create', 'Start Session'],
+              ['join', 'Join Session'],
+            ] as const
+          ).map(([tab, label]) => (
             <button
-              onClick={() => {
-                setActiveTab('create');
-                setErrorMessage(null);
-              }}
+              key={tab}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === tab}
+              onClick={() => switchTab(tab)}
               className={cn(
-                'flex-1 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer text-center',
-                activeTab === 'create'
-                  ? 'bg-white text-black shadow-sm'
-                  : 'text-zinc-400 hover:text-white'
+                'min-h-[36px] rounded-lg text-sm font-medium transition-colors duration-150 cursor-pointer focus-visible:outline-2 focus-visible:outline-white',
+                activeTab === tab ? 'bg-white/[0.1] text-white' : 'text-zinc-400 hover:text-white'
               )}
             >
-              Start Session
+              {label}
             </button>
-            <button
-              onClick={() => {
-                setActiveTab('join');
-                setErrorMessage(null);
-              }}
-              className={cn(
-                'flex-1 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer text-center',
-                activeTab === 'join'
-                  ? 'bg-white text-black shadow-sm'
-                  : 'text-zinc-400 hover:text-white'
-              )}
-            >
-              Join Session
-            </button>
-          </div>
+          ))}
         </div>
 
-        {/* Form Body */}
-        <div className="p-5">
-          {errorMessage && (
-            <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs font-medium">
-              {errorMessage}
+        {errorMessage && (
+          <p role="alert" className="text-sm text-rose-300">
+            {errorMessage}
+          </p>
+        )}
+
+        {activeTab === 'create' ? (
+          <form onSubmit={handleCreate} className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor={nameId} className="text-sm text-zinc-300">
+                Nickname
+              </label>
+              <input
+                id={nameId}
+                ref={nameRef}
+                type="text"
+                value={nameInput}
+                onChange={(e) => setNameInput(e.target.value)}
+                placeholder="Alex"
+                maxLength={24}
+                autoComplete="nickname"
+                className={field}
+                required
+              />
             </div>
-          )}
-
-          {activeTab === 'create' ? (
-            <form onSubmit={handleCreate} className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-zinc-300 mb-1.5 font-sans">
-                  Nickname
-                </label>
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={nameInput}
-                  onChange={(e) => setNameInput(e.target.value)}
-                  placeholder="e.g. Alex"
-                  maxLength={24}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.1] text-white placeholder-zinc-500 text-xs focus:outline-none focus:border-white/30 transition-colors"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-zinc-300 mb-1.5 font-sans">
-                  Session Name (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={roomNameInput}
-                  onChange={(e) => setRoomNameInput(e.target.value)}
-                  placeholder="e.g. Late Night Study"
-                  maxLength={32}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.1] text-white placeholder-zinc-500 text-xs focus:outline-none focus:border-white/30 transition-colors"
-                />
-              </div>
-
-              <div className="pt-2">
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full py-2.5 rounded-xl bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 min-h-[38px]"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 size={13} className="animate-spin" />
-                      <span>Creating…</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Start Live Session</span>
-                      <ArrowRight size={13} />
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          ) : (
-            <form onSubmit={handleJoin} className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-zinc-300 mb-1.5 font-sans">
-                  Room Code
-                </label>
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={roomCodeInput}
-                  onChange={(e) => setRoomCodeInput(e.target.value.toUpperCase())}
-                  placeholder="e.g. AB12CD"
-                  maxLength={6}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.1] text-white placeholder-zinc-500 text-xs font-mono tracking-widest uppercase focus:outline-none focus:border-white/30 transition-colors"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-zinc-300 mb-1.5 font-sans">
-                  Nickname
-                </label>
-                <input
-                  type="text"
-                  value={nameInput}
-                  onChange={(e) => setNameInput(e.target.value)}
-                  placeholder="e.g. Sam"
-                  maxLength={24}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.1] text-white placeholder-zinc-500 text-xs focus:outline-none focus:border-white/30 transition-colors"
-                  required
-                />
-              </div>
-
-              <div className="pt-2">
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full py-2.5 rounded-xl bg-white text-black hover:bg-zinc-200 text-xs font-semibold transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 min-h-[38px]"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 size={13} className="animate-spin" />
-                      <span>Joining…</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Join Session</span>
-                      <ArrowRight size={13} />
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          )}
-        </div>
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor={sessionId} className="text-sm text-zinc-300">
+                Session Name <span className="text-zinc-500">(optional)</span>
+              </label>
+              <input
+                id={sessionId}
+                type="text"
+                value={roomNameInput}
+                onChange={(e) => setRoomNameInput(e.target.value)}
+                placeholder="Late Night Study"
+                maxLength={32}
+                className={field}
+              />
+            </div>
+            <button type="submit" disabled={isSubmitting} className={primary}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+                  Starting
+                </>
+              ) : (
+                'Start Session'
+              )}
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleJoin} className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor={codeId} className="text-sm text-zinc-300">
+                Code
+              </label>
+              <input
+                id={codeId}
+                ref={codeRef}
+                type="text"
+                value={roomCodeInput}
+                onChange={(e) => setRoomCodeInput(e.target.value.toUpperCase())}
+                placeholder="AB12CD"
+                maxLength={6}
+                autoComplete="off"
+                spellCheck={false}
+                className={cn(field, 'font-mono tracking-[0.25em] uppercase')}
+                required
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor={nameId} className="text-sm text-zinc-300">
+                Nickname
+              </label>
+              <input
+                id={nameId}
+                type="text"
+                value={nameInput}
+                onChange={(e) => setNameInput(e.target.value)}
+                placeholder="Sam"
+                maxLength={24}
+                autoComplete="nickname"
+                className={field}
+                required
+              />
+            </div>
+            <button type="submit" disabled={isSubmitting} className={primary}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+                  Joining
+                </>
+              ) : (
+                'Join Session'
+              )}
+            </button>
+          </form>
+        )}
       </div>
-    </div>
+    </Modal>
   );
 }

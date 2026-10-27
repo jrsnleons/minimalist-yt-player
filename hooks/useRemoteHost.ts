@@ -6,7 +6,8 @@ import { db } from '@/db/schema';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { useRemoteHostStore } from '@/store/useRemoteHostStore';
 import { usePlaybackLock } from '@/hooks/usePlaybackLock';
-import { runSse } from '@/lib/remote/sseClient';
+import { getTransport, type RemoteHostLink } from '@/lib/realtime/transport';
+import { setActiveRemoteHost } from '@/lib/realtime/activeRemote';
 import {
   LOCK_EXEMPT_COMMANDS,
   REMOTE_QUEUE_CAP,
@@ -149,37 +150,54 @@ export function useRemoteHost() {
     useRemoteHostStore.getState().restore();
   }, []);
 
+  const linkRef = useRef<RemoteHostLink | null>(null);
+
   // Command stream
   useEffect(() => {
     if (!session) return;
-    const ctrl = new AbortController();
-    const { code, token } = session;
-    runSse({
-      url: `/api/remote/${code}/host/events`,
-      token,
-      signal: ctrl.signal,
-      onStatus: (status) => {
-        if (status === 'open') pushRef.current(true);
-        else useRemoteHostStore.getState().setPhones(0);
-      },
-      onEvent: (event, data) => {
-        if (event === 'presence') {
-          const remotes = (data as { remotes?: number }).remotes;
-          useRemoteHostStore.getState().setPhones(typeof remotes === 'number' ? remotes : 0);
-          if (remotes) pushRef.current(true);
-        } else if (event === 'command') {
-          runCommand(data as RemoteCommand, lockedRef.current).catch(() => {});
-        }
-      },
-      onFatal: () => useRemoteHostStore.getState().clearSession(),
-    });
-    return () => ctrl.abort();
+    let cancelled = false;
+    let link: RemoteHostLink | null = null;
+    let retry: ReturnType<typeof setTimeout> | null = null;
+
+    const connect = () => {
+      getTransport()
+        .then((transport) => {
+          if (cancelled) return;
+          link = transport.connectRemoteHost(session, {
+            onStatus: (status) => {
+              if (status === 'open') pushRef.current(true);
+              else useRemoteHostStore.getState().setPhones(0);
+            },
+            onPhones: (count) => {
+              useRemoteHostStore.getState().setPhones(count);
+              if (count > 0) pushRef.current(true);
+            },
+            onCommand: (command) => {
+              runCommand(command, lockedRef.current).catch(() => {});
+            },
+            onFatal: () => useRemoteHostStore.getState().clearSession(),
+          });
+          linkRef.current = link;
+          setActiveRemoteHost(link);
+        })
+        .catch(() => {
+          if (!cancelled) retry = setTimeout(connect, 3000);
+        });
+    };
+    connect();
+
+    return () => {
+      cancelled = true;
+      if (retry) clearTimeout(retry);
+      link?.close();
+      if (linkRef.current === link) linkRef.current = null;
+      setActiveRemoteHost(null);
+    };
   }, [session]);
 
   // State publisher
   useEffect(() => {
     if (!session) return;
-    const { code, token } = session;
     let lastSent = 0;
     let lastProgressSent = 0;
     let timer: ReturnType<typeof setTimeout> | null = null;
@@ -196,11 +214,7 @@ export function useRemoteHost() {
       lastSent = Date.now();
       lastProgressSent = lastSent;
       try {
-        await fetch(`/api/remote/${code}/host/state`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify(snapshot(playlistsRef.current, lockedRef.current)),
-        });
+        await linkRef.current?.publishState(snapshot(playlistsRef.current, lockedRef.current));
       } catch {}
       inFlight = false;
       if (pending) {

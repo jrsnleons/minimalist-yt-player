@@ -121,7 +121,30 @@ The player operates **100% out of the box with zero API keys or external account
 | `YOUTUBE_DATA_API_KEY` | No | *(None)* | Secondary fallback for search & playlist scraping if default Innertube scraper hits IP rate-limits. |
 | `SPOTIFY_CLIENT_ID` | No | *(None)* | Optional Spotify Web API client ID fallback. |
 | `SPOTIFY_CLIENT_SECRET`| No | *(None)* | Optional Spotify Web API client secret. |
+| `ABLY_API_KEY` | No | *(None)* | Ably root API key. Enables the realtime transport for Phone Remote, Listen Together and Transfer Library. Server only; never sent to the browser. Required on serverless hosts. |
+| `REMOTE_SECRET` | No | *(Derived from `ABLY_API_KEY`)* | Optional separate key for signing remote and transfer pairing secrets. Set it to rotate pairing secrets without rotating the Ably key. |
 | `OUTPUT_STANDALONE` | No | `false` | Set to `true` when building Docker standalone bundles. |
+
+---
+
+## Realtime Setup (Ably)
+
+Phone Remote, Listen Together and Transfer Library need devices to reach each other. Without `ABLY_API_KEY` the app relays through server memory over SSE, which works on a single long-running Node process (local dev, Docker, VPS) but not on serverless hosts like Vercel, where each device can hit a different instance. With the key set, devices talk through Ably channels instead and no database is needed.
+
+1. Create a free account at [ably.com](https://ably.com) and create an app.
+2. Open the app's API Keys tab and copy the root key (format `appId.keyId:secret`).
+3. In the Vercel project, open Settings, then Environment Variables, and add `ABLY_API_KEY` with that value for Production (and Preview if wanted).
+4. Redeploy so the new variable is picked up.
+5. For local testing, copy `.env.example` to `.env.local` and set `ABLY_API_KEY` there.
+
+How it works:
+
+- The browser requests a token from `/api/realtime/token`. The server signs an Ably token request limited to one channel (`remote:<code>`, `room:<code>` or `transfer:<code>`), so a token cannot read any other session.
+- Remote and transfer sessions use a stateless pairing secret (an HMAC of the code, valid for 7 days). Any server instance can verify it, so nothing is stored on the server. The secret travels in the link fragment and in POST bodies, never in query strings.
+- The playing device (or DJ) is authoritative. Every message is validated by the side that receives it.
+- `GET /api/realtime/config` reports `ably` or `sse`. The token route returns 501 when the key is not set.
+
+The free Ably plan allows 64 KB per message. Remote snapshots and the shared Listen Together queue are trimmed to fit, and library transfers are split into ~48 KB chunks.
 
 ---
 

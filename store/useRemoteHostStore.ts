@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { SessionCredentials } from '@/lib/remote/types';
+import { endActiveRemoteHost } from '@/lib/realtime/activeRemote';
 
 const STORAGE_KEY = 'onyx_remote_session';
 
@@ -70,6 +71,7 @@ export const useRemoteHostStore = create<RemoteHostState>((set, get) => ({
 
   endSession: async () => {
     const session = get().session;
+    endActiveRemoteHost();
     get().clearSession();
     if (!session) return;
     try {

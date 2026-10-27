@@ -25,6 +25,7 @@ import {
   Loader2,
   AlertCircle,
 } from 'lucide-react';
+import { TransferLibraryButton } from '@/components/transfer/TransferLibraryButton';
 import type { PlaybackMode, RestoreMode } from '@/types';
 
 export function SettingsModal() {
@@ -322,7 +323,7 @@ export function SettingsModal() {
               <span>Restore from File</span>
             </button>
 
-            {/* Transfer Library button (added by library transfer feature) */}
+            <TransferLibraryButton onOpen={closeSettings} />
           </div>
 
           {fileValidation && fileValidation.isValid && (

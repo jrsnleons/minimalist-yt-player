@@ -121,7 +121,25 @@ Add the remote page to the phone home screen to reopen it later. The pairing key
 
 Sessions expire after 2 hours without a connected device. While Listen Together locks playback, remote playback commands are ignored; volume and like still work.
 
-**Limitation:** sessions live in server memory. On serverless hosts such as Vercel, the playing device and the phone may be routed to different instances and fail to see each other. This is the same limitation as Listen Together. Self-hosting on a single long-running Node process (`pnpm start` or Docker) avoids it.
+**Transport:** with `ABLY_API_KEY` set, the playing device and the phone talk through Ably channels and work on serverless hosts. Without it, sessions live in server memory and only work on a single long-running Node process (`pnpm start`, Docker or local dev), because on Vercel the two devices can be routed to different instances. Listen Together uses the same transport.
+
+### Realtime Setup
+
+1. Create a free app at [ably.com](https://ably.com) and copy its root API key from the API Keys tab.
+2. Add `ABLY_API_KEY` to the Vercel project's environment variables (or `.env.local` for local dev).
+3. Redeploy.
+
+Optionally set `REMOTE_SECRET` to sign pairing secrets with a separate key. See [DEPLOYMENT.md](DEPLOYMENT.md#realtime-setup-ably) for details.
+
+## Transfer Library
+
+Move playlists, tracks and history to another device without a database or a file. Requires `ABLY_API_KEY`.
+
+1. On the first device, open the command palette and choose Transfer Library, then Send Library.
+2. Scan the QR code or open the link on the second device.
+3. Approve the request on the first device. The second device shows a summary and offers Merge or Replace. Replace asks for confirmation first.
+
+Without `ABLY_API_KEY`, use the JSON backup in Settings instead.
 
 ## Installable App
 
