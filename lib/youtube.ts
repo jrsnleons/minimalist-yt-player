@@ -272,69 +272,68 @@ export async function getRadioSuggestions(videoId: string): Promise<Track[]> {
   }
 }
 
+export interface StreamInfo {
+  url: string;
+  /**
+   * YouTube's measured loudness relative to its reference level, in dB.
+   * Positive means louder than reference (YouTube attenuates by this much).
+   * Null when the player response carries no loudness data.
+   */
+  loudnessDb: number | null;
+}
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/** Pull loudness (dB) from a format first, then the player config. */
+function readLoudnessDb(info: any, format: any): number | null {
+  const candidates = [
+    format?.loudness_db,
+    info?.player_config?.audio_config?.loudness_db,
+    info?.player_config?.audio_config?.perceptual_loudness_db,
+  ];
+  for (const c of candidates) {
+    if (typeof c === 'number' && Number.isFinite(c)) return c;
+  }
+  return null;
+}
+
+async function pickFromInfo(yt: Awaited<ReturnType<typeof getInnertube>>, info: any): Promise<StreamInfo | null> {
+  const format = info.chooseFormat({ quality: 'best', type: 'audio' });
+  if (format) {
+    if (format.url) return { url: format.url, loudnessDb: readLoudnessDb(info, format) };
+    if (typeof format.decipher === 'function') {
+      const deciphered = await format.decipher(yt.session.player);
+      if (deciphered) return { url: deciphered, loudnessDb: readLoudnessDb(info, format) };
+    }
+  }
+  const progressive = info.streaming_data?.formats?.find((f: any) => f.url && f.has_audio);
+  if (progressive?.url) return { url: progressive.url, loudnessDb: readLoudnessDb(info, progressive) };
+  return null;
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
+/** Extract direct audio stream URL and loudness info for a videoId */
+export async function getStreamInfo(videoId: string): Promise<StreamInfo> {
+  const yt = await getInnertube();
+  const attempts: Array<[string, () => Promise<unknown>]> = [
+    // 1. Primary: yt.music.getInfo (best audio formats & direct stream URLs)
+    ['music.getInfo', () => yt.music.getInfo(videoId)],
+    // 2. Fallback: yt.getBasicInfo
+    ['getBasicInfo', () => yt.getBasicInfo(videoId)],
+    // 3. Final fallback: yt.getInfo
+    ['getInfo', () => yt.getInfo(videoId)],
+  ];
+  for (const [label, load] of attempts) {
+    try {
+      const result = await pickFromInfo(yt, await load());
+      if (result) return result;
+    } catch (err) {
+      console.warn(`[getStreamInfo] ${label} failed for ${videoId}:`, err);
+    }
+  }
+  throw new Error('Could not extract direct stream URL');
+}
+
 /** Extract direct audio stream URL for a videoId */
 export async function getStreamUrl(videoId: string): Promise<string> {
-  const yt = await getInnertube();
-
-  // 1. Primary: yt.music.getInfo (best audio formats & direct stream URLs)
-  try {
-    const musicInfo = await yt.music.getInfo(videoId);
-    const format = musicInfo.chooseFormat({
-      quality: 'best',
-      type: 'audio',
-    });
-    if (format) {
-      if (format.url) return format.url;
-      if (typeof format.decipher === 'function') {
-        const deciphered = await format.decipher(yt.session.player);
-        if (deciphered) return deciphered;
-      }
-    }
-    const progressive = musicInfo.streaming_data?.formats?.find((f) => f.url && f.has_audio);
-    if (progressive?.url) return progressive.url;
-  } catch (err) {
-    console.warn(`[getStreamUrl] music.getInfo failed for ${videoId}:`, err);
-  }
-
-  // 2. Fallback: yt.getBasicInfo
-  try {
-    const basicInfo = await yt.getBasicInfo(videoId);
-    const format = basicInfo.chooseFormat({
-      quality: 'best',
-      type: 'audio',
-    });
-    if (format) {
-      if (format.url) return format.url;
-      if (typeof format.decipher === 'function') {
-        const deciphered = await format.decipher(yt.session.player);
-        if (deciphered) return deciphered;
-      }
-    }
-    const progressive = basicInfo.streaming_data?.formats?.find((f) => f.url && f.has_audio);
-    if (progressive?.url) return progressive.url;
-  } catch (err) {
-    console.warn(`[getStreamUrl] getBasicInfo failed for ${videoId}:`, err);
-  }
-
-  // 3. Final fallback: yt.getInfo
-  try {
-    const info = await yt.getInfo(videoId);
-    const format = info.chooseFormat({
-      quality: 'best',
-      type: 'audio',
-    });
-    if (format) {
-      if (format.url) return format.url;
-      if (typeof format.decipher === 'function') {
-        const deciphered = await format.decipher(yt.session.player);
-        if (deciphered) return deciphered;
-      }
-    }
-    const progressive = info.streaming_data?.formats?.find((f) => f.url && f.has_audio);
-    if (progressive?.url) return progressive.url;
-  } catch (err) {
-    console.error(`[getStreamUrl] getInfo failed for ${videoId}:`, err);
-  }
-
-  throw new Error('Could not extract direct stream URL');
+  return (await getStreamInfo(videoId)).url;
 }

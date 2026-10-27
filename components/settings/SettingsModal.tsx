@@ -34,6 +34,8 @@ export function SettingsModal() {
   const setPlaybackMode = usePlayerStore((s) => s.setPlaybackMode);
   const crossfadeDuration = usePlayerStore((s) => s.crossfadeDuration);
   const setCrossfadeDuration = usePlayerStore((s) => s.setCrossfadeDuration);
+  const normalizeVolume = usePlayerStore((s) => s.normalizeVolume);
+  const setNormalizeVolume = usePlayerStore((s) => s.setNormalizeVolume);
   const blurredHeroBackground = usePlayerStore((s) => s.blurredHeroBackground);
   const toggleBlurredHeroBackground = usePlayerStore((s) => s.toggleBlurredHeroBackground);
   const ambientVisualizerEnabled = usePlayerStore((s) => s.ambientVisualizerEnabled);
@@ -207,7 +209,7 @@ export function SettingsModal() {
           <div role="radiogroup" aria-labelledby="crossfade-label" className="py-3">
             <p id="crossfade-label" className="text-sm font-medium text-zinc-100">Crossfade</p>
             <p className="text-[13px] text-zinc-400 mt-0.5 mb-3">
-              Fade between songs.{' '}
+              Fade between songs. Off plays songs back to back with no gap.{' '}
               <span className="text-zinc-200">{crossfadeDuration > 0 ? `${crossfadeDuration}s fade` : 'Off'}</span>
             </p>
             <div className="flex flex-wrap gap-1 p-1 rounded-[10px] bg-[#1d1d23] w-fit max-w-full">
@@ -239,6 +241,12 @@ export function SettingsModal() {
               ))}
             </div>
           </div>
+          <SwitchRow
+            label="Normalize Volume"
+            description="Evens out loudness between songs. Applies to Direct Audio mode."
+            checked={normalizeVolume}
+            onChange={() => setNormalizeVolume(!normalizeVolume)}
+          />
         </SettingsSection>
 
         {/* Appearance */}
