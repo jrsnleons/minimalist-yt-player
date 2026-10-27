@@ -2,6 +2,7 @@
 
 import { useEffect, useCallback } from 'react';
 import { usePlayerStore } from '@/store/usePlayerStore';
+import { matchShortcut } from '@/lib/shortcuts';
 
 const SEEK_LARGE = 10;
 const SEEK_SMALL = 5;
@@ -28,8 +29,6 @@ export function useHotkeys() {
   const toggleShuffle = usePlayerStore((s) => s.toggleShuffle);
   const cycleRepeat = usePlayerStore((s) => s.cycleRepeat);
   const toggleVideo = usePlayerStore((s) => s.toggleVideo);
-  const toggleLeftSidebar = usePlayerStore((s) => s.toggleLeftSidebar);
-  const toggleRightSidebar = usePlayerStore((s) => s.toggleRightSidebar);
   const toggleCommandPalette = usePlayerStore((s) => s.toggleCommandPalette);
   const toggleZenMode = usePlayerStore((s) => s.toggleZenMode);
   const toggleSidebarPlayerMode = usePlayerStore((s) => s.toggleSidebarPlayerMode);
@@ -71,83 +70,51 @@ export function useHotkeys() {
       if (isInputFocused()) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
 
-      switch (e.key) {
-        case ' ':
-        case 'k':
-        case 'K':
-          e.preventDefault();
+      const action = matchShortcut(e.key);
+      if (!action) return;
+      e.preventDefault();
+
+      switch (action) {
+        case 'playPause':
           togglePlay();
           break;
-        case 'j':
-        case 'J':
-          e.preventDefault();
+        case 'seekBack10':
           seek(Math.max(0, usePlayerStore.getState().progress - SEEK_LARGE));
           break;
-        case 'l':
-        case 'L':
-          e.preventDefault();
+        case 'seekForward10':
           seek(usePlayerStore.getState().progress + SEEK_LARGE);
           break;
-        case 'ArrowLeft':
-          e.preventDefault();
+        case 'seekBack5':
           seek(Math.max(0, usePlayerStore.getState().progress - SEEK_SMALL));
           break;
-        case 'ArrowRight':
-          e.preventDefault();
+        case 'seekForward5':
           seek(usePlayerStore.getState().progress + SEEK_SMALL);
           break;
-        case 'n':
-        case 'N':
-          e.preventDefault();
+        case 'next':
           next();
           break;
-        case 'p':
-        case 'P':
-          e.preventDefault();
+        case 'previous':
           previous();
           break;
-        case 'm':
-        case 'M':
-          e.preventDefault();
+        case 'mute':
           toggleMute();
           break;
-        case 'v':
-        case 'V':
-          e.preventDefault();
+        case 'video':
           toggleVideo();
           break;
-        case 'z':
-        case 'Z':
-        case 'f':
-        case 'F':
-          e.preventDefault();
+        case 'focus':
           toggleZenMode();
           break;
-        case 's':
-        case 'S':
-          e.preventDefault();
+        case 'shuffle':
           toggleShuffle();
           break;
-        case 'r':
-        case 'R':
-          e.preventDefault();
+        case 'repeat':
           cycleRepeat();
           break;
-        case 'q':
-        case 'Q':
-          e.preventDefault();
+        case 'panel':
           toggleSidebarPlayerMode();
           break;
-        case '[':
-          e.preventDefault();
-          toggleLeftSidebar();
-          break;
-        case ']':
-          e.preventDefault();
-          toggleRightSidebar();
-          break;
-        case '?':
-          e.preventDefault();
+        case 'help':
           toggleShortcutsModal();
           break;
         default:
@@ -162,8 +129,6 @@ export function useHotkeys() {
       toggleShuffle,
       cycleRepeat,
       toggleVideo,
-      toggleLeftSidebar,
-      toggleRightSidebar,
       toggleCommandPalette,
       toggleZenMode,
       toggleSidebarPlayerMode,
