@@ -59,7 +59,7 @@ export function useHotkeys() {
           return;
         }
         if (commandPaletteOpen) {
-          toggleCommandPalette();
+          usePlayerStore.getState().closeCommandPalette();
           return;
         }
         if (zenMode) {

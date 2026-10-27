@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronDown, ListMusic, Radio, Music2, Search, Heart } from 'lucide-react';
 import { usePlayerStore } from '@/store/usePlayerStore';
@@ -8,6 +8,8 @@ import { CustomScrubber } from './CustomScrubber';
 import { VolumeSlider } from './VolumeSlider';
 import { TransportControls } from './TransportControls';
 import { UpNext } from './UpNext';
+import { PlaybackErrorNotice } from './PlaybackErrorNotice';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { MarqueeText } from '@/components/ui/MarqueeText';
 import { TrackArtwork } from '@/components/ui/TrackArtwork';
 import { AmbientVisualizer } from './AmbientVisualizer';
@@ -35,6 +37,10 @@ export function ZenPlayerView() {
   const showToast = usePlayerStore((s) => s.showToast);
 
   const [showQueue, setShowQueue] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Focus Mode / Now Playing sheet: trap focus, close on Escape, return focus to the opener.
+  useFocusTrap(containerRef, { initialFocus: containerRef, onEscape: () => toggleZenMode(false) });
   const isDesktop = useMediaQuery('(min-width: 768px)');
   const paletteKey = usePlatformShortcut('⌘K');
 
@@ -45,13 +51,15 @@ export function ZenPlayerView() {
 
   return (
     <motion.div
+      ref={containerRef}
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 24 }}
       transition={{ duration: 0.25, ease: 'easeOut' }}
       role="dialog"
+      aria-modal="true"
       aria-label={isDesktop ? 'Focus mode' : 'Now playing'}
-      className="fixed inset-0 z-50 flex flex-col text-white overflow-hidden bg-[color-mix(in_oklab,var(--track-accent,#e9b44c)_14%,#0b0b0e)]"
+      className="fixed inset-0 z-50 flex flex-col text-white overflow-hidden outline-none bg-[color-mix(in_oklab,var(--track-accent,#e9b44c)_14%,#0b0b0e)]"
       style={{
         ['--track-accent' as string]: palette.accent,
       }}
@@ -167,6 +175,8 @@ export function ZenPlayerView() {
                 </button>
               </Tooltip>
             </div>
+
+            <PlaybackErrorNotice variant="sheet" />
 
             <CustomScrubber stacked accentColor={palette.accent} />
 

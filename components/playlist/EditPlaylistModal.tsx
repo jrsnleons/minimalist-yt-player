@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { db } from '@/db/schema';
 import { Modal } from '@/components/ui/Modal';
+import { inputClass, labelClass, primaryBtn, quietBtn } from '@/lib/ui';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import type { Playlist } from '@/types';
 
@@ -58,8 +59,8 @@ export function EditPlaylistModal({ playlist, isOpen, onClose, onUpdated }: Edit
     <Modal isOpen={isOpen} onClose={onClose} title="Edit Playlist" className="max-w-md">
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div>
-          <label htmlFor="edit-playlist-name" className="block text-xs font-semibold text-zinc-300 mb-1.5 font-sans tracking-tight">
-            Playlist Name <span className="text-zinc-500">*</span>
+          <label htmlFor="edit-playlist-name" className={labelClass}>
+            Name <span className="text-zinc-400">*</span>
           </label>
           <input
             id="edit-playlist-name"
@@ -70,40 +71,40 @@ export function EditPlaylistModal({ playlist, isOpen, onClose, onUpdated }: Edit
             autoFocus
             required
             maxLength={80}
-            className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] focus:border-white/30 focus:ring-1 focus:ring-white/20 text-white text-xs placeholder-zinc-600 focus:outline-none transition-all"
+            className={inputClass}
           />
         </div>
 
         <div>
-          <label htmlFor="edit-playlist-desc" className="block text-xs font-semibold text-zinc-300 mb-1.5 font-sans tracking-tight">
-            Description <span className="text-zinc-500 font-normal">(optional)</span>
+          <label htmlFor="edit-playlist-desc" className={labelClass}>
+            Description <span className="text-zinc-400 font-normal">(optional)</span>
           </label>
           <textarea
             id="edit-playlist-desc"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Add a description for this playlist…"
+            placeholder="Short description"
             rows={3}
             maxLength={250}
-            className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] focus:border-white/30 focus:ring-1 focus:ring-white/20 text-white text-xs placeholder-zinc-500 focus:outline-none resize-none transition-all"
+            className={`${inputClass} resize-none`}
           />
           <div className="text-right text-xs font-mono text-zinc-400 mt-1">
             {description.length}/250
           </div>
         </div>
 
-        <div className="flex gap-2 justify-end pt-2 border-t border-white/[0.06]">
+        <div className="flex gap-2 justify-end pt-2">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-xs font-medium rounded-xl text-zinc-400 hover:text-white hover:bg-white/[0.06] transition-all cursor-pointer"
+            className={quietBtn}
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={!name.trim() || loading}
-            className="px-4 py-2 text-xs font-semibold rounded-xl bg-white text-black hover:bg-zinc-200 disabled:opacity-40 transition-all shadow-sm cursor-pointer"
+            className={primaryBtn}
           >
             {loading ? 'Saving…' : 'Save Changes'}
           </button>

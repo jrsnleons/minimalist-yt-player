@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useId } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -15,7 +15,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { Plus, X, Radio, RotateCcw, Loader2 } from 'lucide-react';
+import { Plus, X, Radio, RotateCcw, Loader2, ChevronDown, ChevronRight, RotateCw } from 'lucide-react';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { useListenTogetherStore } from '@/store/useListenTogetherStore';
 import { TrackRow } from '@/components/playlist/TrackRow';
@@ -37,6 +37,7 @@ export function UpNext() {
   const removeFromRadioQueue = usePlayerStore((s) => s.removeFromRadioQueue);
   const addRadioTrackToManualQueue = usePlayerStore((s) => s.addRadioTrackToManualQueue);
   const showToast = usePlayerStore((s) => s.showToast);
+  const sessionHistory = usePlayerStore((s) => s.sessionHistory);
 
   const isInRoom = useListenTogetherStore((s) => s.isInRoom);
   const isHost = useListenTogetherStore((s) => s.isHost);
@@ -44,6 +45,24 @@ export function UpNext() {
 
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [isRefreshingRadio, setIsRefreshingRadio] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(true);
+  const historyPanelId = useId();
+
+  // Remember the collapsed state between visits (per-viewer convenience only).
+  useEffect(() => {
+    try {
+      if (localStorage.getItem('onyx:played-open') === 'false') setHistoryOpen(false);
+    } catch {}
+  }, []);
+
+  const toggleHistory = () => {
+    setHistoryOpen((open) => {
+      try {
+        localStorage.setItem('onyx:played-open', String(!open));
+      } catch {}
+      return !open;
+    });
+  };
 
   const totalDuration = useMemo(
     () => queue.reduce((acc, t) => acc + (t.duration || 0), 0),
@@ -77,6 +96,51 @@ export function UpNext() {
 
   return (
     <div className="flex flex-col gap-6">
+      {sessionHistory.length > 0 && (
+        <section aria-labelledby="played-heading">
+          <h2 id="played-heading" className="mb-1.5">
+            <button
+              type="button"
+              onClick={toggleHistory}
+              aria-expanded={historyOpen}
+              aria-controls={historyPanelId}
+              className="flex items-center gap-1.5 -ml-1 pl-1 pr-2 min-h-[36px] rounded-md text-base font-semibold text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
+            >
+              {historyOpen ? (
+                <ChevronDown size={16} className="text-zinc-400" aria-hidden="true" />
+              ) : (
+                <ChevronRight size={16} className="text-zinc-400" aria-hidden="true" />
+              )}
+              <span>Played</span>
+              <span className="text-xs font-mono text-zinc-400 tabular-nums font-normal">{sessionHistory.length}</span>
+            </button>
+          </h2>
+          <ul id={historyPanelId} hidden={!historyOpen} className="max-h-56 overflow-y-auto">
+            {sessionHistory.map((track, i) => (
+              <li
+                key={`played-${track.id}-${i}`}
+                className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-white/[0.04] focus-within:bg-white/[0.04] transition-colors"
+              >
+                <TrackArtwork track={track} size="md" rounded="md" />
+                <span className="min-w-0 flex-1 flex flex-col">
+                  <span className="truncate text-sm font-medium text-zinc-100">{track.title}</span>
+                  <span className="truncate text-[13px] text-zinc-400">{track.artist}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => play(track)}
+                  aria-label={`Play ${track.title} again`}
+                  className="flex items-center gap-1.5 px-2.5 min-h-[36px] rounded-lg text-[13px] font-medium text-zinc-200 hover:text-white hover:bg-white/[0.1] transition-colors cursor-pointer shrink-0"
+                >
+                  <RotateCw size={13} aria-hidden="true" />
+                  <span>Play Again</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <section aria-labelledby="up-next-heading">
         <div className="flex items-center justify-between mb-1.5">
           <div className="flex items-baseline gap-2 min-w-0">
@@ -207,7 +271,7 @@ export function UpNext() {
         isOpen={showClearConfirm}
         onClose={() => setShowClearConfirm(false)}
         onConfirm={() => {
-          clearQueue();
+          clearQueue(); // shows an Undo toast
           setShowClearConfirm(false);
         }}
         title="Clear Queue"

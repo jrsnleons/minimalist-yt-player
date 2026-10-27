@@ -33,6 +33,14 @@ export interface HistoryEntry {
   durationPlayed: number; // seconds actually listened
 }
 
+/** One counted listen: a song played for at least 30s or half its length. */
+export interface PlayRecord {
+  id?: number; // Auto-incremented
+  trackId: string; // Reference to Track.id
+  playedAt: number; // Unix timestamp ms, when the song started
+  msListened: number; // milliseconds actually listened
+}
+
 export interface UserPreferences {
   key: string;
   value: unknown;
